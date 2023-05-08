@@ -1,6 +1,7 @@
 package torque
 
 import (
+	"github.com/gorilla/schema"
 	"net/http"
 	"strings"
 
@@ -70,4 +71,18 @@ func DecodeAndValidateForm[T SelfValidator](req *http.Request) (*T, error) {
 	}
 
 	return &res, nil
+}
+
+func EncodeForm[T any](req *http.Request, formData *T) error {
+	encoder := schema.NewEncoder()
+	encoder.SetAliasTag("json")
+
+	val := make(map[string][]string)
+	err := encoder.Encode(formData, val)
+	if err != nil {
+		return err
+	}
+
+	req.Form = val
+	return nil
 }

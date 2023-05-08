@@ -3,11 +3,10 @@ package torque
 import (
 	"encoding/json"
 	"errors"
+	"github.com/gorilla/schema"
 	"log"
 	"net/http"
 	"runtime/debug"
-
-	"github.com/gorilla/schema"
 )
 
 var (
@@ -35,18 +34,24 @@ func WithGuard(g Guard) RouteOption {
 type routeHandler struct {
 	guards  []Guard
 	module  interface{}
+	encoder *schema.Encoder
 	decoder *schema.Decoder
 }
 
 // createRouteHandler converts the given route module into a http.Handler
 func createRouteHandler(module interface{}, opts ...RouteOption) http.Handler {
+	// create dedicated encoder and decoder for each route
+	encoder := schema.NewEncoder()
+	encoder.SetAliasTag("json")
+
 	decoder := schema.NewDecoder()
 	decoder.SetAliasTag("json")
 
 	rh := &routeHandler{
-		module:  module,
-		decoder: decoder,
 		guards:  make([]Guard, 0),
+		module:  module,
+		encoder: encoder,
+		decoder: decoder,
 	}
 
 	for _, opt := range opts {
@@ -56,6 +61,8 @@ func createRouteHandler(module interface{}, opts ...RouteOption) http.Handler {
 	return rh
 }
 
+// TODO(tylermorton): Consider wrapping errors returned from this function so
+// the error message contains where the error originated: ie loader, action, etc
 func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	// attach the decoder to the request context so it can be used
 	// by handlers in the request stack
@@ -180,7 +187,6 @@ func (rh *routeHandler) handlePanic(wr http.ResponseWriter, req *http.Request, e
 			return
 		}
 	} else {
-		log.Printf("[PanicBoundary] %s\nUncaught panic in route module: %+v\n%s", req.URL, err, debug.Stack())
-		wr.WriteHeader(http.StatusInternalServerError)
+		log.Printf("[UncaughtPanic] %s\n-- ERROR --\nUncaught panic in route module %T: %+v\n-- STACK TRACE --\n%s", req.URL, rh.module, err, debug.Stack())
 	}
 }

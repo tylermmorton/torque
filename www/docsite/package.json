@@ -1,3 +1,29 @@
 {
-
+  "name": "torque-docsite",
+  "version": "1.0.0",
+  "description": "The documentation site for the torque framework",
+  "homepage": "https://github.com/tylermmorton/torque#readme",
+  "author": "tylermmorton",
+  "license": "MIT",
+  "scripts": {
+    "clean": "rm -rf ./.build/",
+    "lint": "eslint ./**/*.tmpl.html --fix",
+    "format": "prettier --write ./**/*.tmpl.html --parser go-template",
+    "dev": "go run app.go & tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css --watch",
+    "build:go": "go generate ./... && go build -o ./.build/app app.go",
+    "build:css": "tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css",
+    "build": "npm run build:go && npm run build:css"
+  },
+  "devDependencies": {
+    "@html-eslint/eslint-plugin": "^0.17.1",
+    "@html-eslint/parser": "^0.17.1",
+    "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@typescript-eslint/parser": "^5.55.0",
+    "eslint": "^8.36.0",
+    "prettier": "^2.7.1",
+    "prettier-plugin-go-template": "^0.0.13",
+    "prettier-plugin-tailwindcss": "^0.1.13",
+    "tailwindcss": "^3.2.2",
+    "typescript": "^4.8.4"
+  }
 }

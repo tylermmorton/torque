@@ -16,7 +16,12 @@ func main() {
 
 	app := torque.NewApp(
 		torque.WithRedirect("/", "/docs/index", http.StatusTemporaryRedirect),
+
+		// TODO(tylermorton): Refactor this to be more ergonomic. This will break in build mode
+		// because the static files will be in a different directory.
+		// Perhaps experiment with embedded file systems.
 		torque.WithFileServer("/s", "./.build/static"),
+
 		torque.WithHttp("/docs/{pageName}", &index.RouteModule{
 			ContentSvc: contentSvc,
 		}),

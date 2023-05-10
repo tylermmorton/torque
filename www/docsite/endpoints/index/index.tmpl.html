@@ -1,14 +1,12 @@
 <html lang="en">
-<head>
-  <title>torque | {{ .LoaderData.Title }}</title>
-  <link rel="stylesheet" href="s/styles.css">
+  <head>
+    <title>torque | {{ .LoaderData.Title }}</title>
+    <link rel="stylesheet" href="s/styles.css" />
 
-{{/*  {{ template "htmx" .}}*/}}
-{{/*  {{ template "fullstory" . }}*/}}
-</head>
+    {{/* {{ template "htmx" . }}*/}} {{/* {{ template "fullstory" . }}*/}}
+  </head>
 
-<body>
-{{ .LoaderData.Content }}
-</body>
-
+  <body>
+    {{ .LoaderData.Content }}
+  </body>
 </html>

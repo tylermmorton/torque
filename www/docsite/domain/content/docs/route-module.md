@@ -1,4 +1,5 @@
 ---
+icon: 🤖
 title: Route Modules
 ---
 
@@ -66,15 +67,15 @@ func (rm *Login) Render(req *http.Request, wr *http.ResponseWriter, loaderData a
 }
 ```
 
-### Loader
+# Loader {#loader}
 
 Types that implement the `Loader` interface can be used to handle HTTP GET requests in a `RouteModule`. Think of a loader as your “read” operation for data retrieval.
 
-### Action
+# Action {#action}
 
 Types that implement the `Action` interface can be used to handle form submissions as HTTP POST requests in a `RouteModule`, or if you’re using `htmx`, a PUT or PATCH from any hypermedia control. Think of actions like your application’s “write” operations for data mutations.
 
-### Renderer
+# Renderer {#renderer}
 
 Types that implement the `Renderer` interface can be used to render a custom HTTP response body using the data returned from the `Loader` being executed. This can be anything from rendering a `json` document or a Go template containing HTML.
 
@@ -82,10 +83,14 @@ Types that implement the `Renderer` interface can be used to render a custom HTT
 Route Modules implicitly render JSON if they do not implement the `Render` function or the requester sets their `Content-Type` headers to `application-json`. Data returned from the `Loader` is marshaled into a JSON document and written to the response body. Ensure that sensitive data is omitted through struct tags.
 </aside>
 
-### ErrorBoundary
+# ErrorBoundary {#error-boundary}
 
 Types implementing the `ErrorBoundary` interface catch all errors returned by any of your loaders, actions or renderers. Here the request can be redirected to a new handler in resposne to an error. This can look like anything from a simple page redirect all the way to a full retry of the Loader → Render pipeline.
 
-### PanicBoundary
+# PanicBoundary {#panic-boundary}
 
 Types implementing the `PanicBoundary` interface catch all errors (and panics) returned by any `RouteModule` functions. Think of this as your last chance to pass this failing request off to a new handler before giving up and rendering a 404 or 500 error page and writing a developer friendly stacktrace to the logs.
+
+## Example {#panic-boundary-example}
+
+This is an example

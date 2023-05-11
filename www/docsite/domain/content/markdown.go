@@ -15,13 +15,25 @@ import (
 	"github.com/tylermmorton/torque/www/docsite/model"
 	"html/template"
 	"io"
+	"log"
+)
+
+const (
+	// CodeBlockDefaultLanguage is the default language to use for code blocks
+	CodeBlockDefaultLanguage = "html"
+	// CodeBlockSyntaxHighlighting is the name of the syntax highlighting theme to use for code blocks
+	CodeBlockSyntaxHighlighting = "monokailight"
 )
 
 // processMarkdownFile takes a byte representation of a Markdown file and attempts to convert it
 // into a Document struct. It does this by parsing the frontmatter and then parsing the Markdown
 func processMarkdownFile(byt []byte) (*model.Document, error) {
-	var fm model.Frontmatter
-	md, err := frontmatter.Parse(bytes.NewReader(byt), &fm)
+	var fm struct {
+		Icon  string `yaml:"icon"`
+		Title string `yaml:"title"`
+	}
+
+	var md, err = frontmatter.Parse(bytes.NewReader(byt), &fm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse frontmatter: %+v", err)
 	}
@@ -30,9 +42,10 @@ func processMarkdownFile(byt []byte) (*model.Document, error) {
 	var node = p.Parse(md)
 
 	return &model.Document{
-		Content:     renderToHtml(node),
-		Frontmatter: fm,
-		Headings:    extractHeadings(node),
+		Content:  renderToHtml(node),
+		Headings: extractHeadings(node),
+		Icon:     fm.Icon,
+		Title:    fm.Title,
 	}, nil
 }
 
@@ -43,9 +56,14 @@ func extractHeadings(node ast.Node) (headings []model.Heading) {
 				switch v := child.(type) {
 				case *ast.Text:
 					headings = append(headings, model.Heading{
+						ID:    heading.HeadingID,
 						Level: heading.Level,
 						Text:  string(v.Literal),
 					})
+
+					if len(heading.HeadingID) == 0 {
+						log.Printf("[warn] h%d '%s' in has no id and cannot be linked to", heading.Level, string(v.Literal))
+					}
 				default:
 					panic(fmt.Sprintf("unexpected node type %T in Heading", v))
 				}
@@ -81,7 +99,7 @@ func renderCodeBlock(w io.Writer, codeBlock *ast.CodeBlock, entering bool) error
 	src := string(codeBlock.Literal)
 	lang := string(codeBlock.Info)
 	if len(lang) == 0 {
-		lang = "html"
+		lang = CodeBlockDefaultLanguage
 	}
 
 	htmlFormatter := html.New(html.TabWidth(2))
@@ -100,5 +118,5 @@ func renderCodeBlock(w io.Writer, codeBlock *ast.CodeBlock, entering bool) error
 		return err
 	}
 
-	return htmlFormatter.Format(w, styles.Get("monokailight"), it)
+	return htmlFormatter.Format(w, styles.Get(CodeBlockSyntaxHighlighting), it)
 }

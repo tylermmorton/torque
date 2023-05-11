@@ -27,6 +27,7 @@ func RedirectS(rm interface{}, url string, code int) http.HandlerFunc {
 //
 // A good use case for this is when a form submission fails validation one
 // can rerender the page with an error message passed through the context.
+// TODO(tylermorton): Should this be named "ReloadWithError"?
 func RetryWithError(rm interface {
 	Loader
 	Renderer

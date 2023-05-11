@@ -17,6 +17,7 @@
   "devDependencies": {
     "@html-eslint/eslint-plugin": "^0.17.1",
     "@html-eslint/parser": "^0.17.1",
+    "@tailwindcss/typography": "^0.5.9",
     "@typescript-eslint/eslint-plugin": "^5.55.0",
     "@typescript-eslint/parser": "^5.55.0",
     "eslint": "^8.36.0",

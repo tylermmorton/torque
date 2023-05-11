@@ -1,2 +1,4 @@
 # torque
-The `torque` package is a web app development framework for Go. It is built on top of the `net/http` package and is inspired by the popular JavaScript framework Remix.
+
+`torque` is a meta framework for building web applications in Go. This project is still early in its life and is not yet ready for production use. 
+

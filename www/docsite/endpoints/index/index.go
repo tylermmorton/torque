@@ -7,7 +7,7 @@ import (
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
-	"html/template"
+	"github.com/tylermmorton/torque/www/docsite/model"
 	"net/http"
 )
 
@@ -16,9 +16,9 @@ import (
 
 // DotContext is the dot context of the index page template.
 //
-//tmpl:bind index.tmpl.html
+//tmpl:bind index.tmpl.html --watch
 type DotContext struct {
-	LoaderData any
+	Document *model.Document
 }
 
 var Template = tmpl.MustCompile(&DotContext{})
@@ -40,24 +40,22 @@ func (rm *RouteModule) Load(req *http.Request) (any, error) {
 		return nil, fmt.Errorf("fail to get document name in route vars '%s'", pageName)
 	}
 
-	c, err := rm.ContentSvc.Get(req.Context(), pageName)
+	doc, err := rm.ContentSvc.Get(req.Context(), pageName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get document by name '%s': %+v", pageName, err)
 	}
 
-	return &struct {
-		Title   string
-		Content template.HTML
-	}{
-		Title:   c.Title,
-		Content: c.Content,
-	}, nil
+	return doc, nil
 }
 
 func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-	return Template.Render(wr, &DotContext{
-		LoaderData: loaderData,
-	})
+	if document, ok := loaderData.(*model.Document); !ok {
+		return fmt.Errorf("invalid loader data type. expected *model.Document, got %T", loaderData)
+	} else {
+		return Template.Render(wr, &DotContext{
+			Document: document,
+		})
+	}
 }
 
 func (rm *RouteModule) ErrorBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc {

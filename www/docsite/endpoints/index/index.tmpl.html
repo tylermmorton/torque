@@ -1,12 +1,25 @@
 <html lang="en">
   <head>
-    <title>torque | {{ .LoaderData.Title }}</title>
-    <link rel="stylesheet" href="s/styles.css" />
+    <title>{{ .Document.Frontmatter.Title }} | torque</title>
+    <link rel="stylesheet" href="/s/app.css" />
 
     {{/* {{ template "htmx" . }}*/}} {{/* {{ template "fullstory" . }}*/}}
   </head>
 
   <body>
-    {{ .LoaderData.Content }}
+    <div class="h-12 bg-gray-100">Navigator bar</div>
+    <div class="flex h-full flex-row">
+      <div class="bg-gray-200 md:w-1/4 lg:w-1/6  p-8">
+        Navigator content. This is magic
+      </div>
+      <div class="grow p-8 lg:w-2/3">
+        {{ .Document.Content }}
+      </div>
+      <div class="bg-gray-200 md:w-1/4 lg:w-1/6 p-8">
+        {{ range $heading := .Document.Headings }}
+          {{ $heading.Text }}<br />
+        {{ end }}
+      </div>
+    </div>
   </body>
 </html>

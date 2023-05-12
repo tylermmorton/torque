@@ -22,14 +22,14 @@
       .left-column,
       .right-column {
         position: fixed;
-        top: 3rem;
+        top: 4rem;
         overflow-y: auto;
         height: calc(100% - 3rem);
         width: 15%; /* Set the desired width of the navigation columns */
       }
 
       article {
-        margin-top: 3rem;
+        margin-top: 4rem;
       }
 
       /* Style the search bar */
@@ -102,29 +102,28 @@
       </div>
 
       <!-- Middle content area -->
-      <article class="prose w-full bg-white p-8">
-        <header class="h-24">
+      <article id="document" class="prose w-full bg-white py-8">
+        <header class="h-20">
           <!-- Document Title & Icon -->
-          <div class="flex h-24 flex-row items-center">
+          <div class="flex flex-row items-center">
             {{ if .Document.Icon }}
-              <span class="mx-5 text-5xl">{{ .Document.Icon }}</span>
+              <span id="document-icon" class="mx-4 text-5xl">{{ .Document.Icon }}</span>
             {{ end }}
-            <span class="text-2xl font-bold">{{ .Document.Title }}</span>
+            <span id="document-title" class="text-2xl font-bold">{{ .Document.Title }}</span>
           </div>
 
           <!-- TODO: Add Breadcrumbs -->
         </header>
 
-        {{ .Document.Content }}
+        <span id="document-content">{{ .Document.Content }}</span>
 
-
-        <footer class="h-24 bg-slate-100">Next</footer>
+      <!-- Article Footer Content-->
+        <footer id="document-footer" class="h-24 bg-slate-100">Next</footer>
         <div class="mt-4 flex w-full items-center justify-center font-medium">
           Made with ❤️ in Atlanta, GA
         </div>
       </article>
 
-      <!-- Article Footer Content-->
 
       <!-- Right navigation column -->
       <div class="right-column right-[max(0px,calc(50%-40rem))] p-8">

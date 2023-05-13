@@ -1,7 +1,8 @@
+{{- /* gotype:github.com/tylermmorton/torque/www/docsite/endpoints/index.DotContext */ -}}
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>{{ .Document.Title }} | torque</title>
+    <title>{{ .Article.Title }} | torque</title>
     <link rel="stylesheet" href="/s/app.css" />
 
     <!-- Additional CSS styles -->
@@ -106,16 +107,16 @@
         <header class="h-20">
           <!-- Document Title & Icon -->
           <div class="flex flex-row items-center">
-            {{ if .Document.Icon }}
-              <span id="document-icon" class="mx-4 text-5xl">{{ .Document.Icon }}</span>
+            {{ if .Article.Icon }}
+              <span id="document-icon" class="mx-4 text-5xl">{{ .Article.Icon }}</span>
             {{ end }}
-            <span id="document-title" class="text-2xl font-bold">{{ .Document.Title }}</span>
+            <span id="document-title" class="text-2xl font-bold">{{ .Article.Title }}</span>
           </div>
 
           <!-- TODO: Add Breadcrumbs -->
         </header>
 
-        <span id="document-content">{{ .Document.Content }}</span>
+        <span id="document-content">{{ .Article.Content }}</span>
 
       <!-- Article Footer Content-->
         <footer id="document-footer" class="h-24 bg-slate-100">Next</footer>
@@ -132,7 +133,7 @@
         </header>
 
         <!-- Table of contents -->
-        {{ range $heading := .Document.Headings }}
+        {{ range $heading := .Article.Headings }}
           <a href="#{{ $heading.ID }}">
             <div class="justify-left mt-1 flex flex-row items-center">
               <svg

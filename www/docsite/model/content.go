@@ -8,7 +8,7 @@ type Heading struct {
 	Text  string `yaml:"text"`
 }
 
-type Document struct {
+type Article struct {
 	Content  template.HTML `yaml:"content"`
 	Headings []Heading     `yaml:"headings"`
 	Icon     string        `yaml:"icon"`

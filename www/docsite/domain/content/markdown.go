@@ -26,8 +26,8 @@ const (
 )
 
 // processMarkdownFile takes a byte representation of a Markdown file and attempts to convert it
-// into a Document struct. It does this by parsing the frontmatter and then parsing the Markdown
-func processMarkdownFile(byt []byte) (*model.Document, error) {
+// into a Article struct. It does this by parsing the frontmatter and then parsing the Markdown
+func processMarkdownFile(byt []byte) (*model.Article, error) {
 	var fm struct {
 		Icon  string `yaml:"icon"`
 		Title string `yaml:"title"`
@@ -41,7 +41,7 @@ func processMarkdownFile(byt []byte) (*model.Document, error) {
 	var p = parser.NewWithExtensions(parser.CommonExtensions)
 	var node = p.Parse(md)
 
-	return &model.Document{
+	return &model.Article{
 		Content:  renderToHtml(node),
 		Headings: extractHeadings(node),
 		Icon:     fm.Icon,

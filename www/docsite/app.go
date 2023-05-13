@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
-	"github.com/tylermmorton/torque/www/docsite/endpoints/index"
+	"github.com/tylermmorton/torque/www/docsite/endpoints/docs"
 	"log"
 	"net/http"
 )
@@ -22,7 +22,7 @@ func main() {
 		// Perhaps experiment with embedded file systems.
 		torque.WithFileServer("/s", "./.build/static"),
 
-		torque.WithHttp("/docs/{pageName}", &index.RouteModule{
+		torque.WithHttp("/docs/{pageName}", &docs.RouteModule{
 			ContentSvc: contentSvc,
 		}),
 	)

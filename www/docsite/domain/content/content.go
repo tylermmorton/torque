@@ -16,7 +16,7 @@ var embedDocuments embed.FS
 // Service represents the content service used to get and search for content on the doc site.
 type Service interface {
 	Get(ctx context.Context, name string) (*model.Article, error)
-	//IndexContent(ctx context.Context, document *Article) error
+	//IndexContent(ctx context.Context, document *ArticleView) error
 	Search(ctx context.Context, query string) ([]*model.Article, error)
 }
 

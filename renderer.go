@@ -2,6 +2,7 @@ package torque
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"net/http"
 )
 
@@ -11,17 +12,15 @@ import (
 var (
 	// ErrRenderFnNotDefined is returned by SplitRender when the given header value is not
 	// found in the given cases map and a default case is not provided.
-	ErrRenderFnNotDefined = fmt.Errorf("split render function not defined for header value")
+	ErrRenderFnNotDefined = errors.New("split render function not defined for header value")
 )
 
 // RenderFn is a function that renders a response to the given http.ResponseWriter.
 type RenderFn = func(wr http.ResponseWriter, req *http.Request) error
 
-type splitRenderCase string
-
 // SplitRenderDefault is a special key that can be used in the cases map of SplitRender to
 // indicate that the given RenderFn should be used as the default case.
-const SplitRenderDefault splitRenderCase = "default"
+const SplitRenderDefault key = "default"
 
 // SplitRender is a helper function for rendering different responses based on the given
 // header key. The header key is used to look up a RenderFn in the given cases map.
@@ -44,6 +43,6 @@ func SplitRender(wr http.ResponseWriter, req *http.Request, header string, cases
 	} else if fn, ok := cases[SplitRenderDefault]; ok {
 		return fn(wr, req)
 	} else {
-		return ErrRenderFnNotDefined
+		return errors.WithMessage(ErrRenderFnNotDefined, fmt.Sprintf("render function not found for header value %q", value))
 	}
 }

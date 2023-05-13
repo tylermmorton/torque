@@ -1,4 +1,4 @@
-package index
+package docs
 
 import (
 	_ "embed"
@@ -10,22 +10,27 @@ import (
 	"github.com/tylermmorton/torque/pkg/htmx"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
 	"github.com/tylermmorton/torque/www/docsite/model"
+	"github.com/tylermmorton/torque/www/docsite/templates"
 	"net/http"
 )
 
 var (
-	ErrPageNotFound      = fmt.Errorf("page not found")
-	ErrInvalidLoaderData = fmt.Errorf("invalid loader data type")
+	ErrPageNotFound = fmt.Errorf("page not found")
 )
 
-// TODO(tylermorton) update this when tmpl is refactored to use viper
+// TODO(tmpl) change after binder utility refactor
 //go:generate tmplbind
 
 // DotContext is the dot context of the index page template.
 //
 //tmpl:bind index.tmpl.html --watch
 type DotContext struct {
-	Article *model.Article
+	templates.ArticleView `tmpl:"article"`
+
+	NavigationLinks []struct {
+		Title string
+		Href  string
+	}
 }
 
 var Template = tmpl.MustCompile(&DotContext{})
@@ -51,21 +56,34 @@ func (rm *RouteModule) Load(req *http.Request) (any, error) {
 }
 
 func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-	article, ok := loaderData.(*model.Article)
-	if !ok {
-		return ErrInvalidLoaderData
-	}
-
 	return torque.SplitRender(wr, req, htmx.HxRequestHeader, map[any]torque.RenderFn{
-		// If the htmx request header is present, render the htmx fragment
-		true: func(wr http.ResponseWriter, req *http.Request) error {
-			return nil // TODO: render the htmx fragment
+		// If the htmx request header is present, render the swappable htmx fragment
+		"true": func(wr http.ResponseWriter, req *http.Request) error {
+			return Template.Render(wr,
+				&DotContext{
+					ArticleView: templates.ArticleView{Article: loaderData.(*model.Article)},
+				},
+				tmpl.WithTarget("article"),
+			)
 		},
 
 		// The default case if the htmx request header is not present
 		torque.SplitRenderDefault: func(wr http.ResponseWriter, req *http.Request) error {
 			return Template.Render(wr, &DotContext{
-				Article: article,
+				ArticleView: templates.ArticleView{Article: loaderData.(*model.Article)},
+				NavigationLinks: []struct {
+					Title string
+					Href  string
+				}{
+					{
+						Title: "Home",
+						Href:  "/",
+					},
+					{
+						Title: "Installation",
+						Href:  "/docs/installation",
+					},
+				},
 			})
 		},
 	})
@@ -75,10 +93,6 @@ func (rm *RouteModule) ErrorBoundary(wr http.ResponseWriter, req *http.Request, 
 	if errors.Is(err, ErrPageNotFound) {
 		return func(wr http.ResponseWriter, req *http.Request) {
 			http.Error(wr, "That page does not exist", http.StatusNotFound)
-		}
-	} else if errors.Is(err, ErrInvalidLoaderData) {
-		return func(wr http.ResponseWriter, req *http.Request) {
-			http.Error(wr, "Internal error", http.StatusInternalServerError)
 		}
 	} else if errors.Is(err, torque.ErrRenderFnNotDefined) {
 		return func(wr http.ResponseWriter, req *http.Request) {

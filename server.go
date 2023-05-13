@@ -76,6 +76,8 @@ func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
+	log.Printf("[Request] %s -> %T\n", req.URL, rh.module)
+
 	// guards prevent loaders or actions from being
 	// called by returning a http.HandlerFunc
 	for _, guard := range rh.guards {
@@ -111,8 +113,14 @@ func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 
 func (rh *routeHandler) handleAction(wr http.ResponseWriter, req *http.Request) error {
 	if r, ok := rh.module.(Action); ok {
-		log.Printf("[Action] %s\n", req.URL)
-		return r.Action(wr, req)
+		err := r.Action(wr, req)
+		if err != nil {
+			log.Printf("[Action] %s -> error: %+v\n", req.URL, err)
+			return err
+		} else {
+			log.Printf("[Action] %s -> success\n", req.URL)
+			return nil
+		}
 	} else {
 		return ErrNotImplemented
 	}
@@ -129,8 +137,14 @@ func (rh *routeHandler) handleRender(wr http.ResponseWriter, req *http.Request, 
 	}
 
 	if r, ok := rh.module.(Renderer); ok {
-		log.Printf("[Renderer] %s\n", req.URL)
-		return r.Render(wr, req, data)
+		err := r.Render(wr, req, data)
+		if err != nil {
+			log.Printf("[Renderer] %s -> error: %+v\n", req.URL, err)
+			return err
+		} else {
+			log.Printf("[Renderer] %s -> success\n", req.URL)
+			return nil
+		}
 	} else {
 		return ErrNotImplemented
 	}
@@ -140,11 +154,12 @@ func (rh *routeHandler) handleLoader(wr http.ResponseWriter, req *http.Request) 
 	var data any
 	var err error
 	if r, ok := rh.module.(Loader); ok {
-		log.Printf("[Loader] %s\n", req.URL)
-
 		data, err = r.Load(req)
 		if err != nil {
+			log.Printf("[Loader] %s -> error: %+v\n", req.URL, err)
 			return nil, err
+		} else {
+			log.Printf("[Loader] %s -> success\n", req.URL)
 		}
 	} else {
 		return nil, ErrNotImplemented
@@ -159,30 +174,30 @@ func (rh *routeHandler) handleLoader(wr http.ResponseWriter, req *http.Request) 
 
 func (rh *routeHandler) handleError(wr http.ResponseWriter, req *http.Request, err error) {
 	if r, ok := rh.module.(ErrorBoundary); ok {
-		log.Printf("[ErrorBoundary] %s\n", req.URL)
-
 		// Calls to ErrorBoundary can return an http.HandlerFunc
 		// that can be used to cleanly handle the error. Or not
 		h := r.ErrorBoundary(wr, req, err)
 		if h != nil {
+			log.Printf("[ErrorBoundary] %s -> caught\n", req.URL)
 			h(wr, req)
 			return
 		}
 	} else {
 		// No ErrorBoundary was implemented in the route module.
 		// So your error goes to the PanicBoundary.
+		log.Printf("[ErrorBoundary] %s -> not implemented\n", req.URL)
 		panic(err)
 	}
 }
 
 func (rh *routeHandler) handlePanic(wr http.ResponseWriter, req *http.Request, err error) {
 	if r, ok := rh.module.(PanicBoundary); ok {
-		log.Printf("[PanicBoundary] %s\n", req.URL)
 
 		// Calls to PanicBoundary can return an http.HandlerFunc
 		// that can be used to cleanly handle the error.
 		h := r.PanicBoundary(wr, req, err)
 		if h != nil {
+			log.Printf("[PanicBoundary] %s -> caught\n", req.URL)
 			h(wr, req)
 			return
 		}

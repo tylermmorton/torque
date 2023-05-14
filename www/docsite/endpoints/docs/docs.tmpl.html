@@ -7,6 +7,9 @@
 
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
 
+    <!-- FullStory Snippet -->
+    {{ template "fs" . }}
+
     <!-- Additional CSS styles -->
     <style>
       /* Ensure full page height */
@@ -104,10 +107,12 @@
         {{ range $navigatorItem := .NavigationLinks }}
           <div class="mb-4">
             <a
-              hx-get="{{ $navigatorItem.Href }}"
+              href="{{ $navigatorItem.Path }}"
+              hx-boost="true"
+              hx-get="{{ $navigatorItem.Path }}"
               hx-swap="innerHTML"
               hx-target="#hx-swappable-article"
-              hx-replace-url="{{ $navigatorItem.Href }}"
+              hx-replace-url="{{ $navigatorItem.Path }}"
               class="text-lg font-bold hover:text-slate-800 hover:cursor-pointer"
               >{{ $navigatorItem.Title }}</a
             >

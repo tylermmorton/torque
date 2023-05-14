@@ -7,11 +7,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/pkg/fullstory"
 	"github.com/tylermmorton/torque/pkg/htmx"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
 	"github.com/tylermmorton/torque/www/docsite/model"
 	"github.com/tylermmorton/torque/www/docsite/templates"
 	"net/http"
+	"os"
 )
 
 var (
@@ -23,13 +25,15 @@ var (
 
 // DotContext is the dot context of the index page template.
 //
-//tmpl:bind index.tmpl.html --watch
+//tmpl:bind docs.tmpl.html --watch
 type DotContext struct {
+	fullstory.Snippet     `tmpl:"fs"`
 	templates.ArticleView `tmpl:"article"`
 
 	NavigationLinks []struct {
-		Title string
-		Href  string
+		Title     string
+		Path      string
+		Separator bool
 	}
 }
 
@@ -57,7 +61,8 @@ func (rm *RouteModule) Load(req *http.Request) (any, error) {
 
 func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
 	return torque.SplitRender(wr, req, htmx.HxRequestHeader, map[any]torque.RenderFn{
-		// If the htmx request header is present, render the swappable htmx fragment
+		// If the htmx request header is present and set to "true"
+		// render the htmx swappable fragment
 		"true": func(wr http.ResponseWriter, req *http.Request) error {
 			return Template.Render(wr,
 				&DotContext{
@@ -70,19 +75,19 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 		// The default case if the htmx request header is not present
 		torque.SplitRenderDefault: func(wr http.ResponseWriter, req *http.Request) error {
 			return Template.Render(wr, &DotContext{
+				Snippet:     fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
 				ArticleView: templates.ArticleView{Article: loaderData.(*model.Article)},
+
+				// This is the quick and dirty left hand navigation menu
 				NavigationLinks: []struct {
-					Title string
-					Href  string
+					Title     string
+					Path      string
+					Separator bool
 				}{
-					{
-						Title: "Home",
-						Href:  "/",
-					},
-					{
-						Title: "Installation",
-						Href:  "/docs/installation",
-					},
+					{Title: "Home", Path: "/"},
+					{Title: "Installation", Path: "/docs/installation"},
+					{Title: "Getting Started", Path: "/docs/getting-started"},
+					{Separator: true},
 				},
 			})
 		},

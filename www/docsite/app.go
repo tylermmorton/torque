@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
 	"github.com/tylermmorton/torque/www/docsite/endpoints/docs"
@@ -9,6 +10,11 @@ import (
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("failed to load env: %+v", err)
+	}
+
 	contentSvc, err := content.New()
 	if err != nil {
 		log.Fatalf("failed to create content service: %+v", err)

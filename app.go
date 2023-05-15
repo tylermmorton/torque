@@ -83,6 +83,18 @@ func WithMiddleware(mw mux.MiddlewareFunc) AppOption {
 	}
 }
 
+func WithNotFoundHandler(h http.Handler) AppOption {
+	return func(app *torqueApp) {
+		app.r.NotFoundHandler = h
+	}
+}
+
+func WithMethodNotAllowedHandler(h http.Handler) AppOption {
+	return func(app *torqueApp) {
+		app.r.MethodNotAllowedHandler = h
+	}
+}
+
 // ServeHTTP implements the http.Handler interface so the app can be attached to a router
 func (app *torqueApp) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	app.r.ServeHTTP(wr, req)

@@ -25,12 +25,13 @@ const (
 	CodeBlockSyntaxHighlighting = "monokailight"
 )
 
-// processMarkdownFile takes a byte representation of a Markdown file and attempts to convert it
-// into a Article struct. It does this by parsing the frontmatter and then parsing the Markdown
-func processMarkdownFile(byt []byte) (*model.Article, error) {
+// compileMarkdownFile takes a byte representation of a Raw file and attempts to convert it
+// into a Article struct. It does this by parsing the frontmatter and then parsing the Raw
+func compileMarkdownFile(byt []byte) (*model.Article, error) {
 	var fm struct {
-		Icon  string `yaml:"icon"`
-		Title string `yaml:"title"`
+		Icon  string   `yaml:"icon"`
+		Title string   `yaml:"title"`
+		Tags  []string `yaml:"tags"`
 	}
 
 	var md, err = frontmatter.Parse(bytes.NewReader(byt), &fm)
@@ -42,9 +43,11 @@ func processMarkdownFile(byt []byte) (*model.Article, error) {
 	var node = p.Parse(md)
 
 	return &model.Article{
-		Content:  renderToHtml(node),
 		Headings: extractHeadings(node),
+		HTML:     renderToHtml(node),
 		Icon:     fm.Icon,
+		Raw:      string(md),
+		Tags:     fm.Tags,
 		Title:    fm.Title,
 	}, nil
 }

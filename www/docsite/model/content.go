@@ -8,9 +8,21 @@ type Heading struct {
 	Text  string `yaml:"text"`
 }
 
+type Section struct {
+	Heading Heading `yaml:"heading"`
+	Content string  `yaml:"content"`
+}
+
+// Article is a common structure for representing content on the docsite.
+//
+// When rendering in HTML, usually it's enclosed in an <article> tag.
 type Article struct {
-	Content  template.HTML `yaml:"content"`
-	Headings []Heading     `yaml:"headings"`
-	Icon     string        `yaml:"icon"`
-	Title    string        `yaml:"title"`
+	ObjectID string `json:"objectID"` // ObjectID is the unique identifier for the article. Usually the document name
+
+	Headings []Heading     `json:"headings"`
+	HTML     template.HTML `json:"-"` // HTML is the Raw content that has been converted to HTML for display.
+	Icon     string        `json:"icon"`
+	Raw      string        `json:"raw"` // Raw is the raw content minus any frontmatter.
+	Tags     []string      `json:"tags"`
+	Title    string        `json:"title"`
 }

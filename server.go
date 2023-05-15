@@ -178,7 +178,7 @@ func (rh *routeHandler) handleError(wr http.ResponseWriter, req *http.Request, e
 		// that can be used to cleanly handle the error. Or not
 		h := r.ErrorBoundary(wr, req, err)
 		if h != nil {
-			log.Printf("[ErrorBoundary] %s -> caught\n", req.URL)
+			log.Printf("[ErrorBoundary] %s -> handled\n", req.URL)
 			h(wr, req)
 			return
 		}
@@ -197,7 +197,7 @@ func (rh *routeHandler) handlePanic(wr http.ResponseWriter, req *http.Request, e
 		// that can be used to cleanly handle the error.
 		h := r.PanicBoundary(wr, req, err)
 		if h != nil {
-			log.Printf("[PanicBoundary] %s -> caught\n", req.URL)
+			log.Printf("[PanicBoundary] %s -> handled\n", req.URL)
 			h(wr, req)
 			return
 		}

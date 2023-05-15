@@ -84,7 +84,7 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 					Path      string
 					Separator bool
 				}{
-					{Title: "Home", Path: "/"},
+					{Title: "Home", Path: "/docs/"},
 					{Title: "Installation", Path: "/docs/installation"},
 					{Title: "Getting Started", Path: "/docs/getting-started"},
 					{Separator: true},

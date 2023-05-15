@@ -19,7 +19,7 @@ func Test_compile(t *testing.T) {
 
 func Test_parseDocument(t *testing.T) {
 	byt := []byte(testCodeBlocks)
-	doc, err := processMarkdownFile(byt)
+	doc, err := compileMarkdownFile(byt)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, doc)
 }

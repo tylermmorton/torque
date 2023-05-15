@@ -1,13 +1,19 @@
 package main
 
 import (
+	"embed"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
 	"github.com/tylermmorton/torque/www/docsite/endpoints/docs"
 	"log"
 	"net/http"
+	"os"
 )
+
+//go:embed content/docs/*
+var embeddedContent embed.FS
 
 func main() {
 	err := godotenv.Load()
@@ -15,7 +21,19 @@ func main() {
 		log.Printf("failed to load env: %+v", err)
 	}
 
-	contentSvc, err := content.New()
+	algoliaAppId, ok := os.LookupEnv("ALGOLIA_APP_ID")
+	if !ok {
+		log.Fatalf("ALGOLIA_APP_ID not set in environment")
+	}
+
+	algoliaApiKey, ok := os.LookupEnv("ALGOLIA_API_KEY")
+	if !ok {
+		log.Fatalf("ALGOLIA_API_KEY not set in environment")
+	}
+
+	algoliaSearch := search.NewClient(algoliaAppId, algoliaApiKey)
+
+	contentSvc, err := content.New(embeddedContent, algoliaSearch)
 	if err != nil {
 		log.Fatalf("failed to create content service: %+v", err)
 	}

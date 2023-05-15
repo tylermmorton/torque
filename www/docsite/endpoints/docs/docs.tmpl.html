@@ -103,9 +103,17 @@
     <!-- Content area and navigation columns -->
     <div class="flex flex-1 justify-center">
       <!-- Left navigation column -->
-      <div class="left-column left-[max(0px,calc(50%-40rem))] right-auto p-8">
+      <div class="left-column left-[max(0px,calc(50%-40rem))] right-auto p-8 flex flex-col">
+
+        <!-- Render the list of navigation links -->
         {{ range $navigatorItem := .NavigationLinks }}
-          <div class="mb-4">
+          {{ if $navigatorItem.Separator }}
+          <span class="py-2">
+            <hr class="block">
+          </span>
+          {{else}}
+          <div class="flex flex-row space-x-2 hover:bg-slate-100 rounded-md p-1 hover:cursor-pointer align-center" >
+            <span class="w-6 h-6"></span>
             <a
               href="{{ $navigatorItem.Path }}"
               hx-boost="true"
@@ -113,11 +121,12 @@
               hx-swap="innerHTML"
               hx-target="#hx-swappable-article"
               hx-replace-url="{{ $navigatorItem.Path }}"
-              class="text-lg font-bold hover:text-slate-800 hover:cursor-pointer"
+              class="text-lg font-bold hover:text-slate-800 font-medium"
               >{{ $navigatorItem.Title }}</a
             >
           </div>
-        {{ end }}
+          {{- end -}}
+        {{- end -}}
       </div>
 
       <div id="hx-swappable-article" class="prose w-full bg-white py-8">{{ template "article" . }}</div>

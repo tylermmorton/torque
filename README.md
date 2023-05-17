@@ -2,6 +2,8 @@
 
 `torque` is an experimental meta framework for building web applications in Go. The architecture is largely inspired by the popular JavaScript framework Remix and shares many of the same concepts.
 
+The API is expected to change over the coming months as the project grows.
+
 ## Objectives
 
 - Focus on building upon native web browser functionalities by leveraging hypermedia and progressive enhancement.
@@ -10,7 +12,7 @@
 
 ## Features
 
-- [x] Easily configurable app routing built upon `net/http` and `gorilla/mux`
+- [x] Easily configurable app routing built upon `net/http` and `go-chi` with support for nested routes
 - [x] Server-sided Actions, Loaders and Renderers for  building request endpoints.
 - [x] `ErrorBoundary` and `PanicBoundary` constructs for rerouting requests when things go wrong.
 - [x] Support for `Guard`s and middlewares for protecting routes and redirecting requests.

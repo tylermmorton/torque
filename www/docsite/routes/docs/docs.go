@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/pkg/fullstory"
@@ -45,13 +45,21 @@ type RouteModule struct {
 }
 
 var _ interface {
+	torque.SubmoduleProvider
+
 	torque.Loader
 	torque.Renderer
 	torque.ErrorBoundary
 } = &RouteModule{}
 
+func (rm *RouteModule) Submodules() []torque.Module {
+	return []torque.Module{
+		torque.WithRedirect("/index", "/", http.StatusTemporaryRedirect),
+	}
+}
+
 func (rm *RouteModule) Load(req *http.Request) (any, error) {
-	doc, err := rm.ContentSvc.Get(req.Context(), mux.Vars(req)["pageName"])
+	doc, err := rm.ContentSvc.Get(req.Context(), chi.URLParam(req, "pageName"))
 	if err != nil {
 		return nil, ErrPageNotFound
 	}

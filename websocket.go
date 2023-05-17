@@ -31,14 +31,10 @@ func (*wsResponseWriter) WriteHeader(statusCode int) {}
 // and converts it into a *http.Request that can be handled by a route module.
 type WebSocketParserFunc func(context.Context, string, int, []byte) (*http.Request, error)
 
-func createWebsocketHandler(rm interface {
-	Loader
-	Renderer
-}, parserFn WebSocketParserFunc, opts ...RouteOption) http.HandlerFunc {
+func wrapWithParserFunc(rh http.Handler, parserFn WebSocketParserFunc) http.HandlerFunc {
 	up := websocket.Upgrader{
 		HandshakeTimeout: time.Second * 10,
 	}
-	rh := createRouteHandler(rm, opts...)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ws, err := up.Upgrade(w, r, nil)

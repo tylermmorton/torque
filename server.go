@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/schema"
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -11,6 +12,7 @@ import (
 
 var (
 	ErrNotImplemented = errors.New("method not implemented for route")
+	ErrWsNotSupported = errors.New("websocket not configured for route")
 )
 
 // Guard is a way to prevent loaders and actions from executing. Many guards can be
@@ -31,11 +33,26 @@ func WithGuard(g Guard) RouteOption {
 	}
 }
 
+func WithWebSocketParser(parserFn WebSocketParserFunc) RouteOption {
+	return func(rh *routeHandler) {
+		_, ok := rh.module.(interface {
+			Loader
+			Renderer
+		})
+		if ok {
+			rh.websocket = wrapWithParserFunc(rh, parserFn)
+		} else {
+			log.Fatalf("Cannot use websocket upgrader with module %T: must implement Loader and Renderer interface", rh.module)
+		}
+	}
+}
+
 type routeHandler struct {
-	guards  []Guard
-	module  interface{}
-	encoder *schema.Encoder
-	decoder *schema.Decoder
+	guards    []Guard
+	module    interface{}
+	encoder   *schema.Encoder
+	decoder   *schema.Decoder
+	websocket http.Handler
 }
 
 // createRouteHandler converts the given route module into a http.Handler
@@ -48,10 +65,11 @@ func createRouteHandler(module interface{}, opts ...RouteOption) http.Handler {
 	decoder.SetAliasTag("json")
 
 	rh := &routeHandler{
-		guards:  make([]Guard, 0),
-		module:  module,
-		encoder: encoder,
-		decoder: decoder,
+		guards:    make([]Guard, 0),
+		module:    module,
+		encoder:   encoder,
+		decoder:   decoder,
+		websocket: nil,
 	}
 
 	for _, opt := range opts {
@@ -76,12 +94,27 @@ func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
-	log.Printf("[Request] %s -> %T\n", req.URL, rh.module)
+	// if the incoming request is asking to be upgraded to a websocket
+	// we need can pass the request on to the websocket handler
+	if websocket.IsWebSocketUpgrade(req) {
+		log.Printf("[Request] (ws) %s -> %T\n", req.URL, rh.module)
 
-	// guards prevent loaders or actions from being
-	// called by returning a http.HandlerFunc
+		if rh.websocket != nil {
+			rh.websocket.ServeHTTP(wr, req)
+		} else {
+			rh.handleError(wr, req, ErrWsNotSupported)
+		}
+
+		return
+	} else {
+		log.Printf("[Request] (http) %s -> %T\n", req.URL, rh.module)
+	}
+
+	// guards can prevent a request from going through by
+	// returning an alternate http.HandlerFunc
 	for _, guard := range rh.guards {
 		if h := guard(rh.module, req); h != nil {
+			log.Printf("[Guard] %s -> handled by %T\n", req.URL, guard)
 			h(wr, req)
 			return
 		}

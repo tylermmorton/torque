@@ -6,11 +6,15 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
-	"github.com/tylermmorton/torque/www/docsite/endpoints/docs"
+	"github.com/tylermmorton/torque/www/docsite/routes/docs"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 )
+
+//go:embed .build/static/*
+var staticAssets embed.FS
 
 //go:embed content/docs/*
 var embeddedContent embed.FS
@@ -38,20 +42,22 @@ func main() {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
-	app := torque.NewApp(
-		torque.WithRedirect("/", "/docs/index", http.StatusTemporaryRedirect),
+	staticAssets, err := fs.Sub(staticAssets, ".build/static")
+	if err != nil {
+		log.Fatalf("failed to create static assets filesystem: %+v", err)
+	}
 
-		// TODO(tylermorton): Refactor this to be more ergonomic. This will break in build mode
-		// because the static files will be in a different directory.
-		// Perhaps experiment with embedded file systems.
-		torque.WithFileServer("/s", "./.build/static"),
+	r := torque.NewRouter(
+		torque.WithFileSystemServer("/s", staticAssets),
 
-		torque.WithHttp("/docs/{pageName}", &docs.RouteModule{
+		torque.WithRedirect("/", "/docs/", http.StatusTemporaryRedirect),
+
+		torque.WithRouteModule("/docs/{pageName}", &docs.RouteModule{
 			ContentSvc: contentSvc,
 		}),
 	)
 
-	err = http.ListenAndServe(":8080", app)
+	err = http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatalf("failed to start server: %+v", err)
 	}

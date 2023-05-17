@@ -2,6 +2,14 @@ package torque
 
 import "net/http"
 
+// SubmoduleProvider is executed when the torque app is initialized. It can
+// return a list of RouterConfigs to be registered as children of the current
+// RouteModule. The parent RouteModule's path will be prefixed to any provided
+// paths in the RouterConfig.
+type SubmoduleProvider interface {
+	Submodules() []Module
+}
+
 // Action is executed during an http POST request. Actions perform
 // data mutations such as creating or updating resources and are
 // usually triggered by a form submission in the browser.

@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/pkg/fullstory"
@@ -52,14 +51,23 @@ var _ interface {
 	torque.ErrorBoundary
 } = &RouteModule{}
 
+//react:bind app.tsx
+type AppProps struct {
+}
+
 func (rm *RouteModule) Submodules() []torque.Module {
 	return []torque.Module{
 		torque.WithRedirect("/index", "/", http.StatusTemporaryRedirect),
+
+		torque.WithRouteModule("/ws", struct {
+			torque.Loader
+			torque.Renderer
+		}{}, torque.WithWebSocketParser(htmx.WebSocketParser)),
 	}
 }
 
 func (rm *RouteModule) Load(req *http.Request) (any, error) {
-	doc, err := rm.ContentSvc.Get(req.Context(), chi.URLParam(req, "pageName"))
+	doc, err := rm.ContentSvc.Get(req.Context(), torque.RouteParam(req, "pageName"))
 	if err != nil {
 		return nil, ErrPageNotFound
 	}

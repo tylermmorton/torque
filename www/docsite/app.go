@@ -48,6 +48,7 @@ func main() {
 	}
 
 	r := torque.NewRouter(
+
 		torque.WithFileSystemServer("/s", staticAssets),
 
 		torque.WithRedirect("/", "/docs/", http.StatusTemporaryRedirect),

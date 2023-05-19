@@ -1,7 +1,6 @@
 package torque
 
 import (
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"io/fs"
 	"log"
@@ -15,15 +14,12 @@ func NewRouter(modules ...Module) http.Handler {
 		mod(r)
 	}
 
-	err := chi.Walk(r, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		fmt.Printf("[%s] %s -> %T\n", method, route, handler)
-		return nil
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	return r
+}
+
+// RouteParam returns the named route parameter from the request url
+func RouteParam(req *http.Request, name string) string {
+	return chi.URLParam(req, name)
 }
 
 // Module represents a module that can be registered with the torque Router.

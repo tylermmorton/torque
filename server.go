@@ -95,7 +95,7 @@ func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	}()
 
 	// if the incoming request is asking to be upgraded to a websocket
-	// we need can pass the request on to the websocket handler
+	// we need to pass the request on to the websocket handler first.
 	if websocket.IsWebSocketUpgrade(req) {
 		log.Printf("[Request] (ws) %s -> %T\n", req.URL, rh.module)
 
@@ -141,6 +141,11 @@ func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 			rh.handleError(wr, req, err)
 			return
 		}
+
+	default:
+		// TODO(tylermmorton): Update the chi router to only support POST and GET
+		http.Error(wr, "method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
 }
 

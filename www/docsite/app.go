@@ -2,11 +2,12 @@ package main
 
 import (
 	"embed"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	algolia "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
 	"github.com/tylermmorton/torque/www/docsite/routes/docs"
+	"github.com/tylermmorton/torque/www/docsite/routes/search"
 	"io/fs"
 	"log"
 	"net/http"
@@ -35,7 +36,7 @@ func main() {
 		log.Fatalf("ALGOLIA_API_KEY not set in environment")
 	}
 
-	algoliaSearch := search.NewClient(algoliaAppId, algoliaApiKey)
+	algoliaSearch := algolia.NewClient(algoliaAppId, algoliaApiKey)
 
 	contentSvc, err := content.New(embeddedContent, algoliaSearch)
 	if err != nil {
@@ -54,6 +55,10 @@ func main() {
 		torque.WithRedirect("/", "/docs/", http.StatusTemporaryRedirect),
 
 		torque.WithRouteModule("/docs/{pageName}", &docs.RouteModule{
+			ContentSvc: contentSvc,
+		}),
+
+		torque.WithRouteModule("/search", &search.RouteModule{
 			ContentSvc: contentSvc,
 		}),
 	)

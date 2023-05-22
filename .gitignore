@@ -1,4 +1,4 @@
-www/docsite/.env
+.env
 .idea
 .build/
 node_modules/

@@ -19,7 +19,7 @@ var (
 
 // Service represents the content service used to get and search for content on the doc site.
 type Service interface {
-	Get(ctx context.Context, name string) (*model.Article, error)
+	GetByID(ctx context.Context, name string) (*model.Article, error)
 	Search(ctx context.Context, query string) ([]*model.Article, error)
 }
 
@@ -111,9 +111,9 @@ func prepareSearchIndex(content []*model.Article, sc *search.Client) (*search.In
 	return index, nil
 }
 
-func (svc *contentService) Get(ctx context.Context, name string) (*model.Article, error) {
+func (svc *contentService) GetByID(ctx context.Context, objectID string) (*model.Article, error) {
 	for _, doc := range svc.content {
-		if doc.ObjectID == name {
+		if doc.ObjectID == objectID {
 			return doc, nil
 		}
 	}
@@ -121,10 +121,23 @@ func (svc *contentService) Get(ctx context.Context, name string) (*model.Article
 }
 
 func (svc *contentService) Search(ctx context.Context, query string) ([]*model.Article, error) {
-	_, err := svc.index.Search(query, nil)
+	queryRes, err := svc.index.Search(query, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	res := make([]*model.Article, 0)
+	for _, hit := range queryRes.Hits {
+		if id, ok := hit["objectID"]; ok {
+			doc, err := svc.GetByID(ctx, id.(string))
+			if err != nil {
+				log.Printf("[warn] failed to get doc by an id found in the search index %s: %s", id, err)
+				continue
+			}
+			res = append(res, doc)
+		}
+
+	}
+
+	return res, nil
 }

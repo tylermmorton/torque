@@ -11,6 +11,7 @@ import (
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
 	"github.com/tylermmorton/torque/www/docsite/model"
 	"github.com/tylermmorton/torque/www/docsite/templates"
+	"github.com/tylermmorton/torque/www/docsite/templates/layouts"
 	"net/http"
 	"os"
 )
@@ -26,14 +27,8 @@ var (
 //
 //tmpl:bind docs.tmpl.html --watch
 type DotContext struct {
-	fullstory.Snippet     `tmpl:"fs"`
-	templates.ArticleView `tmpl:"article"`
-
-	NavigationLinks []struct {
-		Title     string
-		Path      string
-		Separator bool
-	}
+	layouts.Primary `tmpl:"layout"`
+	Article         *model.Article `tmpl:"article"`
 }
 
 var Template = tmpl.MustCompile(&DotContext{})
@@ -67,7 +62,7 @@ func (rm *RouteModule) Submodules() []torque.Module {
 }
 
 func (rm *RouteModule) Load(req *http.Request) (any, error) {
-	doc, err := rm.ContentSvc.Get(req.Context(), torque.RouteParam(req, "pageName"))
+	doc, err := rm.ContentSvc.GetByID(req.Context(), torque.RouteParam(req, "pageName"))
 	if err != nil {
 		return nil, ErrPageNotFound
 	}
@@ -76,13 +71,18 @@ func (rm *RouteModule) Load(req *http.Request) (any, error) {
 }
 
 func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
+	article, ok := loaderData.(*model.Article)
+	if !ok {
+		return errors.New("invalid loader data type")
+	}
+
 	return torque.SplitRender(wr, req, htmx.HxRequestHeader, map[any]torque.RenderFn{
 		// If the htmx request header is present and set to "true"
 		// render the htmx swappable fragment
 		"true": func(wr http.ResponseWriter, req *http.Request) error {
 			return Template.Render(wr,
 				&DotContext{
-					ArticleView: templates.ArticleView{Article: loaderData.(*model.Article)},
+					Article: article,
 				},
 				tmpl.WithTarget("article"),
 			)
@@ -90,22 +90,26 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 
 		// The default case if the htmx request header is not present
 		torque.SplitRenderDefault: func(wr http.ResponseWriter, req *http.Request) error {
-			return Template.Render(wr, &DotContext{
-				Snippet:     fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
-				ArticleView: templates.ArticleView{Article: loaderData.(*model.Article)},
+			return Template.Render(wr,
+				&DotContext{
+					Primary: layouts.Primary{
+						Snippet: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
+						Navigator: templates.Navigator{Links: []templates.NavigationLink{
+							{Title: "Home", Path: "/docs/"},
+							{Title: "Installation", Path: "/docs/installation"},
+							{Title: "Getting Started", Path: "/docs/getting-started"},
+							{Separator: true},
+						}},
 
-				// This is the quick and dirty left hand navigation menu
-				NavigationLinks: []struct {
-					Title     string
-					Path      string
-					Separator bool
-				}{
-					{Title: "Home", Path: "/docs/"},
-					{Title: "Installation", Path: "/docs/installation"},
-					{Title: "Getting Started", Path: "/docs/getting-started"},
-					{Separator: true},
+						Title:   fmt.Sprintf("%s | %s", article.Title, "Torque"),
+						Links:   []layouts.Link{{Rel: "stylesheet", Href: "/s/app.css"}},
+						Scripts: []string{"https://unpkg.com/htmx.org@1.9.2"},
+					},
+					Article: article,
 				},
-			})
+				tmpl.WithName("outlet"),
+				tmpl.WithTarget("layout"),
+			)
 		},
 	})
 }

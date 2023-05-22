@@ -2,6 +2,9 @@ package model
 
 import "html/template"
 
+// TODO(tmpl) change after binder utility refactor
+//go:generate tmplbind
+
 type Heading struct {
 	ID    string `yaml:"id"`
 	Level int    `yaml:"level"`
@@ -13,9 +16,10 @@ type Section struct {
 	Content string  `yaml:"content"`
 }
 
-// Article is a common structure for representing content on the docsite.
+// Article is a common structure for representing content on the docsite. It is used
+// to represent indexed data and render HTML to the user.
 //
-// When rendering in HTML, usually it's enclosed in an <article> tag.
+//tmpl:bind ../templates/article.tmpl.html
 type Article struct {
 	ObjectID string `json:"objectID"` // ObjectID is the unique identifier for the article. Usually the document name
 

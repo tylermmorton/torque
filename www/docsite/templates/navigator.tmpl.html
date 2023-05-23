@@ -1,34 +1,41 @@
 <style>
-    /* Style the search bar */
-    .search-bar {
-        display: flex;
-        align-items: center;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
+  .logo {
+    font-family: "Bruno Ace SC", serif;
+    font-size: 2rem;
+    color: #00a385;
+  }
 
-    .search-bar input {
-        padding: 0.5rem;
-        border: none;
-        border-radius: 0.25rem;
-        background-color: #f7fafc;
-        color: #4a5568;
-        font-size: 1rem;
-    }
+  /* Style the search bar */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
 
-    .search-bar input:focus {
-        outline: none;
-        box-shadow: 0 0 0 2px #bde4ff;
-    }
+  .search-bar input {
+    padding: 0.5rem;
+    /*border: none;*/
+    border: 1px solid #3f3f3f;
+    border-radius: 0.25rem;
+    background-color: #281e3b;
+    color: #4a5568;
+    font-size: 1rem;
+  }
+
+  .search-bar input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #bde4ff;
+  }
 </style>
 
 <!-- Top navigation bar -->
 <div
   class="fixed top-0 z-40 flex h-12 w-full flex-none items-center justify-between border-b p-8 backdrop-blur"
 >
-  <div class="text-3xl">torque</div>
+  <div class="logo subpixel-antialiased">torque</div>
 
   <!-- Search bar -->
   <div class="search-bar">
@@ -44,7 +51,7 @@
     <a href="https://github.com/tylermmorton/torque">
       <svg
         aria-hidden="true"
-        class="octicon octicon-mark-github fill-slate-900 hover:fill-slate-800"
+        class="octicon octicon-mark-github fill-[#d0d0d9] hover:fill-[#a061c5]"
         height="24"
         viewBox="0 0 16 16"
         width="24"
@@ -58,29 +65,32 @@
   </div>
 </div>
 
-
 <!-- Left navigation column -->
-<div class="left-column left-[max(0px,calc(50%-40rem))] right-auto p-8 flex flex-col">
+<div
+  class="left-column left-[max(0px,calc(50%-40rem))] right-auto flex flex-col p-8"
+>
   <!-- Render the list of navigation links -->
-    {{ range $navigatorItem := .Links }}
-        {{ if $navigatorItem.Separator }}
-          <span class="py-2">
-            <hr class="block">
-          </span>
-        {{else}}
-          <div class="flex flex-row space-x-2 hover:bg-slate-100 rounded-md p-1 hover:cursor-pointer align-center" >
-            <span class="w-6 h-6"></span>
-            <a
-                    href="{{ $navigatorItem.Path }}"
-                    hx-boost="true"
-                    hx-get="{{ $navigatorItem.Path }}"
-                    hx-swap="innerHTML"
-                    hx-target="#hx-swappable-article"
-                    hx-replace-url="{{ $navigatorItem.Path }}"
-                    class="text-lg font-bold hover:text-slate-800 font-medium"
-            >{{ $navigatorItem.Title }}</a
-            >
-          </div>
-        {{- end -}}
+  {{ range $navigatorItem := .Links }}
+    {{ if $navigatorItem.Separator }}
+      <span class="py-2">
+        <hr class="block" />
+      </span>
+    {{ else }}
+      <div
+        class="align-center flex flex-row space-x-2 rounded-sm p-1 text-[#d0d0d9] hover:cursor-pointer hover:bg-[#281e3b]"
+      >
+        <span class="h-6 w-6"></span>
+        <a
+          href="{{ $navigatorItem.Path }}"
+          hx-boost="true"
+          hx-get="{{ $navigatorItem.Path }}"
+          hx-swap="innerHTML"
+          hx-target="#hx-swappable-article"
+          hx-replace-url="{{ $navigatorItem.Path }}"
+          class="text-lg font-bold font-medium"
+          >{{ $navigatorItem.Title }}</a
+        >
+      </div>
     {{- end -}}
+  {{- end -}}
 </div>

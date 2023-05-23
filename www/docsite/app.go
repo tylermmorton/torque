@@ -7,6 +7,7 @@ import (
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/www/docsite/domain/content"
 	"github.com/tylermmorton/torque/www/docsite/routes/docs"
+	"github.com/tylermmorton/torque/www/docsite/routes/landing"
 	"github.com/tylermmorton/torque/www/docsite/routes/search"
 	"io/fs"
 	"log"
@@ -52,7 +53,7 @@ func main() {
 
 		torque.WithFileSystemServer("/s", staticAssets),
 
-		torque.WithRedirect("/", "/docs/", http.StatusTemporaryRedirect),
+		torque.WithRouteModule("/", &landing.RouteModule{}),
 
 		torque.WithRouteModule("/docs/{pageName}", &docs.RouteModule{
 			ContentSvc: contentSvc,
@@ -63,7 +64,7 @@ func main() {
 		}),
 	)
 
-	err = http.ListenAndServe(":8080", r)
+	err = http.ListenAndServe("127.0.0.1:8080", r)
 	if err != nil {
 		log.Fatalf("failed to start server: %+v", err)
 	}

@@ -1,17 +1,14 @@
 {{- /* gotype:github.com/tylermmorton/torque/www/docsite/model.Article */ -}}
 
+
 <article>
   <header class="h-20">
     <!-- Document Title & Icon -->
     <div class="flex flex-row items-center">
       {{ if .Icon }}
-        <span id="document-icon" class="mx-4 text-5xl"
-          >{{ .Icon }}</span
-        >
+        <span id="document-icon" class="mx-4 text-5xl">{{ .Icon }}</span>
       {{ end }}
-      <span id="document-title" class="text-2xl font-bold"
-        >{{ .Title }}</span
-      >
+      <span id="document-title" class="text-2xl font-bold">{{ .Title }}</span>
     </div>
 
     <!-- TODO: Add Breadcrumbs -->

@@ -1,0 +1,77 @@
+<html lang="en">
+  <head>
+    <title>{{ .Title }}</title>
+
+    {{ range .Links -}}
+    <link rel="{{.Rel}}" href="{{.Href}}" />
+    {{ end -}}
+
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+      }
+
+      .hero {
+        padding-top: 4rem;
+        background-image: linear-gradient(
+          to top,
+          #000111,
+          #040816,
+          #080e1c,
+          #0f1222,
+          #151728,
+          #18192b,
+          #1b1b2f,
+          #1f1d32,
+          #221d35,
+          #241e37,
+          #261e3a,
+          #291e3b
+        );
+      }
+
+      .logo {
+        font-family: "Bruno Ace SC", monospace;
+        color: #fff;
+      }
+
+      .headline {
+        font-family: "Fira Code", monospace;
+        color: #fff;
+      }
+    </style>
+  </head>
+
+  <!-- top nav bar -->
+
+  <body>
+    <nav
+      class="fixed top-0 z-40 flex h-12 w-full flex-none items-center justify-between border-b p-8 backdrop-blur"
+    >
+      Nav bar
+    </nav>
+
+    <div class="hero flex h-screen w-full justify-center subpixel-antialiased">
+      <div class="flex flex-col items-center space-y-[3rem] py-12">
+        <div class="logo text-[5.25rem] font-bold tracking-[.175em]">
+          torque
+        </div>
+        <div
+          class="headline max-w-[calc(50%)] text-center text-lg font-light text-white"
+        >
+          Leverage the power of Golang with torque, a web server framework
+          designed to build modern hypermedia driven applications with different
+          levels of progressive enhancement.
+        </div>
+        <button
+          class="rounded bg-white px-8 py-4 text-lg font-medium tracking-wide text-black transition hover:bg-[#02091C] hover:text-white"
+        >
+          Documentation
+        </button>
+      </div>
+    </div>
+    <div class="h-screen w-full bg-[#000111]"></div>
+  </body>
+</html>

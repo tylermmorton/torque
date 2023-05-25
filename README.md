@@ -69,7 +69,7 @@ func main() {
 ### Route Modules
 An essential handler in the `torque` framework is a `RouteModule`. Route Modules are a handler pattern similar to the design of the popular JavaScript framework Remix. 
 
-In `torque` you can build route modules by implementing one or many of the following interfaces found in [module.go]()
+In `torque` you can build route modules by implementing one or many of the following interfaces found in [module.go](https://github.com/tylermmorton/torque/blob/master/module.go)
 
 ```go
 type Action interface {

@@ -1,6 +1,7 @@
 package landing
 
 import (
+	_ "embed"
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
 	"net/http"

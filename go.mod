@@ -2,6 +2,8 @@ module github.com/tylermmorton/torque
 
 go 1.18
 
+replace github.com/tylermmorton/tmpl => ../tmpl
+
 require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/alecthomas/chroma v0.10.0
@@ -21,6 +23,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/evanw/esbuild v0.17.19 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect

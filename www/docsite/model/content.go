@@ -2,9 +2,6 @@ package model
 
 import "html/template"
 
-// TODO(tmpl) change after binder utility refactor
-//go:generate tmplbind
-
 type Heading struct {
 	ID    string `yaml:"id"`
 	Level int    `yaml:"level"`

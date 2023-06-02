@@ -15,6 +15,8 @@ import (
 	"os"
 )
 
+//go:generate tmpl bind ./... --outfile=tmpl.gen.go --watch
+
 //go:embed .build/static/*
 var staticAssets embed.FS
 
@@ -62,6 +64,13 @@ func main() {
 		torque.WithRouteModule("/search", &search.RouteModule{
 			ContentSvc: contentSvc,
 		}),
+
+		torque.WithHandler("/",
+			http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+				wr.Write([]byte("Hello, world!"))
+				wr.WriteHeader(http.StatusOK)
+			}),
+		),
 	)
 
 	err = http.ListenAndServe("127.0.0.1:8080", r)

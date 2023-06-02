@@ -12,8 +12,6 @@ import (
 	"os"
 )
 
-//go:generate tmplbind
-
 //tmpl:bind search.tmpl.html
 type DotContext struct {
 	layouts.Primary `tmpl:"layout"`

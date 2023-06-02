@@ -88,7 +88,7 @@ func WithTestCase(name string, method string, opts ...TestCaseOption) TestOption
 
 type TestCaseOption = func(*testCase)
 
-func WithRouteOptions(opts ...RouteOption) TestOption {
+func WithRouteOptions(opts ...RouteModuleOption) TestOption {
 	return func(th *testHandler) {
 		if h, ok := th.rh.(*routeHandler); ok {
 			for _, opt := range opts {

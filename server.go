@@ -24,16 +24,16 @@ var (
 // if they are not. Another way to think about Guards is like an "incoming request boundary"
 type Guard = func(rm interface{}, req *http.Request) http.HandlerFunc // or nil
 
-// RouteOption configures a route handler
-type RouteOption func(rh *routeHandler)
+// RouteModuleOption configures a route handler
+type RouteModuleOption func(rh *routeHandler)
 
-func WithGuard(g Guard) RouteOption {
+func WithGuard(g Guard) RouteModuleOption {
 	return func(rh *routeHandler) {
 		rh.guards = append(rh.guards, g)
 	}
 }
 
-func WithWebSocketParser(parserFn WebSocketParserFunc) RouteOption {
+func WithWebSocketParser(parserFn WebSocketParserFunc) RouteModuleOption {
 	return func(rh *routeHandler) {
 		_, ok := rh.module.(interface {
 			Loader
@@ -56,7 +56,7 @@ type routeHandler struct {
 }
 
 // createRouteHandler converts the given route module into a http.Handler
-func createRouteHandler(module interface{}, opts ...RouteOption) http.Handler {
+func createRouteHandler(module interface{}, opts ...RouteModuleOption) http.Handler {
 	// create dedicated encoder and decoder for each route
 	encoder := schema.NewEncoder()
 	encoder.SetAliasTag("json")
@@ -143,7 +143,7 @@ func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		// TODO(tylermmorton): Update the chi router to only support POST and GET
+		// TODO(tylermmorton): Update the mux router to only support POST and GET
 		http.Error(wr, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}

@@ -2,6 +2,7 @@ package torque
 
 import (
 	"errors"
+	"github.com/go-chi/chi/v5"
 	"net/http"
 )
 
@@ -22,4 +23,10 @@ func DecodeQuery[T any](req *http.Request) (*T, error) {
 	}
 
 	return &res, nil
+}
+
+// TODO: move this
+// RouteParam returns the named route parameter from the request url
+func RouteParam(req *http.Request, name string) string {
+	return chi.URLParam(req, name)
 }

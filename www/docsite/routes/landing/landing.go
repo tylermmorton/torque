@@ -1,22 +1,26 @@
 package landing
 
 import (
-	_ "embed"
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/pkg/react"
 	"net/http"
 )
 
-//go:generate tmplbind
+type TiptapProps struct {
+}
 
 var (
-	Template = tmpl.MustCompile(&DotContext{})
+	Template     = tmpl.MustCompile(&DotContext{})
+	TiptapEditor = react.MustCompile(&TiptapProps{})
 )
 
 //tmpl:bind landing.tmpl.html
 type DotContext struct {
 	Title string
 	Links []Link
+
+	TiptapEditor *react.App
 }
 
 // Link represents an html <link> tag
@@ -44,6 +48,7 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 			Links: []Link{
 				{Rel: "stylesheet", Href: "/s/app.css"},
 			},
+			TiptapEditor: TiptapEditor,
 		},
 	)
 }

@@ -20,12 +20,9 @@ var (
 	ErrPageNotFound = fmt.Errorf("page not found")
 )
 
-// TODO(tmpl) change after binder utility refactor
-//go:generate tmplbind
-
 // DotContext is the dot context of the index page template.
 //
-//tmpl:bind docs.tmpl.html --watch
+//tmpl:bind docs.tmpl.html
 type DotContext struct {
 	layouts.Primary `tmpl:"layout"`
 	Article         *model.Article `tmpl:"article"`
@@ -50,8 +47,8 @@ var _ interface {
 type AppProps struct {
 }
 
-func (rm *RouteModule) Submodules() []torque.Module {
-	return []torque.Module{
+func (rm *RouteModule) Submodules() []torque.Route {
+	return []torque.Route{
 		torque.WithRedirect("/index", "/", http.StatusTemporaryRedirect),
 
 		torque.WithRouteModule("/ws", struct {

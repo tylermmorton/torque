@@ -1,7 +1,5 @@
 package templates
 
-//go:generate tmplbind
-
 type NavigationLink struct {
 	Title     string
 	Path      string

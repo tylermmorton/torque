@@ -39,7 +39,7 @@ func RetryWithError(rm interface {
 		req = req.WithContext(withError(req.Context(), err))
 		data, err := rm.Load(req)
 		if err != nil {
-			// Errors go straight to the panic boundary.
+			// errors go straight to the panic boundary.
 			// Do not pass Go, do not collect $100
 			panic(err)
 		}

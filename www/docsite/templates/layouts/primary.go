@@ -5,8 +5,6 @@ import (
 	"github.com/tylermmorton/torque/www/docsite/templates"
 )
 
-//go:generate tmplbind
-
 // Link represents an html <link> tag
 type Link struct {
 	Rel  string

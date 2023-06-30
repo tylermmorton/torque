@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
-	"github.com/tylermmorton/torque/www/docsite/model"
+	"github.com/tylermmorton/torque/.www/docsite/model"
 	"io/fs"
 	"log"
 	"os"

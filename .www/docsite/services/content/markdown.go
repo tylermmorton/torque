@@ -12,7 +12,7 @@ import (
 	"github.com/gomarkdown/markdown/ast"
 	mdhtml "github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
-	"github.com/tylermmorton/torque/www/docsite/model"
+	"github.com/tylermmorton/torque/.www/docsite/model"
 	"html/template"
 	"io"
 	"log"

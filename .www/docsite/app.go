@@ -5,17 +5,17 @@ import (
 	algolia "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
-	"github.com/tylermmorton/torque/www/docsite/routes/docs"
-	"github.com/tylermmorton/torque/www/docsite/routes/landing"
-	"github.com/tylermmorton/torque/www/docsite/routes/search"
-	"github.com/tylermmorton/torque/www/docsite/services/content"
+	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
+	"github.com/tylermmorton/torque/.www/docsite/routes/landing"
+	"github.com/tylermmorton/torque/.www/docsite/routes/search"
+	"github.com/tylermmorton/torque/.www/docsite/services/content"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 )
 
-//go:generate tmpl bind ./... --outfile=tmpl.gen.go --watch
+//go:generate tmpl bind ./... --outfile=tmpl.gen.go --mode=embed
 
 //go:embed .build/static/*
 var staticAssets embed.FS
@@ -66,7 +66,7 @@ func main() {
 		}),
 	)
 
-	err = http.ListenAndServe("127.0.0.1:8080", r)
+	err = http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatalf("failed to start server: %+v", err)
 	}

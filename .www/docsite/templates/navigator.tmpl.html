@@ -70,8 +70,8 @@
   class="left-column left-[max(0px,calc(50%-40rem))] right-auto flex flex-col p-8"
 >
   <!-- Render the list of navigation links -->
-  {{ range $navigatorItem := .Links }}
-    {{ if $navigatorItem.Separator }}
+  {{ range .Links }}
+    {{ if .Separator }}
       <span class="py-2">
         <hr class="block" />
       </span>
@@ -81,14 +81,14 @@
       >
         <span class="h-6 w-6"></span>
         <a
-          href="{{ $navigatorItem.Path }}"
+          href="{{ .Path }}"
           hx-boost="true"
-          hx-get="{{ $navigatorItem.Path }}"
+          hx-get="{{ .Path }}"
           hx-swap="innerHTML"
           hx-target="#hx-swappable-article"
-          hx-replace-url="{{ $navigatorItem.Path }}"
+          hx-replace-url="{{ .Path }}"
           class="text-lg font-bold font-medium"
-          >{{ $navigatorItem.Title }}</a
+          >{{ .Title }}</a
         >
       </div>
     {{- end -}}

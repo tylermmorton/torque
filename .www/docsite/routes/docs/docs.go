@@ -6,16 +6,18 @@ import (
 	"errors"
 	"fmt"
 	g "github.com/maragudk/gomponents"
-	c "github.com/maragudk/gomponents/components"
 	. "github.com/maragudk/gomponents/html"
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/.www/docsite/model"
+	"github.com/tylermmorton/torque/.www/docsite/services/content"
+	"github.com/tylermmorton/torque/.www/docsite/templates"
+	"github.com/tylermmorton/torque/.www/docsite/templates/layouts"
+	"github.com/tylermmorton/torque/pkg/fullstory"
 	"github.com/tylermmorton/torque/pkg/htmx"
-	"github.com/tylermmorton/torque/www/docsite/model"
-	"github.com/tylermmorton/torque/www/docsite/services/content"
-	"github.com/tylermmorton/torque/www/docsite/templates/layouts"
 	"log"
 	"net/http"
+	"os"
 )
 
 var (
@@ -26,8 +28,8 @@ var (
 //
 //tmpl:bind docs.tmpl.html
 type DotContext struct {
-	layouts.Primary `tmpl:"layout"`
-	Article         *model.Article `tmpl:"article"`
+	Primary layouts.Primary `tmpl:"layout"`
+	Article *model.Article  `tmpl:"article"`
 }
 
 var Template = tmpl.MustCompile(&DotContext{})
@@ -100,40 +102,40 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 
 		// The default case if the htmx request header is not present
 		torque.SplitRenderDefault: func(wr http.ResponseWriter, req *http.Request) error {
-			return c.HTML5(c.HTML5Props{
-				Title:       fmt.Sprintf("%s | %s", article.Title, "Torque"),
-				Description: "",
-				Language:    "en",
-				Head: []g.Node{
-					Link(Rel("stylesheet"), Href("/s/app.css")),
-					Script(Src("https://unpkg.com/htmx.org@1.9.2")),
-				},
-				Body: []g.Node{
-					DocPage(article),
-				},
-			},
-			).Render(wr)
-
-			//return Template.Render(wr,
-			//	&DotContext{
-			//		Primary: layouts.Primary{
-			//			Snippet: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
-			//			Navigator: templates.Navigator{Links: []templates.NavigationLink{
-			//				{Title: "Home", Path: "/docs/"},
-			//				{Title: "Installation", Path: "/docs/installation"},
-			//				{Title: "Getting Started", Path: "/docs/getting-started"},
-			//				{Separator: true},
-			//			}},
-			//
-			//			Title:   fmt.Sprintf("%s | %s", article.Title, "Torque"),
-			//			Links:   []layouts.Link{{Rel: "stylesheet", Href: "/s/app.css"}},
-			//			Scripts: []string{"https://unpkg.com/htmx.org@1.9.2"},
-			//		},
-			//		Article: article,
+			//return c.HTML5(c.HTML5Props{
+			//	Title:       fmt.Sprintf("%s | %s", article.Title, "Torque"),
+			//	Description: "",
+			//	Language:    "en",
+			//	Head: []g.Node{
+			//		Link(Rel("stylesheet"), Href("/s/app.css")),
+			//		Script(Src("https://unpkg.com/htmx.org@1.9.2")),
 			//	},
-			//	tmpl.WithName("outlet"),
-			//	tmpl.WithTarget("layout"),
-			//)
+			//	Body: []g.Node{
+			//		DocPage(article),
+			//	},
+			//},
+			//).Render(wr)
+
+			return Template.Render(wr,
+				&DotContext{
+					Primary: layouts.Primary{
+						FullStory: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
+						Navigator: templates.Navigator{Links: []templates.NavigationLink{
+							{Title: "Home", Path: "/docs/"},
+							{Title: "Installation", Path: "/docs/installation"},
+							{Title: "Getting Started", Path: "/docs/getting-started"},
+							{Separator: true},
+						}},
+
+						Title:   fmt.Sprintf("%s | %s", article.Title, "Torque"),
+						Links:   []layouts.Link{{Rel: "stylesheet", Href: "/s/app.css"}},
+						Scripts: []string{"https://unpkg.com/htmx.org@1.9.2"},
+					},
+					Article: article,
+				},
+				tmpl.WithName("outlet"),
+				tmpl.WithTarget("layout"),
+			)
 		},
 	})
 }

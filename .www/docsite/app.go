@@ -39,9 +39,9 @@ func main() {
 		log.Fatalf("ALGOLIA_API_KEY not set in environment")
 	}
 
-	algoliaSearch := algolia.NewClient(algoliaAppId, algoliaApiKey)
+	algoliaClient := algolia.NewClient(algoliaAppId, algoliaApiKey)
 
-	contentSvc, err := content.New(embeddedContent, algoliaSearch)
+	contentSvc, err := content.New(embeddedContent, algoliaClient)
 	if err != nil {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
@@ -64,13 +64,6 @@ func main() {
 		torque.WithRouteModule("/search", &search.RouteModule{
 			ContentSvc: contentSvc,
 		}),
-
-		torque.WithHandler("/",
-			http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
-				wr.Write([]byte("Hello, world!"))
-				wr.WriteHeader(http.StatusOK)
-			}),
-		),
 	)
 
 	err = http.ListenAndServe("127.0.0.1:8080", r)

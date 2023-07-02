@@ -3,7 +3,9 @@ package landing
 import (
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/pkg/fullstory"
 	"net/http"
+	"os"
 )
 
 var (
@@ -12,6 +14,8 @@ var (
 
 //tmpl:bind landing.tmpl.html
 type DotContext struct {
+	fullstory.Snippet `tmpl:"fs"`
+
 	Title string
 	Links []Link
 }
@@ -37,7 +41,8 @@ func (rm *RouteModule) Load(req *http.Request) (any, error) {
 func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
 	return Template.Render(wr,
 		&DotContext{
-			Title: "torque",
+			Snippet: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
+			Title:   "torque",
 			Links: []Link{
 				{Rel: "stylesheet", Href: "/s/app.css"},
 			},

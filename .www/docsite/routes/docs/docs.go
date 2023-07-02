@@ -29,7 +29,8 @@ var (
 //tmpl:bind docs.tmpl.html
 type DotContext struct {
 	layouts.Primary `tmpl:"layout"`
-	*model.Article  `tmpl:"article"`
+
+	Article *model.Article `tmpl:"article"`
 }
 
 var Template = tmpl.MustCompile(&DotContext{})

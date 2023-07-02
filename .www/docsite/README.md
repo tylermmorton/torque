@@ -1,10 +1,9 @@
 # docsite
 
-This project is dogfooding the `torque` framework while also documenting it. A lot of capabilities of the framework are showcased throughout the docsite app. 
+The `docsite` project is the official documentation site for `torque`
+ 
+[lbft.dev](https://www.lbft.dev/)
 
-## Getting Started
-You'll need to have proper Go and npm environments set up on your machine.
+This project is meant to dogfood the `torque` framework and showcase many of its features and provide examples of useful patterns. 
 
-```shell
-npm install && npm run dev
-```
+The application is built into a Docker container and hosted on DigitalOcean's App Platform and is deployed automatically on every push to the `master` branch.

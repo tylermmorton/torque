@@ -1,6 +1,2 @@
-.env
 .idea
-.build/
-node_modules/
 vendor/
-*.gen.go

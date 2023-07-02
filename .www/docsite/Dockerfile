@@ -15,12 +15,12 @@ COPY --from=node-build /app/.build .build
 ENV GOOS=linux
 ENV CGO_ENABLED=0
 ENV GO111MODULE=on
-ENV TMPL_BIND_MODE="embed"
 
 RUN go mod tidy
 RUN go install github.com/tylermmorton/tmpl/cmd/tmpl@latest
 
 RUN go generate ./...
+RUN tmpl bind ./... --mode="embed"
 RUN go build -v -o ./.build/bin/torque ./app.go
 RUN chmod +x ./.build/bin/torque
 

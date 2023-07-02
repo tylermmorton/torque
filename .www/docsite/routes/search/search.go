@@ -59,8 +59,8 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 	return Template.Render(wr,
 		&DotContext{
 			Primary: layouts.Primary{
-				FullStory: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
-				Title:     "Search Results",
+				Snippet: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
+				Title:   "Search Results",
 				Links: []layouts.Link{
 					// TODO: think about how to manage assets better?
 					{Rel: "stylesheet", Href: "/s/app.css"},

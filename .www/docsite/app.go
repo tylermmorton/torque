@@ -15,7 +15,7 @@ import (
 	"os"
 )
 
-//go:generate tmpl bind ./... --outfile=tmpl.gen.go --mode=embed
+//go:generate tmpl bind ./... --outfile=tmpl.gen.go
 
 //go:embed .build/static/*
 var staticAssets embed.FS

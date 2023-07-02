@@ -15,8 +15,8 @@ type Link struct {
 //
 //tmpl:bind primary.tmpl.html
 type Primary struct {
-	FullStory fullstory.Snippet   `tmpl:"fs"`
-	Navigator templates.Navigator `tmpl:"nav"`
+	fullstory.Snippet   `tmpl:"fs"`
+	templates.Navigator `tmpl:"nav"`
 
 	Title   string
 	Links   []Link

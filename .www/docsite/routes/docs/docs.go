@@ -28,8 +28,8 @@ var (
 //
 //tmpl:bind docs.tmpl.html
 type DotContext struct {
-	Primary layouts.Primary `tmpl:"layout"`
-	Article *model.Article  `tmpl:"article"`
+	layouts.Primary `tmpl:"layout"`
+	*model.Article  `tmpl:"article"`
 }
 
 var Template = tmpl.MustCompile(&DotContext{})
@@ -119,7 +119,7 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 			return Template.Render(wr,
 				&DotContext{
 					Primary: layouts.Primary{
-						FullStory: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
+						Snippet: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
 						Navigator: templates.Navigator{Links: []templates.NavigationLink{
 							{Title: "Home", Path: "/docs/"},
 							{Title: "Installation", Path: "/docs/installation"},

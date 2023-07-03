@@ -9,10 +9,10 @@
     "clean": "rm -rf ./.build/",
     "lint": "eslint ./**/*.tmpl.html --fix",
     "format": "prettier --write ./**/*.tmpl.html --parser go-template",
-    "dev": "go run app.go & tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css --watch",
+    "dev": "air & tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css --watch",
     "build:go": "go generate ./... && go build -o ./.build/app app.go",
     "build:css": "tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css",
-    "build": "npm run build:go && npm run build:css",
+    "build": "npm run build:css && npm run build:go",
     "prod": "docker-compose up --build"
   },
   "devDependencies": {

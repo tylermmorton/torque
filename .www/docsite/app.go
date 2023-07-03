@@ -43,9 +43,16 @@ func main() {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
+	var assetHandler torque.Route
+	if os.Getenv("EMBED_ASSETS") == "true" {
+		assetHandler = torque.WithFileSystemServer("/s", staticAssets)
+	} else {
+		assetHandler = torque.WithFileServer("/s", ".build/static")
+	}
+
 	r := torque.NewRouter(
-		//torque.WithFileServer("/s", ".build/static"),
-		torque.WithFileSystemServer("/s", staticAssets),
+		assetHandler,
+
 		torque.WithRouteModule("/{pageName}", &docs.RouteModule{ContentSvc: contentSvc}),
 		torque.WithRedirect("/", "/getting-started", http.StatusTemporaryRedirect),
 	)

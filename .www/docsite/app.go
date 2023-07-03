@@ -14,8 +14,8 @@ import (
 
 //go:generate tmpl bind ./... --outfile=tmpl.gen.go
 
-////go:embed .build/static/*
-//var staticAssets embed.FS
+//go:embed .build/static/*
+var staticAssets embed.FS
 
 //go:embed content/docs/*
 var embeddedContent embed.FS
@@ -44,7 +44,8 @@ func main() {
 	}
 
 	r := torque.NewRouter(
-		torque.WithFileServer("/s", ".build/static"),
+		//torque.WithFileServer("/s", ".build/static"),
+		torque.WithFileSystemServer("/s", staticAssets),
 		torque.WithRouteModule("/{pageName}", &docs.RouteModule{ContentSvc: contentSvc}),
 		torque.WithRedirect("/", "/getting-started", http.StatusTemporaryRedirect),
 	)

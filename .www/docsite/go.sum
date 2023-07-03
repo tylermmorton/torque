@@ -38,6 +38,8 @@ github.com/tylermmorton/torque v0.0.0-20230602053118-2b55e50be721 h1:3VihvqpmQSY
 github.com/tylermmorton/torque v0.0.0-20230602053118-2b55e50be721/go.mod h1:eiwd9UG0V2k470MeSNmwNiIHrvIDEPACsN2lz9zsLpQ=
 github.com/tylermmorton/torque v0.0.0-20230702231922-b4896639a2be h1:6so7+DeQEB1L9xElmZEV3bcCtrug6uihIQ+yW5q8yNs=
 github.com/tylermmorton/torque v0.0.0-20230702231922-b4896639a2be/go.mod h1:XdtVz6SbZh+ZiHLTrowzOKkxdreAtrCnEBGTX29WiPs=
+github.com/tylermmorton/torque v0.0.0-20230703154651-c270e079c71a h1:YkLpPcalbkX/QNtF7gHw1tNXCsCEw0m8/GO8jKfvCK8=
+github.com/tylermmorton/torque v0.0.0-20230703154651-c270e079c71a/go.mod h1:XdtVz6SbZh+ZiHLTrowzOKkxdreAtrCnEBGTX29WiPs=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=

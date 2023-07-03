@@ -2,7 +2,7 @@ package layouts
 
 import (
 	"github.com/tylermmorton/torque/.www/docsite/templates"
-	"github.com/tylermmorton/torque/pkg/fullstory"
+	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
 )
 
 // Link represents an html <link> tag

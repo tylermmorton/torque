@@ -6,8 +6,8 @@ import (
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/model"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
+	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
 	"github.com/tylermmorton/torque/.www/docsite/templates/layouts"
-	"github.com/tylermmorton/torque/pkg/fullstory"
 	"net/http"
 	"os"
 )

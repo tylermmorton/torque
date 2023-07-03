@@ -14,5 +14,6 @@ func (t *Snippet) TemplateText() string {
 // Snippet is the dot context of the fullstory template.
 // This template contains the fullstory javascript snippet.
 type Snippet struct {
-	OrgId string
+	Enabled bool
+	OrgId   string
 }

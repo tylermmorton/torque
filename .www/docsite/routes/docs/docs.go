@@ -1,12 +1,9 @@
 package docs
 
 import (
-	"bytes"
 	_ "embed"
 	"errors"
 	"fmt"
-	g "github.com/maragudk/gomponents"
-	. "github.com/maragudk/gomponents/html"
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/model"
@@ -30,7 +27,7 @@ var (
 type DotContext struct {
 	layouts.Primary `tmpl:"layout"`
 
-	Article *model.Article `tmpl:"article"`
+	Article model.Article `tmpl:"article"`
 }
 
 var Template = tmpl.MustCompile(&DotContext{})
@@ -49,14 +46,7 @@ var _ interface {
 } = &RouteModule{}
 
 func (rm *RouteModule) Submodules() []torque.Route {
-	return []torque.Route{
-		torque.WithRedirect("/index", "/", http.StatusTemporaryRedirect),
-
-		torque.WithRouteModule("/ws", struct {
-			torque.Loader
-			torque.Renderer
-		}{}, torque.WithWebSocketParser(htmx.WebSocketParser)),
-	}
+	return []torque.Route{}
 }
 
 func (rm *RouteModule) Load(req *http.Request) (any, error) {
@@ -66,26 +56,6 @@ func (rm *RouteModule) Load(req *http.Request) (any, error) {
 	}
 
 	return doc, nil
-}
-
-func DocPage(article *model.Article) g.Node {
-	return Div(
-		Class("flex flex-1 justify-center"),
-		Div(
-			ID("hx-swappable-article"),
-			Class("prose w-full py-8 mt-[4rem]"),
-			ArticleFragment(article),
-		),
-	)
-}
-
-func ArticleFragment(article *model.Article) g.Node {
-	buf := bytes.Buffer{}
-	err := Template.Render(&buf, &DotContext{Article: article})
-	if err != nil {
-		log.Printf("error rendering article template: %v", err)
-	}
-	return g.Raw(buf.String())
 }
 
 func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
@@ -98,41 +68,33 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 		// If the htmx request header is present and set to "true"
 		// render the htmx swappable fragment
 		"true": func(wr http.ResponseWriter, req *http.Request) error {
-			return ArticleFragment(article).Render(wr)
+			log.Printf("rendering htmx fragment: %s", article.ObjectID)
+			return Template.Render(wr,
+				&DotContext{Article: *article},
+			)
 		},
 
 		// The default case if the htmx request header is not present
 		torque.SplitRenderDefault: func(wr http.ResponseWriter, req *http.Request) error {
-			//return c.HTML5(c.HTML5Props{
-			//	Title:       fmt.Sprintf("%s | %s", article.Title, "Torque"),
-			//	Description: "",
-			//	Language:    "en",
-			//	Head: []g.Node{
-			//		Link(Rel("stylesheet"), Href("/s/app.css")),
-			//		Script(Src("https://unpkg.com/htmx.org@1.9.2")),
-			//	},
-			//	Body: []g.Node{
-			//		DocPage(article),
-			//	},
-			//},
-			//).Render(wr)
-
+			log.Printf("rendering full page: %s", article.ObjectID)
 			return Template.Render(wr,
 				&DotContext{
 					Primary: layouts.Primary{
-						Snippet: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
+						Snippet: fullstory.Snippet{
+							Enabled: os.Getenv("FULLSTORY_ENABLED") == "true",
+							OrgId:   os.Getenv("FULLSTORY_ORG_ID"),
+						},
 						Navigator: templates.Navigator{Links: []templates.NavigationLink{
-							{Title: "Home", Path: "/docs/"},
-							{Title: "Installation", Path: "/docs/installation"},
-							{Title: "Getting Started", Path: "/docs/getting-started"},
+							{Title: "Getting Started", Path: "/getting-started"},
 							{Separator: true},
+							{Title: "Route Modules", Path: "/route-modules"},
 						}},
 
 						Title:   fmt.Sprintf("%s | %s", article.Title, "Torque"),
 						Links:   []layouts.Link{{Rel: "stylesheet", Href: "/s/app.css"}},
 						Scripts: []string{"https://unpkg.com/htmx.org@1.9.2"},
 					},
-					Article: article,
+					Article: *article,
 				},
 				tmpl.WithName("outlet"),
 				tmpl.WithTarget("layout"),

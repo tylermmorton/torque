@@ -1,12 +1,8 @@
 {{- /* gotype:github.com/tylermmorton/torque/www/docsite/model.Article */ -}}
-
 <article>
   <header class="h-20">
     <!-- Document Title & Icon -->
     <div class="flex flex-row items-center">
-      {{ if .Icon }}
-        <span id="document-icon" class="mx-4 text-5xl">{{ .Icon }}</span>
-      {{ end }}
       <span id="document-title" class="text-2xl font-bold">{{ .Title }}</span>
     </div>
 
@@ -16,7 +12,7 @@
   <span id="document-content">{{ .HTML }}</span>
 
   <!-- Article Footer Content-->
-  <footer id="document-footer" class="h-24 bg-slate-100">Next</footer>
+{{/*  <footer id="document-footer" class="h-24 bg-slate-100">Next</footer>*/}}
   <div class="mt-4 flex w-full items-center justify-center font-medium">
     Made with ❤️ in Atlanta, GA
   </div>

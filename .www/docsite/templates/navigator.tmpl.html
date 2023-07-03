@@ -33,25 +33,35 @@
 
 <!-- Top navigation bar -->
 <div
-  class="fixed top-0 z-40 flex h-12 w-full flex-none items-center justify-between border-b p-8 backdrop-blur"
+  class="fixed top-0 z-40 flex h-12 w-full flex-none items-center justify-between  p-8 backdrop-blur"
 >
-  <div class="logo subpixel-antialiased">torque</div>
+  <!-- logo - start -->
+  <a
+    href="/"
+    class="inline-flex items-center gap-2.5 bg-gradient-to-r from-green-300 via-blue-500 to-purple-600 bg-clip-text text-2xl font-bold font-bold text-transparent md:text-3xl"
+    aria-label="logo"
+  >
+    lbft.dev
+  </a>
+  <!-- logo - end -->
 
   <!-- Search bar -->
-  <div class="search-bar">
+  {{/* <div class="search-bar">
     <input
-      type="text"
-      class="w-96 rounded-lg px-4 py-2"
-      placeholder="Search..."
+    type="text"
+    class="w-96 rounded-lg px-4 py-2"
+    placeholder="Search..."
     />
-  </div>
+    </div>
+  */}}
+
 
   <!-- Links to GitHub -->
   <div>
     <a href="https://github.com/tylermmorton/torque">
       <svg
         aria-hidden="true"
-        class="octicon octicon-mark-github fill-[#d0d0d9] hover:fill-[#a061c5]"
+        class="octicon octicon-mark-github fill-[#d0d0d9] hover:fill-black"
         height="24"
         viewBox="0 0 16 16"
         width="24"

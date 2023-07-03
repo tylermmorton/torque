@@ -6,10 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
-	"github.com/tylermmorton/torque/.www/docsite/routes/landing"
-	"github.com/tylermmorton/torque/.www/docsite/routes/search"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -17,8 +14,8 @@ import (
 
 //go:generate tmpl bind ./... --outfile=tmpl.gen.go
 
-//go:embed .build/static/*
-var staticAssets embed.FS
+////go:embed .build/static/*
+//var staticAssets embed.FS
 
 //go:embed content/docs/*
 var embeddedContent embed.FS
@@ -46,24 +43,10 @@ func main() {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
-	staticAssets, err := fs.Sub(staticAssets, ".build/static")
-	if err != nil {
-		log.Fatalf("failed to create static assets filesystem: %+v", err)
-	}
-
 	r := torque.NewRouter(
-
-		torque.WithFileSystemServer("/s", staticAssets),
-
-		torque.WithRouteModule("/", &landing.RouteModule{}),
-
-		torque.WithRouteModule("/docs/{pageName}", &docs.RouteModule{
-			ContentSvc: contentSvc,
-		}),
-
-		torque.WithRouteModule("/search", &search.RouteModule{
-			ContentSvc: contentSvc,
-		}),
+		torque.WithFileServer("/s", ".build/static"),
+		torque.WithRouteModule("/{pageName}", &docs.RouteModule{ContentSvc: contentSvc}),
+		torque.WithRedirect("/", "/getting-started", http.StatusTemporaryRedirect),
 	)
 
 	err = http.ListenAndServe(":8080", r)

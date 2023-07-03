@@ -7,6 +7,7 @@ import (
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -45,6 +46,10 @@ func main() {
 
 	var assetHandler torque.Route
 	if os.Getenv("EMBED_ASSETS") == "true" {
+		staticAssets, err := fs.Sub(staticAssets, ".build/static")
+		if err != nil {
+			log.Fatalf("failed to create static assets filesystem: %+v", err)
+		}
 		assetHandler = torque.WithFileSystemServer("/s", staticAssets)
 	} else {
 		assetHandler = torque.WithFileServer("/s", ".build/static")

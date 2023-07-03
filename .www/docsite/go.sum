@@ -32,10 +32,12 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
-github.com/tylermmorton/tmpl v0.0.0-20230701153316-be021f8df7d1 h1:jbjCoKaPL8XpCRBuEVA3eJRBvAdkSskL1q/SLI24IAQ=
-github.com/tylermmorton/tmpl v0.0.0-20230701153316-be021f8df7d1/go.mod h1:aFT85F39qRY7ZZT5pHU01s1Ru3o9EOmbd+UjbrxxHw4=
+github.com/tylermmorton/tmpl v0.0.0-20230701185559-8d938f369b03 h1:ELOZGFc0ANOQTktE8wnvLrtnr+0639h3iAwbV5mAwrw=
+github.com/tylermmorton/tmpl v0.0.0-20230701185559-8d938f369b03/go.mod h1:aFT85F39qRY7ZZT5pHU01s1Ru3o9EOmbd+UjbrxxHw4=
 github.com/tylermmorton/torque v0.0.0-20230602053118-2b55e50be721 h1:3VihvqpmQSY96QpwM10Sm8713Bd0g0SBIeDRMUNzpAQ=
 github.com/tylermmorton/torque v0.0.0-20230602053118-2b55e50be721/go.mod h1:eiwd9UG0V2k470MeSNmwNiIHrvIDEPACsN2lz9zsLpQ=
+github.com/tylermmorton/torque v0.0.0-20230702231922-b4896639a2be h1:6so7+DeQEB1L9xElmZEV3bcCtrug6uihIQ+yW5q8yNs=
+github.com/tylermmorton/torque v0.0.0-20230702231922-b4896639a2be/go.mod h1:XdtVz6SbZh+ZiHLTrowzOKkxdreAtrCnEBGTX29WiPs=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=

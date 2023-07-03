@@ -10,8 +10,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/maragudk/gomponents v0.20.1
 	github.com/stretchr/testify v1.8.4
-	github.com/tylermmorton/tmpl v0.0.0-20230701153316-be021f8df7d1
-	github.com/tylermmorton/torque v0.0.0-20230602053118-2b55e50be721
+	github.com/tylermmorton/tmpl v0.0.0-20230701185559-8d938f369b03
+	github.com/tylermmorton/torque v0.0.0-20230702231922-b4896639a2be
 )
 
 require (

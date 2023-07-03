@@ -1,7 +1,4 @@
 go 1.20
 
-replace github.com/tylermmorton/tmpl => ../../tmpl
-replace github.com/tylermmorton/torque => ../../torque
-
 use docsite
 

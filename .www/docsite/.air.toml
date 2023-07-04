@@ -5,8 +5,8 @@ tmp_dir = ".build"
 [build]
   args_bin = []
   bin = "./.build/app"
-  cmd = "npm run build:go"
-  delay = 500
+  cmd = "npm run lint && npm run format && npm run build:go"
+  delay = 5000
   exclude_dir = ["node_modules", "tmp", "vendor", "testdata"]
   exclude_file = []
   exclude_regex = ["_test.go", ".gen.go"]

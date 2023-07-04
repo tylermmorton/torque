@@ -45,17 +45,6 @@
   </a>
   <!-- logo - end -->
 
-  <!-- Search bar -->
-  {{/* <div class="search-bar">
-    <input
-    type="text"
-    class="w-96 rounded-lg px-4 py-2"
-    placeholder="Search..."
-    />
-    </div>
-  */}}
-
-
   <!-- Links to GitHub -->
   <div>
     <a href="https://github.com/tylermmorton/torque">
@@ -94,7 +83,7 @@
           href="{{ .Path }}"
           hx-boost="true"
           hx-get="{{ .Path }}"
-          hx-swap="innerHTML"
+          hx-swap="outerHTML"
           hx-target="#hx-swappable-article"
           hx-replace-url="{{ .Path }}"
           class="text-lg font-bold font-medium"

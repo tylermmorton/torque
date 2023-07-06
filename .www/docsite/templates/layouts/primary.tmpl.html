@@ -1,47 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <title>{{ .Title }} | torque</title>
+  <head>
+    <title>{{ .Title }} | torque</title>
 
-  {{ range .Links -}}
-      <link rel="{{.Rel}}" href="{{.Href}}"/>
-  {{ end -}}
+    {{ range .Links -}}
+      <link rel="{{ .Rel }}" href="{{ .Href }}" />
+    {{ end -}}
 
-  <style>
-    html, body {
-      height: 100%;
-    }
 
-    /* Set height for content area and enable scrolling */
-    .content-area {
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+
+      /* Set height for content area and enable scrolling */
+      .content-area {
         height: calc(100% - 3rem);
         margin-top: 3rem; /* Add top margin for the fixed top navigation bar */
-    }
+      }
 
-    /* Fix the left and right navigation columns */
-    .left-column,
-    .right-column {
+      /* Fix the left and right navigation columns */
+      .left-column,
+      .right-column {
         position: fixed;
         top: 4rem;
         overflow-y: auto;
         height: calc(100% - 3rem);
-        width: 15%; /* Set the desired width of the navigation columns */
-    }
-  </style>
+        width: 16rem;
+      }
 
-  {{ range .Scripts -}}
-      <script src="{{.}}"></script>
-  {{ end -}}
+      .left-column {
+        left: 50%;
+        margin-left: calc(-48ch - 8rem);
+      }
 
-  <!-- FullStory Snippet -->
-  {{ template "fs" . }}
-</head>
+      .right-column {
+        right: 50%;
+        margin-right: calc(-48ch - 8rem);
+      }
+    </style>
 
-<body class="flex h-full flex-col antialiased">
-  <nav>
-    {{ template "nav" .Navigator }}
-  </nav>
+    {{ range .Scripts -}}
+      <script src="{{ . }}"></script>
+    {{ end -}}
 
-  {{ template "outlet" . }}
-</body>
+
+    <!-- FullStory Snippet -->
+    {{ template "fs" . }}
+  </head>
+
+  <body class="flex h-full flex-col antialiased">
+    {{/* <nav> */}}
+    {{/* {{ template "nav" .Navigator }}*/}}
+    {{/* </nav> */}}
+
+    {{ template "outlet" . }}
+  </body>
 </html>

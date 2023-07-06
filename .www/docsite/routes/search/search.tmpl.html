@@ -1,7 +1,7 @@
-<div class="flex flex-1 justify-center flex-col">
+<div class="flex flex-1 flex-col justify-center">
   {{ range .Articles -}}
-  <div class="prose w-full bg-white py-8 mt-[4rem]">
+    <div class="prose mt-[4rem] w-full bg-white py-8">
       {{ template "article" . }}
-  </div>
+    </div>
   {{ end -}}
 </div>

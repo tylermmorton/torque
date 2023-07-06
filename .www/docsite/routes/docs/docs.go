@@ -8,7 +8,6 @@ import (
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/model"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
-	"github.com/tylermmorton/torque/.www/docsite/templates"
 	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
 	"github.com/tylermmorton/torque/.www/docsite/templates/layouts"
 	"github.com/tylermmorton/torque/pkg/htmx"
@@ -21,6 +20,16 @@ var (
 	ErrPageNotFound = fmt.Errorf("page not found")
 )
 
+type NavItem struct {
+	Text string
+	Href string
+}
+
+type LeftNavGroup struct {
+	Text     string
+	NavItems []NavItem
+}
+
 // DotContext is the dot context of the index page template.
 //
 //tmpl:bind docs.tmpl.html
@@ -28,6 +37,14 @@ type DotContext struct {
 	layouts.Primary `tmpl:"layout"`
 
 	Article model.Article `tmpl:"article"`
+
+	// Feature Flags
+	EnableSearch bool
+	EnableTheme  bool
+
+	// Page Data
+	TopNavItems   []NavItem
+	LeftNavGroups []LeftNavGroup
 }
 
 var Template = tmpl.MustCompile(&DotContext{})
@@ -84,17 +101,32 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 							Enabled: os.Getenv("FULLSTORY_ENABLED") == "true",
 							OrgId:   os.Getenv("FULLSTORY_ORG_ID"),
 						},
-						Navigator: templates.Navigator{Links: []templates.NavigationLink{
-							{Title: "Getting Started", Path: "/getting-started"},
-							{Separator: true},
-							{Title: "Route Modules", Path: "/route-modules"},
-						}},
-
 						Title:   fmt.Sprintf("%s | %s", article.Title, "Torque"),
 						Links:   []layouts.Link{{Rel: "stylesheet", Href: "/s/app.css"}},
 						Scripts: []string{"https://unpkg.com/htmx.org@1.9.2"},
 					},
 					Article: *article,
+					TopNavItems: []NavItem{
+						{Text: "Docs", Href: "/docs"},
+					},
+					LeftNavGroups: []LeftNavGroup{
+						{
+							Text: "Getting Started",
+							NavItems: []NavItem{
+								{Text: "Introduction", Href: "/docs/getting-started"},
+								{Text: "Installation", Href: "/docs/getting-started/installation"},
+								{Text: "Quick Start", Href: "/docs/getting-started/quick-start"},
+							},
+						},
+						{
+							Text: "Route Modules",
+							NavItems: []NavItem{
+								{Text: "Introduction", Href: "/docs/route-modules"},
+							},
+						},
+					},
+					EnableSearch: os.Getenv("SEARCH_ENABLED") == "true",
+					EnableTheme:  os.Getenv("THEME_ENABLED") == "true",
 				},
 				tmpl.WithName("outlet"),
 				tmpl.WithTarget("layout"),

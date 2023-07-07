@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	algolia "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
@@ -62,7 +63,13 @@ func main() {
 		torque.WithRedirect("/", "/getting-started", http.StatusTemporaryRedirect),
 	)
 
-	err = http.ListenAndServe("localhost:8080", r)
+	var host, port = os.Getenv("HOST_ADDR"), os.Getenv("HOST_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Starting server on %s:%s", host, port)
+	err = http.ListenAndServe(fmt.Sprintf("%s:%s", host, port), r)
 	if err != nil {
 		log.Fatalf("failed to start server: %+v", err)
 	}

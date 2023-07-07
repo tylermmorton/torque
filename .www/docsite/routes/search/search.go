@@ -7,15 +7,15 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/model"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
 	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
-	"github.com/tylermmorton/torque/.www/docsite/templates/layouts"
+	"github.com/tylermmorton/torque/.www/docsite/templates/layout"
 	"net/http"
 	"os"
 )
 
 //tmpl:bind search.tmpl.html
 type DotContext struct {
-	layouts.Primary `tmpl:"layout"`
-	Articles        []*model.Article `tmpl:"article"`
+	layout.Layout `tmpl:"layout"`
+	Articles      []*model.Article `tmpl:"article"`
 }
 
 var (
@@ -58,10 +58,10 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 
 	return Template.Render(wr,
 		&DotContext{
-			Primary: layouts.Primary{
+			Layout: layout.Layout{
 				Snippet: fullstory.Snippet{OrgId: os.Getenv("FULLSTORY_ORG_ID")},
 				Title:   "Search Results",
-				Links: []layouts.Link{
+				Links: []layout.Link{
 					// TODO: think about how to manage assets better?
 					{Rel: "stylesheet", Href: "/s/app.css"},
 				},

@@ -104,7 +104,7 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 						EnableSearch:      os.Getenv("SEARCH_ENABLED") == "true",
 						EnableTheme:       os.Getenv("THEME_ENABLED") == "true",
 						TopNavItems: []navigator.NavItem{
-							{Text: "Docs", Href: "/docs"},
+							{Text: "Docs", Href: "/"},
 						},
 					},
 					Title:   fmt.Sprintf("%s | %s", article.Title, "torque"),

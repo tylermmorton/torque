@@ -5,13 +5,13 @@ title: Getting Started
 
 Welcome! Thank you for your interest in `torque`! This guide will help you get started with `torque` and show you how to use it to build your own web applications.
 
-## Installation {#installation}
+# Installation {#installation}
 
 ```shell
 go get github.com/tylermmorton/torque@latest
 ```
 
-## Hello World {#hello-world}
+# Hello World {#hello-world}
 
 To get a torque app up and running, you need to create a `Router` and start the server.
 

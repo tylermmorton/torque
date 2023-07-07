@@ -8,11 +8,6 @@ type Heading struct {
 	Text  string `yaml:"text"`
 }
 
-type Section struct {
-	Heading Heading `yaml:"heading"`
-	Content string  `yaml:"content"`
-}
-
 // Article is a common structure for representing content on the docsite. It is used
 // to represent indexed data and render HTML to the user.
 //
@@ -26,4 +21,6 @@ type Article struct {
 	Raw      string        `json:"raw"` // Raw is the raw content minus any frontmatter.
 	Tags     []string      `json:"tags"`
 	Title    string        `json:"title"`
+	Next     string        `json:"next"`
+	Prev     string        `json:"prev"`
 }

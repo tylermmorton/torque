@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{ .Title }}</title>
+
+    {{ range .Links -}}
+      <link rel="{{ .Rel }}" href="{{ .Href }}" />
+    {{ end -}}
+
+
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+    </style>
+
+    {{ range .Scripts -}}
+      <script src="{{ . }}"></script>
+    {{ end -}}
+
+
+    <!-- FullStory Snippet -->
+    {{ template "fs" . }}
+  </head>
+
+  <body class="flex h-full flex-col antialiased">
+    {{ template "nav" .Navigator }}
+    <div class="mx-auto max-w-[90rem] px-4 sm:px-6 md:px-8">
+      {{ template "sidebar" .Sidebar }}
+      <div id="hx-swappable-outlet" class="mt-[60px] xl:pl-[19.5rem]">
+        {{ template "outlet" . }}
+      </div>
+    </div>
+  </body>
+</html>

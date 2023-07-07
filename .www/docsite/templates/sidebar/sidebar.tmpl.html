@@ -1,0 +1,77 @@
+<!-- Left-hand desktop nav -->
+<div
+  class="fixed inset-0 left-[max(0px,calc(50%-40rem))] right-auto top-[3.8125rem] z-20 hidden w-[19.5rem] overflow-y-auto px-8 py-10 lg:block"
+>
+  <nav class="relative lg:text-sm lg:leading-6">
+    {{ if .EnableSearch }}
+      <div class="pointer-events-none sticky top-0 -ml-0.5">
+        <div class="pointer-events-auto relative bg-white dark:bg-slate-900">
+          <button
+            class="dark:highlight-white/5 hidden w-full items-center rounded-md py-1.5 pl-2 pr-3 text-sm leading-6 text-slate-400 shadow-sm ring-1 ring-slate-900/10 hover:ring-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 lg:flex"
+          >
+            <svg
+              width="24"
+              height="24"
+              fill="none"
+              aria-hidden="true"
+              class="mr-3 flex-none"
+            >
+              <path
+                d="m19 19-3.5-3.5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+              <circle
+                cx="11"
+                cy="11"
+                r="6"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></circle>
+            </svg>
+            Quick search...
+            <span class="ml-auto flex-none pl-3 text-xs font-semibold">⌘K</span>
+          </button>
+        </div>
+      </div>
+    {{ end }}
+
+
+    <!-- Left-hand navigation items -->
+    <ul>
+      {{ range .LeftNavGroups }}
+        {{- /* gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.LeftNavGroup */ -}}
+        <li class="mb-12 lg:mb-8">
+          <h5
+            class="mb-8 font-semibold text-slate-900 dark:text-slate-200 lg:mb-3"
+          >
+            {{ .Text }}
+          </h5>
+          <ul
+            class="space-y-6 border-l border-slate-100 dark:border-slate-800 lg:space-y-2"
+          >
+            {{ range .NavItems }}
+              {{- /* gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.NavItem */ -}}
+              <li>
+                <a
+                  class="-ml-px block border-l border-transparent pl-4 text-slate-700 hover:border-slate-400 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-300"
+                  href="{{ .Href }}"
+                  hx-boost="true"
+                  hx-get="{{ .Href }}"
+                  hx-swap="innerHTML"
+                  hx-target="#hx-swappable-outlet"
+                  hx-replace-url="{{ .Href }}"
+                  >{{ .Text }}</a
+                >
+              </li>
+            {{ end }}
+          </ul>
+        </li>
+      {{ end }}
+    </ul>
+  </nav>
+</div>

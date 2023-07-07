@@ -32,6 +32,8 @@ func compileMarkdownFile(byt []byte) (*model.Article, error) {
 		Icon  string   `yaml:"icon"`
 		Title string   `yaml:"title"`
 		Tags  []string `yaml:"tags"`
+		Next  string   `yaml:"next"`
+		Prev  string   `yaml:"prev"`
 	}
 
 	var md, err = frontmatter.Parse(bytes.NewReader(byt), &fm)
@@ -49,6 +51,8 @@ func compileMarkdownFile(byt []byte) (*model.Article, error) {
 		Raw:      string(md),
 		Tags:     fm.Tags,
 		Title:    fm.Title,
+		Next:     fm.Next,
+		Prev:     fm.Prev,
 	}, nil
 }
 

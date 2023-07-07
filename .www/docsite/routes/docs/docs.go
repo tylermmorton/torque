@@ -9,9 +9,10 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/model"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
 	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
-	"github.com/tylermmorton/torque/.www/docsite/templates/layouts"
+	"github.com/tylermmorton/torque/.www/docsite/templates/layout"
+	"github.com/tylermmorton/torque/.www/docsite/templates/navigator"
+	"github.com/tylermmorton/torque/.www/docsite/templates/sidebar"
 	"github.com/tylermmorton/torque/pkg/htmx"
-	"log"
 	"net/http"
 	"os"
 )
@@ -20,31 +21,13 @@ var (
 	ErrPageNotFound = fmt.Errorf("page not found")
 )
 
-type NavItem struct {
-	Text string
-	Href string
-}
-
-type LeftNavGroup struct {
-	Text     string
-	NavItems []NavItem
-}
-
 // DotContext is the dot context of the index page template.
 //
 //tmpl:bind docs.tmpl.html
 type DotContext struct {
-	layouts.Primary `tmpl:"layout"`
+	layout.Layout `tmpl:"layout"`
 
 	Article model.Article `tmpl:"article"`
-
-	// Feature Flags
-	EnableSearch bool
-	EnableTheme  bool
-
-	// Page Data
-	TopNavItems   []NavItem
-	LeftNavGroups []LeftNavGroup
 }
 
 var Template = tmpl.MustCompile(&DotContext{})
@@ -85,49 +68,50 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 		// If the htmx request header is present and set to "true"
 		// render the htmx swappable fragment
 		"true": func(wr http.ResponseWriter, req *http.Request) error {
-			log.Printf("rendering htmx fragment: %s", article.ObjectID)
-			return Template.Render(wr,
-				&DotContext{Article: *article},
-			)
+			return Template.Render(wr, &DotContext{Article: *article})
 		},
 
 		// The default case if the htmx request header is not present
 		torque.SplitRenderDefault: func(wr http.ResponseWriter, req *http.Request) error {
-			log.Printf("rendering full page: %s", article.ObjectID)
-			return Template.Render(wr,
-				&DotContext{
-					Primary: layouts.Primary{
-						Snippet: fullstory.Snippet{
-							Enabled: os.Getenv("FULLSTORY_ENABLED") == "true",
-							OrgId:   os.Getenv("FULLSTORY_ORG_ID"),
-						},
-						Title:   fmt.Sprintf("%s | %s", article.Title, "Torque"),
-						Links:   []layouts.Link{{Rel: "stylesheet", Href: "/s/app.css"}},
-						Scripts: []string{"https://unpkg.com/htmx.org@1.9.2"},
+			return Template.Render(wr, &DotContext{
+				Article: *article,
+				Layout: layout.Layout{
+					Snippet: fullstory.Snippet{
+						Enabled: os.Getenv("FULLSTORY_ENABLED") == "true",
+						OrgId:   os.Getenv("FULLSTORY_ORG_ID"),
 					},
-					Article: *article,
-					TopNavItems: []NavItem{
-						{Text: "Docs", Href: "/docs"},
-					},
-					LeftNavGroups: []LeftNavGroup{
-						{
-							Text: "Getting Started",
-							NavItems: []NavItem{
-								{Text: "Introduction", Href: "/docs/getting-started"},
-								{Text: "Installation", Href: "/docs/getting-started/installation"},
-								{Text: "Quick Start", Href: "/docs/getting-started/quick-start"},
+					Sidebar: sidebar.Sidebar{
+						EnableSearch: os.Getenv("SEARCH_ENABLED") == "true",
+						LeftNavGroups: []sidebar.LeftNavGroup{
+							{
+								Text: "Getting Started",
+								NavItems: []sidebar.NavItem{
+									{Text: "Installation", Href: "/getting-started"},
+									//{Text: "Route Modules", Href: "/route-modules"},
+									//{Text: "Quick Start", Href: "/docs/getting-started/quick-start"},
+								},
 							},
-						},
-						{
-							Text: "Route Modules",
-							NavItems: []NavItem{
-								{Text: "Introduction", Href: "/docs/route-modules"},
+							{
+								Text: "Route Modules",
+								NavItems: []sidebar.NavItem{
+									{Text: "Introduction", Href: "/route-modules"},
+								},
 							},
 						},
 					},
-					EnableSearch: os.Getenv("SEARCH_ENABLED") == "true",
-					EnableTheme:  os.Getenv("THEME_ENABLED") == "true",
+					Navigator: navigator.Navigator{
+						EnableBreadcrumbs: os.Getenv("BREADCRUMBS_ENABLED") == "true",
+						EnableSearch:      os.Getenv("SEARCH_ENABLED") == "true",
+						EnableTheme:       os.Getenv("THEME_ENABLED") == "true",
+						TopNavItems: []navigator.NavItem{
+							{Text: "Docs", Href: "/docs"},
+						},
+					},
+					Title:   fmt.Sprintf("%s | %s", article.Title, "torque"),
+					Links:   []layout.Link{{Rel: "stylesheet", Href: "/s/app.css"}},
+					Scripts: []string{"https://unpkg.com/htmx.org@1.9.2"},
 				},
+			},
 				tmpl.WithName("outlet"),
 				tmpl.WithTarget("layout"),
 			)

@@ -34,6 +34,14 @@ github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcU
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/tylermmorton/tmpl v0.0.0-20230701185559-8d938f369b03 h1:ELOZGFc0ANOQTktE8wnvLrtnr+0639h3iAwbV5mAwrw=
 github.com/tylermmorton/tmpl v0.0.0-20230701185559-8d938f369b03/go.mod h1:aFT85F39qRY7ZZT5pHU01s1Ru3o9EOmbd+UjbrxxHw4=
+github.com/tylermmorton/tmpl v0.0.0-20230706185924-e950caf5d0fe h1:shuQVz9nerCvSgwm9BzeIn0CVs8D5YX9DRUZZ5qr6lA=
+github.com/tylermmorton/tmpl v0.0.0-20230706185924-e950caf5d0fe/go.mod h1:aFT85F39qRY7ZZT5pHU01s1Ru3o9EOmbd+UjbrxxHw4=
+github.com/tylermmorton/tmpl v0.0.0-20230706193716-2b5a724a3ce5 h1:Yb8wOAToBt7tSVazdsMX2wU3PoWCQ6+BApR4VyNCQLU=
+github.com/tylermmorton/tmpl v0.0.0-20230706193716-2b5a724a3ce5/go.mod h1:aFT85F39qRY7ZZT5pHU01s1Ru3o9EOmbd+UjbrxxHw4=
+github.com/tylermmorton/tmpl v0.0.0-20230706203007-38c66025dd46 h1:BpI7w719vFaAGnA5hIvzqrTpi5RuAGd/Ilr5yLiVBr4=
+github.com/tylermmorton/tmpl v0.0.0-20230706203007-38c66025dd46/go.mod h1:aFT85F39qRY7ZZT5pHU01s1Ru3o9EOmbd+UjbrxxHw4=
+github.com/tylermmorton/tmpl v0.0.0-20230706211905-a04af95a9f93 h1:7Oy0dr4H4f4tERQDKeMrI4unIMyKdcdxWlF0hB80OFE=
+github.com/tylermmorton/tmpl v0.0.0-20230706211905-a04af95a9f93/go.mod h1:aFT85F39qRY7ZZT5pHU01s1Ru3o9EOmbd+UjbrxxHw4=
 github.com/tylermmorton/torque v0.0.0-20230602053118-2b55e50be721 h1:3VihvqpmQSY96QpwM10Sm8713Bd0g0SBIeDRMUNzpAQ=
 github.com/tylermmorton/torque v0.0.0-20230602053118-2b55e50be721/go.mod h1:eiwd9UG0V2k470MeSNmwNiIHrvIDEPACsN2lz9zsLpQ=
 github.com/tylermmorton/torque v0.0.0-20230702231922-b4896639a2be h1:6so7+DeQEB1L9xElmZEV3bcCtrug6uihIQ+yW5q8yNs=

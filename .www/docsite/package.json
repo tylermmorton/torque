@@ -8,7 +8,7 @@
   "scripts": {
     "clean": "rm -rf ./.build/",
     "lint": "eslint ./**/*.tmpl.html --fix",
-    "format": "prettier --write ./**/*.tmpl.html --parser go-template",
+    "format": "prettier --write --parser go-template ./**/**/*.tmpl.html",
     "dev": "air",
     "dev:css": "tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css --watch",
     "build:go": "go generate ./... && go build -o ./.build/app app.go",

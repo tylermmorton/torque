@@ -10,8 +10,6 @@ type Heading struct {
 
 // Article is a common structure for representing content on the docsite. It is used
 // to represent indexed data and render HTML to the user.
-//
-//tmpl:bind article.tmpl.html
 type Article struct {
 	ObjectID string `json:"objectID"` // ObjectID is the unique identifier for the article. Usually the document name
 

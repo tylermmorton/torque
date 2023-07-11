@@ -15,10 +15,9 @@ Documentation and examples are available at [**lbft.dev**](https://lbft.dev/gett
 - Promote a hypermedia driven architecture for building web applications.
 
 ## Features
-- [x] Composabable router built upon `net/http` with support for nested routing, route variables and query parameters.
+- [x] Composable router built upon `net/http` with support for nested routing, route variables and query parameters.
 - [x] Module API supporting server-sided Actions, Loaders and Renderers for quickly building request endpoints.
 - [x] `ErrorBoundary` and `PanicBoundary` constructs for rerouting requests when things go wrong.
 - [x] Request middlewares and unique Guard API for protecting routes and redirecting requests.
 - [x] Utilities for decoding and validating request payloads and form data.
-
-Well you made it this far... read more at [**lbft.dev**](https://lbft.dev/getting-started?utm_campaign=readme_cta&utm_source=github.com)!
+- [x] Well you made it this far... read more at [**lbft.dev**](https://lbft.dev/getting-started?utm_campaign=readme_cta&utm_source=github.com)!

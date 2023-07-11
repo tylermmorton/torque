@@ -1,31 +1,24 @@
 # torque
 
-`torque` is an experimental meta framework for building web applications in Go. The architecture is largely inspired by the popular JavaScript framework Remix and shares many of the same concepts.
+> "Give me a lever and a place to stand and I will move the Earth". - [Archimedes](https://en.wikipedia.org/wiki/Torque)
 
-The API is expected to change over the coming months as the project grows.
+torque is a Golang powered backend-for-frontend and server-side-rendering web framework for building modern hypermedia driven applications.
 
-Documentation is available at [lbft.dev](https://lbft.dev/getting-started?utm_campaign=readme&utm_source=github.com)
+The overall goal is to provide a simple methodology for building web applications that is idiomatic, composable, testable and maintainable, so you can focus on whats important: adding value to your users.
+
+Documentation and examples are available at [**lbft.dev**](https://lbft.dev/getting-started?utm_campaign=readme&utm_source=github.com)
 
 ## Objectives
 
-- #useThePlatform and build upon modern browser capabilities.
-- Promote a server-centric approach to building web applications.
-- Show that building web apps in Go is fun and easy. ;)
+- Showcase the power of Golang as a web development language.
+- #UseThePlatform and build upon modern web browser capabilities.
+- Promote a hypermedia driven architecture for building web applications.
 
 ## Features
-
-- [x] Easily composable app routing built upon `net/http` and `go-chi` with support for nested routing.
-- [x] Server-sided Actions, Loaders and Renderers for building request endpoints.
+- [x] Composabable router built upon `net/http` with support for nested routing, route variables and query parameters.
+- [x] Module API supporting server-sided Actions, Loaders and Renderers for quickly building request endpoints.
 - [x] `ErrorBoundary` and `PanicBoundary` constructs for rerouting requests when things go wrong.
-- [x] Support for `Guard`s and middlewares for protecting routes and redirecting requests.
+- [x] Request middlewares and unique Guard API for protecting routes and redirecting requests.
 - [x] Utilities for decoding and validating request payloads and form data.
 
-## Roadmap & Ideas
-- [ ] New `create-torque-app` project generator
-- [ ] Support for compiling and serving 'islands' of client-side JavaScript such as React and Vue applications
-- [ ] Native struct validation API for validating request payloads and form data.
-- [ ] `RouteModule` testing framework for testing routes and their associated actions, loaders and renderers.
-
-## Documentation
-
-All documentation has moved to [lbft.dev](https://lbft.dev/getting-started?utm_campaign=readme&utm_source=github.com)
+Well you made it this far... read more at [**lbft.dev**](https://lbft.dev/getting-started?utm_campaign=readme_cta&utm_source=github.com)!

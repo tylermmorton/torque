@@ -7,7 +7,6 @@ import (
 )
 
 // TODO(v1.0) I like SplitRender but does SwitchRender or VaryRender make more sense semantically?
-// TODO(idea) https://github.com/carlmjohnson/truthy <- Add 'truthy' testing to SplitRender to allow for more flexible header values
 
 var (
 	// ErrRenderFnNotDefined is returned by SplitRender when the given header value is not

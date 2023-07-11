@@ -7,6 +7,8 @@ import (
 	"net/http"
 )
 
+type MiddlewareFn func(http.Handler) http.Handler
+
 type Router interface {
 	http.Handler
 }
@@ -19,11 +21,16 @@ func (r router) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	r.mux.ServeHTTP(wr, req)
 }
 
+// RouteParam returns the named route parameter from the request url
+func RouteParam(req *http.Request, name string) string {
+	return chi.URLParam(req, name)
+}
+
 func NewRouter(routes ...Route) http.Handler {
 	mux := chi.NewRouter()
 
-	for _, mod := range routes {
-		mod(mux)
+	for _, r := range routes {
+		r(mux)
 	}
 
 	return &router{mux}
@@ -31,6 +38,16 @@ func NewRouter(routes ...Route) http.Handler {
 
 // Route represents a module that can be registered with the torque Router.
 type Route func(chi.Router)
+
+func WithGroup(routes ...Route) Route {
+	return func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			for _, route := range routes {
+				route(r)
+			}
+		})
+	}
+}
 
 // WithRouteModule can be used to add a new route to the torque Router. `rm` refers
 // to a RouteModule, a struct that implements one or many of the following interfaces:
@@ -67,10 +84,9 @@ func WithRouteModule(path string, rm interface{}, opts ...RouteModuleOption) Rou
 // WithFileServer can be used to add a new directory server to the torque Router.
 func WithFileServer(path, dir string) Route {
 	return func(r chi.Router) {
-		fs := http.FileServer(http.Dir(dir))
 		r.Route(path, func(r chi.Router) {
 			r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
-				http.StripPrefix(path, fs).ServeHTTP(wr, req)
+				http.StripPrefix(path, http.FileServer(http.Dir(dir))).ServeHTTP(wr, req)
 			})
 		})
 	}
@@ -79,10 +95,9 @@ func WithFileServer(path, dir string) Route {
 // WithFileSystemServer can be used to add a new file system server to the torque Router.
 func WithFileSystemServer(path string, fsys fs.FS) Route {
 	return func(r chi.Router) {
-		fs := http.FileServer(http.FS(fsys))
 		r.Route(path, func(r chi.Router) {
 			r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
-				http.StripPrefix(path, fs).ServeHTTP(wr, req)
+				http.StripPrefix(path, http.FileServer(http.FS(fsys))).ServeHTTP(wr, req)
 			})
 		})
 	}
@@ -99,7 +114,7 @@ func WithRedirect(path, target string, code int) Route {
 }
 
 // WithMiddleware can be used to add a new request middleware to the torque Router.
-func WithMiddleware(mw func(http.Handler) http.Handler) Route {
+func WithMiddleware(mw MiddlewareFn) Route {
 	return func(r chi.Router) {
 		r.Use(mw)
 	}
@@ -123,5 +138,19 @@ func WithNotFoundHandler(fn http.HandlerFunc) Route {
 func WithMethodNotAllowedHandler(fn http.HandlerFunc) Route {
 	return func(r chi.Router) {
 		r.MethodNotAllowed(fn)
+	}
+}
+
+// WithWebSocket binds the RouteModule to the given path by upgrading all incoming requests
+// to a websocket connection. Each incoming websocket message should be parsed by the given
+// WebSocketParserFunc. The parser should return an *http.Request to be then handled by the
+// RouteModule. Setting the method of the request will control how the RouteModule handles
+// the request.
+func WithWebSocket(path string, rm interface {
+	Loader
+	Renderer
+}, fn WebSocketParserFunc, opts ...RouteModuleOption) Route {
+	return func(r chi.Router) {
+		r.Handle(path, createWebsocketHandler(rm, fn, opts...))
 	}
 }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-auto">
   <head>
     <title>{{ .Title }}</title>
 
@@ -28,9 +28,9 @@
     {{ template "nav" .Navigator }}
     <div class="mx-auto max-w-[90rem] px-4 sm:px-6 md:px-8">
       {{ template "sidebar" .Sidebar }}
-      <div id="hx-swappable-outlet" class="mt-[60px] xl:pl-[19.5rem]">
+      <main id="hx-swappable-outlet" class="mt-[60px] xl:pl-[19.5rem]">
         {{ template "outlet" . }}
-      </div>
+      </main>
     </div>
   </body>
 </html>

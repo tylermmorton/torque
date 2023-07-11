@@ -87,14 +87,26 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 								Text: "Getting Started",
 								NavItems: []sidebar.NavItem{
 									{Text: "Installation", Href: "/getting-started"},
-									//{Text: "Route Modules", Href: "/route-modules"},
-									//{Text: "Quick Start", Href: "/docs/getting-started/quick-start"},
+									{Text: "Quick Start", Href: "/getting-started#quick-start"},
+									{Text: "Route Modules 101", Href: "/getting-started#route-modules-101"},
+								},
+							},
+							{
+								Text: "Framework",
+								NavItems: []sidebar.NavItem{
+									{Text: "Router", Href: "/router"},
+									{Text: "Middleware", Href: "/middleware"},
+									{Text: "Forms", Href: "/forms"},
+									{Text: "Queries", Href: "/queries"},
+									{Text: "WebSockets", Href: "/websockets"},
+									{Text: "Server Sent Events", Href: "/server-sent-events"},
 								},
 							},
 							{
 								Text: "Route Modules",
 								NavItems: []sidebar.NavItem{
-									{Text: "Introduction", Href: "/route-modules"},
+									{Text: "Module API", Href: "/module-api"},
+									{Text: "Guards", Href: "/guards"},
 								},
 							},
 						},

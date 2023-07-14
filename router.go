@@ -26,7 +26,7 @@ func RouteParam(req *http.Request, name string) string {
 	return chi.URLParam(req, name)
 }
 
-func NewRouter(routes ...Route) http.Handler {
+func NewRouter(routes ...RouteComponent) http.Handler {
 	mux := chi.NewRouter()
 
 	for _, r := range routes {
@@ -36,10 +36,11 @@ func NewRouter(routes ...Route) http.Handler {
 	return &router{mux}
 }
 
-// Route represents a module that can be registered with the torque Router.
-type Route func(chi.Router)
+// RouteComponent represents a component that can be registered with
+// the torque Router.
+type RouteComponent func(chi.Router)
 
-func WithGroup(routes ...Route) Route {
+func WithGroup(routes ...RouteComponent) RouteComponent {
 	return func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			for _, route := range routes {
@@ -64,28 +65,29 @@ func WithGroup(routes ...Route) Route {
 //   - torque.PanicBoundary
 //
 // provide submodule definitions
-//   - torque.SubmoduleProvider
-func WithRouteModule(path string, rm interface{}, opts ...RouteModuleOption) Route {
+//   - torque.SubRouterProvider
+func WithRouteModule(path string, rm interface{}, opts ...RouteModuleOption) RouteComponent {
 	return func(r chi.Router) {
-		if p, ok := rm.(SubmoduleProvider); ok {
+		if p, ok := rm.(SubRouterProvider); ok {
 			r.Route(path, func(r chi.Router) {
-				for _, mod := range p.Submodules() {
-					mod(r)
+				for _, routeComponent := range p.SubRouter() {
+					routeComponent(r)
 				}
 
-				r.Handle("/", createRouteHandler(rm, opts...))
+				r.Handle("/", createModuleHandler(rm, opts...))
 			})
 		} else {
-			r.Handle(path, createRouteHandler(rm, opts...))
+			r.Handle(path, createModuleHandler(rm, opts...))
 		}
 	}
 }
 
 // WithFileServer can be used to add a new directory server to the torque Router.
-func WithFileServer(path, dir string) Route {
+func WithFileServer(path, dir string) RouteComponent {
 	return func(r chi.Router) {
 		r.Route(path, func(r chi.Router) {
 			r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
+				log.Printf("[FileServer] %s", path)
 				http.StripPrefix(path, http.FileServer(http.Dir(dir))).ServeHTTP(wr, req)
 			})
 		})
@@ -93,10 +95,11 @@ func WithFileServer(path, dir string) Route {
 }
 
 // WithFileSystemServer can be used to add a new file system server to the torque Router.
-func WithFileSystemServer(path string, fsys fs.FS) Route {
+func WithFileSystemServer(path string, fsys fs.FS) RouteComponent {
 	return func(r chi.Router) {
 		r.Route(path, func(r chi.Router) {
 			r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
+				log.Printf("[FileSystemServer] %s", path)
 				http.StripPrefix(path, http.FileServer(http.FS(fsys))).ServeHTTP(wr, req)
 			})
 		})
@@ -104,7 +107,7 @@ func WithFileSystemServer(path string, fsys fs.FS) Route {
 }
 
 // WithRedirect can be used to add a new redirect to the torque Router.
-func WithRedirect(path, target string, code int) Route {
+func WithRedirect(path, target string, code int) RouteComponent {
 	return func(r chi.Router) {
 		r.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[Redirect] %s -> %s", path, target)
@@ -114,28 +117,28 @@ func WithRedirect(path, target string, code int) Route {
 }
 
 // WithMiddleware can be used to add a new request middleware to the torque Router.
-func WithMiddleware(mw MiddlewareFn) Route {
+func WithMiddleware(mw MiddlewareFn) RouteComponent {
 	return func(r chi.Router) {
 		r.Use(mw)
 	}
 }
 
 // WithHandler can be used to add a plain http.Handler to the torque Router at the given path.
-func WithHandler(path string, h http.Handler) Route {
+func WithHandler(path string, h http.Handler) RouteComponent {
 	return func(r chi.Router) {
 		r.Handle(path, h)
 	}
 }
 
 // WithNotFoundHandler can be used to add a custom 404 handler to the torque Router.
-func WithNotFoundHandler(fn http.HandlerFunc) Route {
+func WithNotFoundHandler(fn http.HandlerFunc) RouteComponent {
 	return func(r chi.Router) {
 		r.NotFound(fn)
 	}
 }
 
 // WithMethodNotAllowedHandler can be used to add a custom 405 handler to the torque Router.
-func WithMethodNotAllowedHandler(fn http.HandlerFunc) Route {
+func WithMethodNotAllowedHandler(fn http.HandlerFunc) RouteComponent {
 	return func(r chi.Router) {
 		r.MethodNotAllowed(fn)
 	}
@@ -149,7 +152,7 @@ func WithMethodNotAllowedHandler(fn http.HandlerFunc) Route {
 func WithWebSocket(path string, rm interface {
 	Loader
 	Renderer
-}, fn WebSocketParserFunc, opts ...RouteModuleOption) Route {
+}, fn WebSocketParserFunc, opts ...RouteModuleOption) RouteComponent {
 	return func(r chi.Router) {
 		r.Handle(path, createWebsocketHandler(rm, fn, opts...))
 	}

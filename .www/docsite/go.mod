@@ -2,6 +2,8 @@ module github.com/tylermmorton/torque/.www/docsite
 
 go 1.20
 
+replace github.com/tylermmorton/torque => ../../../torque
+
 require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/alecthomas/chroma v0.10.0

@@ -45,7 +45,7 @@ func main() {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
-	var assetHandler torque.Route
+	var assetHandler torque.RouteComponent
 	if os.Getenv("EMBED_ASSETS") == "true" {
 		staticAssets, err := fs.Sub(staticAssets, ".build/static")
 		if err != nil {

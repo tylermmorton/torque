@@ -25,38 +25,24 @@ var (
 type Guard = func(rm interface{}, req *http.Request) http.HandlerFunc // or nil
 
 // RouteModuleOption configures a route handler
-type RouteModuleOption func(rh *routeHandler)
+type RouteModuleOption func(rh *moduleHandler)
 
 func WithGuard(g Guard) RouteModuleOption {
-	return func(rh *routeHandler) {
+	return func(rh *moduleHandler) {
 		rh.guards = append(rh.guards, g)
 	}
 }
 
-func WithWebSocketParser(parserFn WebSocketParserFunc) RouteModuleOption {
-	return func(rh *routeHandler) {
-		_, ok := rh.module.(interface {
-			Loader
-			Renderer
-		})
-		if ok {
-			rh.websocket = wrapWithParserFunc(rh, parserFn)
-		} else {
-			log.Fatalf("Cannot use websocket upgrader with module %T: must implement Loader and Renderer interface", rh.module)
-		}
-	}
-}
-
-type routeHandler struct {
-	guards    []Guard
+type moduleHandler struct {
 	module    interface{}
+	guards    []Guard
 	encoder   *schema.Encoder
 	decoder   *schema.Decoder
 	websocket http.Handler
 }
 
-// createRouteHandler converts the given route module into a http.Handler
-func createRouteHandler(module interface{}, opts ...RouteModuleOption) http.Handler {
+// createModuleHandler converts the given route module into a http.Handler
+func createModuleHandler(module interface{}, opts ...RouteModuleOption) http.Handler {
 	// create dedicated encoder and decoder for each route
 	encoder := schema.NewEncoder()
 	encoder.SetAliasTag("json")
@@ -64,7 +50,7 @@ func createRouteHandler(module interface{}, opts ...RouteModuleOption) http.Hand
 	decoder := schema.NewDecoder()
 	decoder.SetAliasTag("json")
 
-	rh := &routeHandler{
+	rh := &moduleHandler{
 		guards:    make([]Guard, 0),
 		module:    module,
 		encoder:   encoder,
@@ -79,9 +65,8 @@ func createRouteHandler(module interface{}, opts ...RouteModuleOption) http.Hand
 	return rh
 }
 
-// TODO(tylermorton): Consider wrapping errors returned from this function so
-// the error message contains where the error originated: ie loader, action, etc
-func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+// TODO(tylermorton): Consider wrapping errors returned from this function
+func (rh *moduleHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	// attach the decoder to the request context so it can be used
 	// by handlers in the request stack
 	req = req.WithContext(withDecoder(req.Context(), rh.decoder))
@@ -143,13 +128,12 @@ func (rh *routeHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 		}
 
 	default:
-		// TODO(tylermmorton): Update the mux router to only support POST and GET
 		http.Error(wr, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }
 
-func (rh *routeHandler) handleAction(wr http.ResponseWriter, req *http.Request) error {
+func (rh *moduleHandler) handleAction(wr http.ResponseWriter, req *http.Request) error {
 	if r, ok := rh.module.(Action); ok {
 		err := r.Action(wr, req)
 		if err != nil {
@@ -164,7 +148,7 @@ func (rh *routeHandler) handleAction(wr http.ResponseWriter, req *http.Request) 
 	}
 }
 
-func (rh *routeHandler) handleRender(wr http.ResponseWriter, req *http.Request, data any) error {
+func (rh *moduleHandler) handleRender(wr http.ResponseWriter, req *http.Request, data any) error {
 	// If the requester set the content-type to json, we can just
 	// render the result of the loader directly
 	if req.Header.Get("Content-Type") == "application/json" {
@@ -188,7 +172,7 @@ func (rh *routeHandler) handleRender(wr http.ResponseWriter, req *http.Request, 
 	}
 }
 
-func (rh *routeHandler) handleLoader(wr http.ResponseWriter, req *http.Request) (any, error) {
+func (rh *moduleHandler) handleLoader(wr http.ResponseWriter, req *http.Request) (any, error) {
 	var data any
 	var err error
 	if r, ok := rh.module.(Loader); ok {
@@ -210,7 +194,7 @@ func (rh *routeHandler) handleLoader(wr http.ResponseWriter, req *http.Request) 
 	return data, nil
 }
 
-func (rh *routeHandler) handleError(wr http.ResponseWriter, req *http.Request, err error) {
+func (rh *moduleHandler) handleError(wr http.ResponseWriter, req *http.Request, err error) {
 	if r, ok := rh.module.(ErrorBoundary); ok {
 		// Calls to ErrorBoundary can return an http.HandlerFunc
 		// that can be used to cleanly handle the error. Or not
@@ -228,7 +212,7 @@ func (rh *routeHandler) handleError(wr http.ResponseWriter, req *http.Request, e
 	}
 }
 
-func (rh *routeHandler) handlePanic(wr http.ResponseWriter, req *http.Request, err error) {
+func (rh *moduleHandler) handlePanic(wr http.ResponseWriter, req *http.Request, err error) {
 	if r, ok := rh.module.(PanicBoundary); ok {
 
 		// Calls to PanicBoundary can return an http.HandlerFunc

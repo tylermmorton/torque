@@ -4,6 +4,8 @@
 
 torque is a Golang powered backend-for-frontend and server-side-rendering web framework for building modern hypermedia driven applications.
 
+Use torque to quickly build dynamic web applications using a composable Router and the [torque *Module API*](https://lbft.dev/module-api?utm_campaign=readme&utm_source=github.com) that allows you to build endpoints by simply implementing Go interfaces.
+
 The overall goal is to provide a simple methodology for building web applications that is idiomatic, composable, testable and maintainable, so you can focus on whats important: adding value to your users.
 
 Documentation and examples are available at [**lbft.dev**](https://lbft.dev/getting-started?utm_campaign=readme&utm_source=github.com)

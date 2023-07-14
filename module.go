@@ -34,10 +34,9 @@ type PanicBoundary interface {
 	PanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
 }
 
-// SubmoduleProvider is executed when the torque app is initialized. It can
-// return a list of RouterConfigs to be registered as children of the current
-// RouteModule. The parent RouteModule's path will be prefixed to any provided
-// paths in the RouterConfig.
-type SubmoduleProvider interface {
-	Submodules() []Route
+// SubRouterProvider is executed when the torque app is initialized. It can
+// return a list of components to be nested in the current route. The parent
+// route path will be prefixed to any provided paths in the SubRouter.
+type SubRouterProvider interface {
+	SubRouter() []RouteComponent
 }

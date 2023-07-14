@@ -38,7 +38,7 @@ func createWebsocketHandler(rm interface {
 	up := websocket.Upgrader{
 		HandshakeTimeout: time.Second * 10,
 	}
-	rh := createRouteHandler(rm, opts...)
+	rh := createModuleHandler(rm, opts...)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ws, err := up.Upgrade(w, r, nil)

@@ -20,7 +20,7 @@ var (
 // To send data to the client, send a struct that implements json.Marshaler to the channel.
 //
 // TODO(tyler): Refactor this to support more than just json.Marshaler -- I'd like to stream template fragments.
-func WithEventStream(path string, ch chan json.Marshaler, cl chan error) Route {
+func WithEventStream(path string, ch chan json.Marshaler, cl chan error) RouteComponent {
 	return func(r chi.Router) {
 		r.HandleFunc(path, func(wr http.ResponseWriter, req *http.Request) {
 			wg := sync.WaitGroup{}

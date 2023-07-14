@@ -1,6 +1,7 @@
 package torque
 
 import (
+	"context"
 	"github.com/gorilla/schema"
 	"net/http"
 	"strings"
@@ -9,7 +10,7 @@ import (
 )
 
 type SelfValidator interface {
-	Validate() error
+	Validate(context.Context) error
 }
 
 var (
@@ -66,7 +67,7 @@ func DecodeAndValidateForm[T SelfValidator](req *http.Request) (*T, error) {
 		return nil, errors.Wrap(ErrFormDecodeFailure, err.Error())
 	}
 
-	if err := res.Validate(); err != nil {
+	if err := res.Validate(req.Context()); err != nil {
 		return nil, errors.Wrap(ErrFormValidationFailure, err.Error())
 	}
 

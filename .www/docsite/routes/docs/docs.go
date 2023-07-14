@@ -38,15 +38,15 @@ type RouteModule struct {
 }
 
 var _ interface {
-	torque.SubmoduleProvider
+	torque.SubRouterProvider
 
 	torque.Loader
 	torque.Renderer
 	torque.ErrorBoundary
 } = &RouteModule{}
 
-func (rm *RouteModule) Submodules() []torque.Route {
-	return []torque.Route{}
+func (rm *RouteModule) SubRouter() []torque.RouteComponent {
+	return []torque.RouteComponent{}
 }
 
 func (rm *RouteModule) Load(req *http.Request) (any, error) {
@@ -64,7 +64,7 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 		return errors.New("invalid loader data type")
 	}
 
-	return torque.SplitRender(wr, req, htmx.HxRequestHeader, map[any]torque.RenderFn{
+	return torque.VaryRender(wr, req, htmx.HxRequestHeader, map[any]torque.RenderFn{
 		// If the htmx request header is present and set to "true"
 		// render the htmx swappable fragment
 		"true": func(wr http.ResponseWriter, req *http.Request) error {
@@ -72,7 +72,7 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 		},
 
 		// The default case if the htmx request header is not present
-		torque.SplitRenderDefault: func(wr http.ResponseWriter, req *http.Request) error {
+		torque.VaryDefault: func(wr http.ResponseWriter, req *http.Request) error {
 			return Template.Render(wr, &DotContext{
 				Article: *article,
 				Layout: layout.Layout{
@@ -88,7 +88,7 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 								NavItems: []sidebar.NavItem{
 									{Text: "Installation", Href: "/getting-started"},
 									{Text: "Quick Start", Href: "/getting-started#quick-start"},
-									{Text: "Route Modules 101", Href: "/getting-started#route-modules-101"},
+									{Text: "RouteComponent Modules 101", Href: "/getting-started#route-modules-101"},
 								},
 							},
 							{
@@ -103,7 +103,7 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 								},
 							},
 							{
-								Text: "Route Modules",
+								Text: "RouteComponent Modules",
 								NavItems: []sidebar.NavItem{
 									{Text: "Module API", Href: "/module-api"},
 									{Text: "Guards", Href: "/guards"},

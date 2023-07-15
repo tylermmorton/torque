@@ -87,7 +87,7 @@ func WithFileServer(path, dir string) RouteComponent {
 	return func(r chi.Router) {
 		r.Route(path, func(r chi.Router) {
 			r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
-				log.Printf("[FileServer] %s", path)
+				log.Printf("[FileServer] %s", req.URL.Path)
 				http.StripPrefix(path, http.FileServer(http.Dir(dir))).ServeHTTP(wr, req)
 			})
 		})
@@ -99,7 +99,7 @@ func WithFileSystemServer(path string, fsys fs.FS) RouteComponent {
 	return func(r chi.Router) {
 		r.Route(path, func(r chi.Router) {
 			r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
-				log.Printf("[FileSystemServer] %s", path)
+				log.Printf("[FileSystemServer] %s", req.URL.Path)
 				http.StripPrefix(path, http.FileServer(http.FS(fsys))).ServeHTTP(wr, req)
 			})
 		})

@@ -2,34 +2,33 @@ package torque
 
 import (
 	"context"
-
 	"github.com/gorilla/schema"
 )
 
 type key string
 
 const (
-	err     key = "error"
-	decoder key = "decoder"
+	errorKey   key = "error"
+	decoderKey key = "decoder"
 )
 
 func withError(ctx context.Context, err error) context.Context {
-	return context.WithValue(ctx, err, err)
+	return context.WithValue(ctx, errorKey, err)
 }
 
 func ErrorFromContext(ctx context.Context) error {
-	if err, ok := ctx.Value(err).(error); ok {
+	if err, ok := ctx.Value(errorKey).(error); ok {
 		return err
 	}
 	return nil
 }
 
 func withDecoder(ctx context.Context, d *schema.Decoder) context.Context {
-	return context.WithValue(ctx, decoder, d)
+	return context.WithValue(ctx, decoderKey, d)
 }
 
 func DecoderFromContext(ctx context.Context) *schema.Decoder {
-	if d, ok := ctx.Value(decoder).(*schema.Decoder); ok {
+	if d, ok := ctx.Value(decoderKey).(*schema.Decoder); ok {
 		return d
 	}
 	return nil

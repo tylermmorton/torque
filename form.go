@@ -26,6 +26,26 @@ func IsMultipartForm(req *http.Request) bool {
 	return strings.HasPrefix(req.Header.Get("Content-Type"), "multipart/form-data")
 }
 
+// HasFormData checks to see if the request body has any form data.
+func HasFormData(req *http.Request) bool {
+	return len(req.URL.Query()) != 0
+}
+
+// DecodeFormAction can be used to retrieve the action parameter from a form.
+// This is useful for determining which form was submitted when multiple forms
+// are present on a page. Usually, the 'action' value is attached to the submit
+// button.
+func DecodeFormAction(req *http.Request) string {
+	if req.Form == nil {
+		err := req.ParseForm()
+		if err != nil {
+			return ""
+		}
+	}
+
+	return req.Form.Get("action")
+}
+
 func DecodeForm[T any](req *http.Request) (*T, error) {
 	if req.Form == nil {
 		err := req.ParseForm()

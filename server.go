@@ -137,7 +137,7 @@ func (rh *moduleHandler) handleAction(wr http.ResponseWriter, req *http.Request)
 	if r, ok := rh.module.(Action); ok {
 		err := r.Action(wr, req)
 		if err != nil {
-			log.Printf("[Action] %s -> error: %+v\n", req.URL, err)
+			log.Printf("[Action] %s -> error: %s\n", req.URL, err.Error())
 			return err
 		} else {
 			log.Printf("[Action] %s -> success\n", req.URL)
@@ -161,7 +161,7 @@ func (rh *moduleHandler) handleRender(wr http.ResponseWriter, req *http.Request,
 	if r, ok := rh.module.(Renderer); ok {
 		err := r.Render(wr, req, data)
 		if err != nil {
-			log.Printf("[Renderer] %s -> error: %+v\n", req.URL, err)
+			log.Printf("[Renderer] %s -> error: %s\n", req.URL, err.Error())
 			return err
 		} else {
 			log.Printf("[Renderer] %s -> success\n", req.URL)
@@ -178,7 +178,7 @@ func (rh *moduleHandler) handleLoader(wr http.ResponseWriter, req *http.Request)
 	if r, ok := rh.module.(Loader); ok {
 		data, err = r.Load(req)
 		if err != nil {
-			log.Printf("[Loader] %s -> error: %+v\n", req.URL, err)
+			log.Printf("[Loader] %s -> error: %s\n", req.URL, err.Error())
 			return nil, err
 		} else {
 			log.Printf("[Loader] %s -> success\n", req.URL)

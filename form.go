@@ -60,7 +60,7 @@ func DecodeForm[T any](req *http.Request) (*T, error) {
 	}
 
 	var res T
-	err := d.Decode(&res, req.Form)
+	err := d.Decode(&res, req.PostForm)
 	if err != nil {
 		return nil, errors.Wrap(ErrFormDecodeFailure, err.Error())
 	}
@@ -82,7 +82,7 @@ func DecodeAndValidateForm[T SelfValidator](req *http.Request) (*T, error) {
 	}
 
 	var res T
-	err := d.Decode(&res, req.Form)
+	err := d.Decode(&res, req.PostForm)
 	if err != nil {
 		return nil, errors.Wrap(ErrFormDecodeFailure, err.Error())
 	}

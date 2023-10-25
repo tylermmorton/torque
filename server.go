@@ -34,11 +34,12 @@ func WithGuard(g Guard) RouteModuleOption {
 }
 
 type moduleHandler struct {
-	module    interface{}
-	guards    []Guard
-	encoder   *schema.Encoder
-	decoder   *schema.Decoder
-	websocket http.Handler
+	module      interface{}
+	guards      []Guard
+	encoder     *schema.Encoder
+	decoder     *schema.Decoder
+	websocket   http.Handler
+	subscribers int
 }
 
 // createModuleHandler converts the given route module into a http.Handler
@@ -108,6 +109,14 @@ func (rh *moduleHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	var err error
 	switch req.Method {
 	case http.MethodGet:
+		if req.Header.Get("Accept") == "text/event-stream" {
+			err = rh.handleEventSource(wr, req)
+			if err != nil {
+				rh.handleError(wr, req, err)
+			}
+			return
+		}
+
 		data, err := rh.handleLoader(wr, req)
 		if err != nil {
 			rh.handleError(wr, req, err)
@@ -192,6 +201,23 @@ func (rh *moduleHandler) handleLoader(wr http.ResponseWriter, req *http.Request)
 	}
 
 	return data, nil
+}
+
+func (rh *moduleHandler) handleEventSource(wr http.ResponseWriter, req *http.Request) error {
+	if r, ok := rh.module.(EventSource); ok {
+		rh.subscribers++
+		log.Printf("[EventSource] %s -> new subscriber (%d)\n", req.URL, rh.subscribers)
+		err := r.Subscribe(wr, req)
+		rh.subscribers--
+		if err != nil {
+			log.Printf("[EventSource] %s -> closed error: %s\n", req.URL, err.Error())
+		} else {
+			log.Printf("[EventSource] %s -> closed ok (%d)\n", req.URL, rh.subscribers)
+		}
+		return err
+	} else {
+		return ErrNotImplemented
+	}
 }
 
 func (rh *moduleHandler) handleError(wr http.ResponseWriter, req *http.Request, err error) {

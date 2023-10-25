@@ -2,6 +2,13 @@ package torque
 
 import "net/http"
 
+// SubRouterProvider is executed when the torque app is initialized. It can
+// return a list of components to be nested in the current route. The parent
+// route path will be prefixed to any provided paths in the SubRouter.
+type SubRouterProvider interface {
+	SubRouter() []RouteComponent
+}
+
 // Action is executed during an http POST request. Actions perform
 // data mutations such as creating or updating resources and are
 // usually triggered by a form submission in the browser.
@@ -21,6 +28,12 @@ type Renderer interface {
 	Render(wr http.ResponseWriter, req *http.Request, loaderData any) error
 }
 
+// EventSource is a server-sent event stream. It is used to stream data to the
+// client in real-time.
+type EventSource interface {
+	Subscribe(wr http.ResponseWriter, req *http.Request) error
+}
+
 // ErrorBoundary handles all errors returned by read and write operations in a .
 type ErrorBoundary interface {
 	ErrorBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
@@ -32,11 +45,4 @@ type ErrorBoundary interface {
 // to the server logs.
 type PanicBoundary interface {
 	PanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
-}
-
-// SubRouterProvider is executed when the torque app is initialized. It can
-// return a list of components to be nested in the current route. The parent
-// route path will be prefixed to any provided paths in the SubRouter.
-type SubRouterProvider interface {
-	SubRouter() []RouteComponent
 }

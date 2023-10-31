@@ -8,6 +8,8 @@ Use torque to quickly build dynamic web applications using a composable Router a
 
 The overall goal is to provide a simple methodology for building web applications that is idiomatic, composable, testable and maintainable, so you can focus on whats important: adding value to your users.
 
+🚀 [create-torque-app template repository](https://github.com/tylermmorton/create-torque-app)
+
 Documentation and examples are available at [**lbft.dev**](https://lbft.dev/getting-started?utm_campaign=readme&utm_source=github.com)
 
 ## Objectives

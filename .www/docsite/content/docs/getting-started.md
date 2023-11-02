@@ -7,7 +7,7 @@ title: Getting Started
 
 Welcome, and thank you for your interest in `torque`! 
 
-> torque is a Golang powered backend-for-frontend and server-side rendering framework for building modern hypermedia driven applications.
+> torque is Go-powered framework designed to help you build modern hypermedia applications with server-side rendering and a strong backend.
 
 # Installation {#installation}
 

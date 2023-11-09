@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
+	"time"
 )
 
 var (
@@ -143,13 +144,14 @@ func (rh *moduleHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 }
 
 func (rh *moduleHandler) handleAction(wr http.ResponseWriter, req *http.Request) error {
+	var start = time.Now()
 	if r, ok := rh.module.(Action); ok {
 		err := r.Action(wr, req)
 		if err != nil {
 			log.Printf("[Action] %s -> error: %s\n", req.URL, err.Error())
 			return err
 		} else {
-			log.Printf("[Action] %s -> success\n", req.URL)
+			log.Printf("[Action] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
 			return nil
 		}
 	} else {
@@ -167,13 +169,14 @@ func (rh *moduleHandler) handleRender(wr http.ResponseWriter, req *http.Request,
 		return encoder.Encode(data)
 	}
 
+	var start = time.Now()
 	if r, ok := rh.module.(Renderer); ok {
 		err := r.Render(wr, req, data)
 		if err != nil {
 			log.Printf("[Renderer] %s -> error: %s\n", req.URL, err.Error())
 			return err
 		} else {
-			log.Printf("[Renderer] %s -> success\n", req.URL)
+			log.Printf("[Renderer] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
 			return nil
 		}
 	} else {
@@ -184,13 +187,14 @@ func (rh *moduleHandler) handleRender(wr http.ResponseWriter, req *http.Request,
 func (rh *moduleHandler) handleLoader(wr http.ResponseWriter, req *http.Request) (any, error) {
 	var data any
 	var err error
+	var start = time.Now()
 	if r, ok := rh.module.(Loader); ok {
 		data, err = r.Load(req)
 		if err != nil {
 			log.Printf("[Loader] %s -> error: %s\n", req.URL, err.Error())
 			return nil, err
 		} else {
-			log.Printf("[Loader] %s -> success\n", req.URL)
+			log.Printf("[Loader] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
 		}
 	} else {
 		return nil, ErrNotImplemented
@@ -206,13 +210,13 @@ func (rh *moduleHandler) handleLoader(wr http.ResponseWriter, req *http.Request)
 func (rh *moduleHandler) handleEventSource(wr http.ResponseWriter, req *http.Request) error {
 	if r, ok := rh.module.(EventSource); ok {
 		rh.subscribers++
-		log.Printf("[EventSource] %s -> new subscriber (%d)\n", req.URL, rh.subscribers)
+		log.Printf("[EventSource] %s -> new subscriber (%d total)\n", req.URL, rh.subscribers)
 		err := r.Subscribe(wr, req)
 		rh.subscribers--
 		if err != nil {
 			log.Printf("[EventSource] %s -> closed error: %s\n", req.URL, err.Error())
 		} else {
-			log.Printf("[EventSource] %s -> closed ok (%d)\n", req.URL, rh.subscribers)
+			log.Printf("[EventSource] %s -> closed ok (%d total)\n", req.URL, rh.subscribers)
 		}
 		return err
 	} else {

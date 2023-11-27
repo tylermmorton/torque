@@ -268,22 +268,22 @@ func writeErrorToResponse(errorString error, stackTrace []byte, wr http.Response
             <title>Error Occured</title>
         </head>
         <body>
-            <style>
+            	<style>
+				</style>
                 <h1>Error</h1>
                 <p>{{.Error}}</p>
                 <pre>{{.StackTrace}}</pre>
-            </style>
         </body>
     </html>
     `
 
-	t := template.Must(template.New("error").Parse(tmpl))
+	t, _ := template.New("error").Parse(tmpl)
 	data := struct {
 		Error      error
-		StackTrace []byte
+		StackTrace string
 	}{
 		Error:      errorString,
-		StackTrace: stackTrace,
+		StackTrace: string(stackTrace),
 	}
 
 	err := t.Execute(wr, data)

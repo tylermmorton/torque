@@ -4,6 +4,9 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/model"
@@ -13,8 +16,6 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/templates/navigator"
 	"github.com/tylermmorton/torque/.www/docsite/templates/sidebar"
 	"github.com/tylermmorton/torque/pkg/htmx"
-	"net/http"
-	"os"
 )
 
 var (
@@ -35,6 +36,10 @@ var Template = tmpl.MustCompile(&DotContext{})
 // RouteModule is the torque route module to be registered with the torque app.
 type RouteModule struct {
 	ContentSvc content.Service
+}
+
+//for testing purpose only
+type RouteModule struct {
 }
 
 var _ interface {
@@ -146,4 +151,8 @@ func (rm *RouteModule) ErrorBoundary(wr http.ResponseWriter, req *http.Request, 
 	} else {
 		panic(err) // Send the error to the PanicBoundary
 	}
+}
+
+func (rm *RouteModule) Load(req *http.Request) (interface{}, error) {
+	panic(errors.New("Oh no!"))
 }

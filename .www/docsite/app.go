@@ -3,15 +3,16 @@ package main
 import (
 	"embed"
 	"fmt"
+	"io/fs"
+	"log"
+	"net/http"
+	"os"
+
 	algolia "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
-	"io/fs"
-	"log"
-	"net/http"
-	"os"
 )
 
 //go:generate tmpl bind ./... --outfile=tmpl.gen.go
@@ -60,6 +61,7 @@ func main() {
 		assetHandler,
 
 		torque.WithRouteModule("/{pageName}", &docs.RouteModule{ContentSvc: contentSvc}),
+		torque.WithRouteModule("/panic", &testing.RouteModule{}),
 		torque.WithRedirect("/", "/getting-started", http.StatusTemporaryRedirect),
 	)
 

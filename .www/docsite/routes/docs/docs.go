@@ -4,6 +4,9 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+
 	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/model"
@@ -13,8 +16,6 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/templates/navigator"
 	"github.com/tylermmorton/torque/.www/docsite/templates/sidebar"
 	"github.com/tylermmorton/torque/pkg/htmx"
-	"net/http"
-	"os"
 )
 
 var (

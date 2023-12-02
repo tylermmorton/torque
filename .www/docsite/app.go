@@ -61,7 +61,7 @@ func main() {
 		assetHandler,
 
 		torque.WithRouteModule("/{pageName}", &docs.RouteModule{ContentSvc: contentSvc}),
-		torque.WithRouteModule("/panic", &docs.RouteModule{}),
+		torque.WithRouteModule("/panic", &testing.RouteModule{}),
 		torque.WithRedirect("/", "/getting-started", http.StatusTemporaryRedirect),
 	)
 

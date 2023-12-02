@@ -38,10 +38,6 @@ type RouteModule struct {
 	ContentSvc content.Service
 }
 
-//for testing purpose only
-type RouteModule struct {
-}
-
 var _ interface {
 	torque.SubRouterProvider
 
@@ -151,8 +147,4 @@ func (rm *RouteModule) ErrorBoundary(wr http.ResponseWriter, req *http.Request, 
 	} else {
 		panic(err) // Send the error to the PanicBoundary
 	}
-}
-
-func (rm *RouteModule) Load(req *http.Request) (interface{}, error) {
-	panic(errors.New("Oh no!"))
 }

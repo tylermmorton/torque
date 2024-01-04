@@ -3,7 +3,6 @@ package torque
 import (
 	"encoding/json"
 	"errors"
-	"html/template"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -246,7 +245,6 @@ func (rh *moduleHandler) handleError(wr http.ResponseWriter, req *http.Request, 
 
 func (rh *moduleHandler) handlePanic(wr http.ResponseWriter, req *http.Request, err error) {
 	if r, ok := rh.module.(PanicBoundary); ok {
-
 		// Calls to PanicBoundary can return an http.HandlerFunc
 		// that can be used to cleanly handle the error.
 		h := r.PanicBoundary(wr, req, err)
@@ -256,38 +254,11 @@ func (rh *moduleHandler) handlePanic(wr http.ResponseWriter, req *http.Request, 
 			return
 		}
 	} else {
-		writeErrorToResponse(err, debug.Stack(), wr)
-		log.Printf("[UncaughtPanic] %s\n-- ERROR --\nUncaught panic in route module %T: %+v\n-- STACK TRACE --\n%s", req.URL, rh.module, err, debug.Stack())
-	}
-}
-
-func writeErrorToResponse(errorString error, stackTrace []byte, wr http.ResponseWriter) {
-	tmpl := `
-    <html>
-        <head>
-            <title>Error Occured</title>
-        </head>
-        <body>
-            	<style>
-				</style>
-                <h1>Error</h1>
-                <p>{{.Error}}</p>
-                <pre>{{.StackTrace}}</pre>
-        </body>
-    </html>
-    `
-
-	t, _ := template.New("error").Parse(tmpl)
-	data := struct {
-		Error      error
-		StackTrace string
-	}{
-		Error:      errorString,
-		StackTrace: string(stackTrace),
-	}
-
-	err := t.Execute(wr, data)
-	if err != nil {
-		log.Printf("Failed to execute template: %v", err)
+		stack := debug.Stack()
+		log.Printf("[UncaughtPanic] %s\n-- ERROR --\nUncaught panic in route module %T: %+v\n-- STACK TRACE --\n%s", req.URL, rh.module, err, stack)
+		err = writeErrorResponse(wr, req, err, stack)
+		if err != nil {
+			log.Printf("[UncaughtPanic] %s -> failed to write error response: %v\n", req.URL, err)
+		}
 	}
 }

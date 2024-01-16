@@ -1,7 +1,6 @@
 package torque
 
 import (
-	"github.com/go-chi/chi/v5"
 	"net/http"
 )
 
@@ -13,7 +12,7 @@ type GuardProvider interface {
 // return a list of components to be nested in the current route. The parent
 // route path will be prefixed to any provided paths in the SubRouter.
 type RouterProvider interface {
-	Router(chi.Router, ...Option)
+	Router(r Router)
 }
 
 // Action is executed during an http POST request. Actions perform

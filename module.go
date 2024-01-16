@@ -1,7 +1,6 @@
 package torque
 
 import (
-	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
 	"log"
 	"net/http"
@@ -25,9 +24,19 @@ func WithMode(mode Mode) Option {
 // New creates a new torque handler based on the given route module.
 // The functionality of the handler is controlled by the methods implemented.
 func New(rm interface{}, opts ...Option) http.Handler {
+	h := createModuleHandler(rm)
+
+	for _, opt := range opts {
+		opt(h)
+	}
+
+	return h
+}
+
+func createModuleHandler(rm interface{}) *moduleHandler {
 	h := &moduleHandler{
 		module:  rm,
-		router:  chi.NewRouter(),
+		router:  createRouter(),
 		encoder: schema.NewEncoder(),
 		decoder: schema.NewDecoder(),
 		mode:    ModeDevelopment,
@@ -36,8 +45,6 @@ func New(rm interface{}, opts ...Option) http.Handler {
 	h.encoder.SetAliasTag("json")
 	h.decoder.SetAliasTag("json")
 
-	// This feels inefficient in terms of memory usage but
-	// better than asserting the type with each request
 	switch rm.(type) {
 	case Action:
 		h.action = rm.(Action)
@@ -53,28 +60,12 @@ func New(rm interface{}, opts ...Option) http.Handler {
 		h.panicBoundary = rm.(PanicBoundary)
 	}
 
-	for _, opt := range opts {
-		opt(h)
-	}
-
-	if rp, ok := rm.(RouterProvider); ok {
-		for _, route := range rp.Router() {
-			h.router.Route(path, func(r chi.Router) {
-				for _, routeComponent := range p.Router() {
-					routeComponent(r)
-				}
-
-				r.Handle("/", New(rm, opts...))
-			})
-		}
-	}
-
 	return h
 }
 
 type moduleHandler struct {
 	module  interface{}
-	router  chi.Router
+	router  Router
 	encoder *schema.Encoder
 	decoder *schema.Decoder
 

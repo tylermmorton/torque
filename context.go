@@ -10,6 +10,7 @@ type key string
 const (
 	errorKey   key = "error"
 	decoderKey key = "decoder"
+	modeKey    key = "mode"
 )
 
 func withError(ctx context.Context, err error) context.Context {
@@ -32,4 +33,15 @@ func DecoderFromContext(ctx context.Context) *schema.Decoder {
 		return d
 	}
 	return nil
+}
+
+func withMode(ctx context.Context, mode Mode) context.Context {
+	return context.WithValue(ctx, modeKey, mode)
+}
+
+func ModeFromContext(ctx context.Context) Mode {
+	if mode, ok := ctx.Value(modeKey).(Mode); ok {
+		return mode
+	}
+	return ModeProduction
 }

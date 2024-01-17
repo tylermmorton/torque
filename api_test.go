@@ -40,10 +40,6 @@ func (p *page) Render(wr http.ResponseWriter, req *http.Request, loaderData any)
 
 type component struct{}
 
-func (p *component) Load(req *http.Request) (any, error) {
-	return nil, nil
-}
-
 func (p *component) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
 	wr.Write([]byte("Component!"))
 	wr.WriteHeader(http.StatusOK)

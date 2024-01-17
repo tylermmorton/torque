@@ -24,19 +24,22 @@ func WithMode(mode Mode) Option {
 // New creates a new torque handler based on the given route module.
 // The functionality of the handler is controlled by the methods implemented.
 func New(rm interface{}, opts ...Option) http.Handler {
-	h := createModuleHandler(rm)
+	r := createRouter()
+	h := createModuleHandler(rm, r)
 
 	for _, opt := range opts {
 		opt(h)
 	}
 
-	return h
+	r.Handle("/", h)
+
+	return r
 }
 
-func createModuleHandler(rm interface{}) *moduleHandler {
+func createModuleHandler(rm interface{}, r Router) *moduleHandler {
 	h := &moduleHandler{
 		module:  rm,
-		router:  createRouter(),
+		router:  r,
 		encoder: schema.NewEncoder(),
 		decoder: schema.NewDecoder(),
 		mode:    ModeDevelopment,
@@ -45,20 +48,37 @@ func createModuleHandler(rm interface{}) *moduleHandler {
 	h.encoder.SetAliasTag("json")
 	h.decoder.SetAliasTag("json")
 
-	switch rm.(type) {
-	case Action:
-		h.action = rm.(Action)
-	case Loader:
-		h.loader = rm.(Loader)
-	case Renderer:
-		h.renderer = rm.(Renderer)
-	case EventSource:
-		h.eventSource = rm.(EventSource)
-	case ErrorBoundary:
-		h.errorBoundary = rm.(ErrorBoundary)
-	case PanicBoundary:
-		h.panicBoundary = rm.(PanicBoundary)
+	if action, ok := rm.(Action); ok {
+		h.action = action
 	}
+
+	if loader, ok := rm.(Loader); ok {
+		h.loader = loader
+	}
+
+	if renderer, ok := rm.(Renderer); ok {
+		h.renderer = renderer
+	}
+
+	if eventSource, ok := rm.(EventSource); ok {
+		h.eventSource = eventSource
+	}
+
+	if errorBoundary, ok := rm.(ErrorBoundary); ok {
+		h.errorBoundary = errorBoundary
+	}
+
+	if panicBoundary, ok := rm.(PanicBoundary); ok {
+		h.panicBoundary = panicBoundary
+	}
+
+	if routerProvider, ok := rm.(RouterProvider); ok {
+		routerProvider.Router(r)
+	}
+
+	//if gp, ok := rm.(GuardProvider); ok {
+	//	//h.guards = gp.Guards()
+	//}
 
 	return h
 }

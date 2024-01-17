@@ -26,5 +26,18 @@ func createRouter() Router {
 }
 
 func (r *router) HandleModule(pattern string, rm interface{}) {
-	r.Handle(pattern, createModuleHandler(rm))
+	if rp, ok := rm.(RouterProvider); ok {
+		// create a new sub-router at the given path
+		r.Route(pattern, func(r chi.Router) {
+			var wr = &router{r}
+
+			// allow module to register additional routes
+			rp.Router(wr)
+
+			// register the module handler at the root of the sub-router
+			r.Handle("/", createModuleHandler(rm, wr))
+		})
+	} else {
+		r.Handle(pattern, createModuleHandler(rm, r))
+	}
 }

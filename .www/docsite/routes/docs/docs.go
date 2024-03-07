@@ -35,23 +35,17 @@ var Template = tmpl.MustCompile(&DotContext{})
 
 // RouteModule is the torque route module to be registered with the torque app.
 type RouteModule struct {
-	ContentSvc content.Service
+	ContentService content.Service
 }
 
 var _ interface {
-	torque.SubRouterProvider
-
 	torque.Loader
 	torque.Renderer
 	torque.ErrorBoundary
 } = &RouteModule{}
 
-func (rm *RouteModule) SubRouter() []torque.RouteComponent {
-	return []torque.RouteComponent{}
-}
-
 func (rm *RouteModule) Load(req *http.Request) (any, error) {
-	doc, err := rm.ContentSvc.GetByID(req.Context(), torque.RouteParam(req, "pageName"))
+	doc, err := rm.ContentService.GetByID(req.Context(), torque.RouteParam(req, "pageName"))
 	if err != nil {
 		return nil, ErrPageNotFound
 	}
@@ -89,25 +83,24 @@ func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderD
 								NavItems: []sidebar.NavItem{
 									{Text: "Installation", Href: "/getting-started"},
 									{Text: "Quick Start", Href: "/getting-started#quick-start"},
-									{Text: "RouteComponent Modules 101", Href: "/getting-started#route-modules-101"},
 								},
 							},
 							{
 								Text: "Framework",
 								NavItems: []sidebar.NavItem{
+									{Text: "Module API", Href: "/module-api"},
 									{Text: "Router", Href: "/router"},
-									{Text: "Middleware", Href: "/middleware"},
 									{Text: "Forms", Href: "/forms"},
 									{Text: "Queries", Href: "/queries"},
-									{Text: "WebSockets", Href: "/websockets"},
-									{Text: "Server Sent Events", Href: "/server-sent-events"},
+									{Text: "Middleware", Href: "/middleware"},
 								},
 							},
 							{
-								Text: "RouteComponent Modules",
+								Text: "Integrations",
 								NavItems: []sidebar.NavItem{
-									{Text: "Module API", Href: "/module-api"},
-									{Text: "Guards", Href: "/guards"},
+									{Text: "htmx-go", Href: "/module-api"},
+									{Text: "templ", Href: "/router"},
+									{Text: "tmpl", Href: "/forms"},
 								},
 							},
 						},

@@ -5,21 +5,31 @@ title: Getting Started
 
 # Welcome {#welcome}
 
-Welcome, and thank you for your interest in `torque`! 
+Welcome, and thank you for your interest in `torque`!
 
-> torque is Go-powered framework designed to help you build modern hypermedia applications with server-side rendering and a strong backend.
+🪲 **Found a bug?** Please direct all issues to the [GitHub Issues tracker](https://github.com/tylermmorton/torque/issues). 
+
+🎁 **All feedback is a gift!** Please leave comments and questions in the [GitHub Discussions space](https://github.com/tylermmorton/torque/discussions).
 
 # Installation {#installation}
 
 ```shell
-go get github.com/tylermmorton/torque@latest
+go get github.com/tylermmorton/torque
 ```
 
 # Quick Start {#quick-start}
 
-At its core `torque` is just a router compatible with Go’s standard `net/http` package. The router implements `http.Handler` so you'll simply need to integrate it with your existing `net/http` application.
+To get started, declare a new struct type that will represent the root _module_ in your torque application. 
 
-Or, if you're starting from scratch, you can use the `NewRouter` constructor to create a new router and pass it to `http.ListenAndServe`:
+```go
+package main
+
+import "net/http"
+
+type root struct{}
+```
+
+Next, call `torque.New` and pass an instance of your root module struct. This will return an `http.Handler` that can be plugged into any `net/http` compatible server or router!
 
 ```go
 package main
@@ -29,96 +39,64 @@ import (
 
     "github.com/tylermmorton/torque"
 )
+
+type root struct{}
 
 func main() {
-    r := torque.NewRouter()
+    h := torque.New(&root{})
 
-    http.ListenAndServe("localhost:9001", r)
+    http.ListenAndServe("localhost:9001", h)
 }
 ```
 
-The `NewRouter` constructor takes a variadic list of `Route` arguments. You are meant to compose your torque application at startup this way:
+💡 The interfaces your module struct implements determine its functionality. 
+
+Add some new routes to your app by implementing the `torque.RouterProvider` interface. To do this, create a new `loginPage` module struct and add the `/login` route by using `HandleModule`
 
 ```go
 package main
 
-import (
-    "net/http"
+import "github.com/tylermmorton/torque"
 
-    "github.com/tylermmorton/torque"
-)
+type root struct{}
 
-func main() {
-    r := torque.NewRouter(
-        torque.WithRedirect("/", "/welcome", http.StatusTemporaryRedirect),
-        torque.WithRouteModule("/login", &LoginRouteModule{/* ... */}),
-        torque.WithRouteModule("/signup", &SignupRouteModule{/* ... */}),
-		
-        torque.WithGroup(
-            torque.WithMiddleware(authMiddleware()),
-            torque.WithRouteModule("/dashboard", &DashboardRouteModule{/* ... */}),
-        ),
-    )
+// create a new module struct for the login page
+type loginPage struct{}
 
-    http.ListenAndServe("localhost:9001", r) 
+func (*root) Router(r torque.Router) {
+	// nest an additional torque module
+	r.HandleModule("/login", &loginPage{})
+
+	// vanilla handlers are suitable, too!
+	r.Handle("/logout", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+		http.SetCookie(wr, &http.Cookie{
+			Name:   "authToken",
+			Value:  "",
+			MaxAge: -1,
+		})
+		http.Redirect(wr, req, "/", http.StatusFound)
+	}))
 }
 ```
 
-The primary component for building your torque application is the `RouteModule`, but the `torque` framework offers a series of pre-built `Route` components that you can leverage to build your app quickly:
-
-| Router Composition Functions | Description                                                                                                                                                    |
-|------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| WithHandler                  | Registers an `http.Handler` to the given route                                                                                                                 |
-| WithMiddleware               | Registers an `http.HandlerFunc` to be used as middleware for all incoming requests.                                                                            |
-| WithRedirect                 | Handles incoming requests at the given `from` route by redirecting them to the given `to` route and responding with the configured `statusCode`                |
-| WithRouteModule              | Registers a torque `RouteModule` to the given route                                                                                                            |
-| WithEventStream              | Push [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) over Go channels via text/event-stream |
-| WithFileServer               | Serves the given `dir` via HTTP GET on the given route                                                                                                         |
-| WithFileSystemServer         | Serves the given `fs.FS` via HTTP GET on the given route                                                                                                       |
-| WithNotFoundHandler          | Handles all requests who fail with status code 404                                                                                                             |
-| WithMethodNotAllowedHandler  | Handles all requests who fail with status code 405                                                                                                             |
-
-## Route Modules 101 {#route-modules-101}
-
-Route Modules take advantage of Golang's implicit interface implementations feature to make it easier to build your application. It enables torque to handle the wiring and plumbing of the application and leave you to focus on adding value for your users.
-
-In reality, a Route Module is a struct type that implements one of the interfaces in the Module API. Perhaps the most common interface to implement is `torque.Renderer`:
-
-```go
-package torque 
-
-type Renderer interface {
-	Render(wr http.ResponseWriter, req *http.Request, loaderData any) error
-}
+Now your application has the following routes:
+```md
+/ -> root
+/login -> loginPage
+/logout -> http.HandlerFunc
 ```
 
-The following is an example `LoginRouteModule` that implements the `torque.Renderer` interface and renders a simple login form:
+Next, add some UI to the new login page by implementing the `torque.Renderer`  interface. This enables your module to handle incoming HTTP GET requests and write directly to the response body.
+
+💡 Note the use of a multiline string for now, but you might want to render templates here!
 
 ```go
-package main
-
-import (
-    "net/http"
-
-    "github.com/tylermmorton/torque"
-)
-
-type LoginRouteModule struct{
-	// define any dependencies here
-}
-
-// it may be useful to assert implementations
-var _ interface {
-    torque.Renderer
-} = &LoginRouteModule{}
-
-// Render satisfies the torque.Renderer interface
-func (m *LoginRouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
+func (*loginPage) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
     wr.Write([]byte(`
         <html>
             <body>
                 <h1>Login</h1>
-                <form method="POST">
+                <form method="POST" action="/login">
                     <input type="text" name="username" />
                     <input type="password" name="password" />
                     <button type="submit">Login</button>
@@ -130,87 +108,57 @@ func (m *LoginRouteModule) Render(wr http.ResponseWriter, req *http.Request, loa
 }
 ```
 
-When `LoginRouteModule` is added to the router, torque will perform type assertions against the different interfaces in the Module API to determine what types of requests can be handled. 
+Finally, to handle the login form, implement the `torque.Action` interface, which enables your module to handle incoming form submissions as HTTP POST requests.
 
-In this case, the `LoginRouteModule` implements the `torque.Renderer` interface, so torque will register a handler for all incoming `GET` requests with `Content-Type` set to `text/html`.
+`torque` also provides some utilities for efficiently parsing and decoding form data:
+
+```go
+package main 
+
+type LoginForm struct {
+    Username string `json:"username"`
+    Password string `json:"password"`
+}
+
+func (p *loginPage) Action(wr http.ResponseWriter, req *http.Request) error {
+    // parse the incoming form data
+    form, err := torque.DecodeForm[LoginForm](req)
+    if err != nil {
+        return err
+    }
+
+    // call into another service, perform authentication logic
+    authToken, err := p.AuthService.Login(
+        req.Context(),
+        form.Username,
+        form.Password,
+    )
+    if err != nil {
+        return err
+    }
+
+    // set an http-only cookie with the auth token
+    http.SetCookie(wr, &http.Cookie{
+        Name:     "authToken",
+        Value:    *authToken,
+        Secure:   true,
+        HttpOnly: true,
+        Expires:  time.Now().Add(time.Hour * 36),
+    })
+
+    // finally, redirect to the root page
+    http.Redirect(wr, req, "/", http.StatusFound)
+
+    return nil
+}
+```
 
 ---
 
-Another common interface is `torque.Loader`, which can be used to load data during incoming HTTP GET requests. 
+Hopefully that's enough to get you started! There's plenty more to learn about `torque`, routing, and the Module API.
 
-```go
-package torque
+For next steps, check out the [Module API Reference](/module-api).
 
-type Loader interface {
-    Load(req *http.Request) (any, error)
-}
-```
+Thanks again for giving torque a try! 
 
-The following is an example `MarketRouteModule` that implements the `torque.Loader` interface and loads data from a marketplace service:
 
-```go
-package main
-
-import (
-	"net/http"
-
-	"github.com/tylermmorton/torque"
-)
-
-type MarketRouteModule struct {
-	// dummy marketplace service
-	MarketSvc market.Service
-}
-
-// it may be useful to assert implementations
-var _ interface {
-	torque.Loader
-	torque.Renderer
-} = &MarketRouteModule{}
-
-type SearchParams struct {
-	Query    string `json:"q"`
-	MinPrice int    `json:"min_price"`
-	MaxPrice int    `json:"max_price"`
-}
-
-// Load satisfies the torque.Loader interface
-func (m *MarketRouteModule) Load(req *http.Request) (any, error) {
-	params, err := torque.DecodeQuery[SearchParams](req)
-	if err != nil {
-		return nil, nil
-	}
-
-	res, err := m.MarketSvc.Search(req.Context(), params)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-```
-
-You can return `any` data from a Loader. By default, this data will be returned as the response to all incoming HTTP GET requests with `Content-Type` set to `application/json`.
-
-However, if your module also implements `Renderer`, the data will be passed to the `Render` method as the `loaderData` argument. This can, for example, be used when rendering pages from templates:
-
-```go
-func (m *MarketRouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-    return template.Must(template.New("market").Parse(`
-        <html>
-            <body>
-                <h1>Marketplace</h1>
-                {{ range . }}
-                    <div>
-                        <h2>{{ .Name }}</h2>
-                        <p>{{ .Description }}</p>
-                        <p>{{ .Price }}</p>
-                    </div>
-                {{ end }}
-            </body>
-        </html>
-    `)).Execute(wr, loaderData)
-}
-```
-
-There's plenty more to learn about Route Modules, but this should be enough to get you started. For more documentation on Route Modules visit the dedicated Modules API page.

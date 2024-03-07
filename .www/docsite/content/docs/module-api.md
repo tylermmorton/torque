@@ -4,54 +4,9 @@ title: Module API
 ---
 
 # Module API {#module-api}
-Route Modules, a core component of the torque framework, are a type of `http.Handler` that can handle requests of multiple different types. They take advantage of Golang's [implicit interface implementations](https://go.dev/tour/methods/10) to make it easier to build your application. It enables torque to handle the wiring and plumbing of the application and leave you to focus on adding value for your users.
+Route Modules, a core component of the torque framework, are a type of `http.Handler` that can handle requests of multiple different types. They take advantage of Golang's [implicit interface implementations](https://go.dev/tour/methods/10) so you can build your application with less boilerplate. It enables torque to handle the wiring and plumbing of the application and leave you to focus on adding value for your users.
 
 In `torque` you can build Route Modules by implementing _one or many_ of the interfaces in the _Module API_. The interfaces that your module implements define its behavior when handling incoming requests.
-
-## Loader {#loader}
-```go
-type Loader interface {
-    Load(req *http.Request) (any, error)
-}
-```
-
-A `Loader` is executed in response to an HTTP GET request made to the route where your module is registered. This is usually a navigation to a page in the browser, htmx `hx-get` or curl request. The `Loader`'s responsibility is to fetch any data necessary to return in the response.
-
-Here is an example loader for a login.html page:
-
-```go
-func (rm *LoginRoute) Load(req *http.Request) (any, error) {
-    // formData might be present if the user reloads the page.
-    // we can pass it to our renderer to maintain their state
-    formData, err := torque.DecodeForm[model.LoginForm](req)
-    if err != nil {
-        return nil, err
-    }
-
-    // if the user is already authenticated via cookie we
-    // can just pass an error to the ErrorBoundary to handle
-    // the redirection
-    c, err := req.Cookie("authToken")
-    if err == nil && c.Expires.After(time.Now()) {
-        return nil, ErrAlreadyAuthenticated
-    }
-
-    // return some data to be passed to the Render function
-    return struct {
-        FormData     *model.LoginForm `json:"-"`
-    }{
-        formData,
-    }, nil
-}
-```
-
-
-## Renderer {#renderer}
-```go
-type Renderer interface {
-    Render(wr http.ResponseWriter, req *http.Request, loaderData any) error
-}
-```
 
 ## Action {#action}
 ```go
@@ -98,6 +53,51 @@ func (rm *LoginRoute) Action(wr http.ResponseWriter, req *http.Request) error {
 }
 ```
 
+## Loader {#loader}
+```go
+type Loader interface {
+    Load(req *http.Request) (any, error)
+}
+```
+
+A `Loader` is executed in response to an HTTP GET request made to the route where your module is registered. This is usually a navigation to a page in the browser, htmx `hx-get` or any type of HTTP client. The `Loader`'s responsibility is to fetch any data necessary to formulate a response.
+
+Here is an example loader for a login.html page:
+
+```go
+func (rm *LoginRoute) Load(req *http.Request) (any, error) {
+    // formData might be present if the user reloads the page.
+    // we can pass it to our renderer to maintain their state
+    formData, err := torque.DecodeForm[model.LoginForm](req)
+    if err != nil {
+        return nil, err
+    }
+
+    // if the user is already authenticated via cookie we
+    // can just pass an error to the ErrorBoundary to handle
+    // the redirection
+    c, err := req.Cookie("authToken")
+    if err == nil && c.Expires.After(time.Now()) {
+        return nil, ErrAlreadyAuthenticated
+    }
+
+    // return some data to be passed to the Render function
+    return struct {
+        FormData     *model.LoginForm `json:"-"`
+    }{
+        formData,
+    }, nil
+}
+```
+
+
+## Renderer {#renderer}
+```go
+type Renderer interface {
+    Render(wr http.ResponseWriter, req *http.Request, loaderData any) error
+}
+```
+
 ## ErrorBoundary {#error-boundary}
 ```go
 type ErrorBoundary interface {
@@ -125,15 +125,15 @@ The torque framework offers a couple of useful error handlers:
 
 | Error Handlers | Description                                                                                                        |
 | -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Redirect       | Returns an http.HandlerFunc that redirects the request to the given url and sets the statusCode to 302.            |
-| RedirectS      | Returns an http.HandlerFunc that redirects the request to the given url and sets the statusCode to the given code. |
-| RetryWithError | Attaches the given error value to the request context and re-executes the Loader → Renderer flow.                  |
+| `Redirect`       | Returns an http.HandlerFunc that redirects the request to the given url and sets the statusCode to 302.            |
+| `RedirectS`      | Returns an http.HandlerFunc that redirects the request to the given url and sets the statusCode to the given code. |
+| `RetryWithError` | Attaches the given error value to the request context and re-executes the Loader → Renderer flow.                  |
 
 ### RetryWithError {#retry-with-error}
 
 The `RetryWithError` utility function allows one to re-execute the `Loader` -> `Renderer` flow with the given `error` attached to the request context. 
 
-Note: Any errors returned by this handler automatically get sent to the `PanicBoundary`
+⚠️ Any errors returned by this handler automatically get sent to the `PanicBoundary`
 
 Here is an updated example of what can be done in the `Load` function with this additional context:
 
@@ -183,14 +183,14 @@ The `PanicBoundary` catches all panics thrown during any `Action`, `Loader`, or 
 
 If no `http.HandlerFunc` is returned from the `PanicBoundary`, the error is safely logged and a stack trace is printed to stdout detailing the issue.
 
-## SubmoduleProvider {#submodule-provider}
+## RouterProvider {#router-provider}
 ```go
-type SubmoduleProvider interface {
-    Submodules() []Route
+type RouterProvider interface {
+    Router(r torque.Router) 
 }
 ```
 
-A `SubmoduleProvider` allows you to provide additional Route Modules to be registered as children of the current module. This is useful for creating a hierarchy of modules that can be registered to a single router.
+A `RouterProvider` allows you to provide additional Route Modules to be registered as children of the current module. This is useful for creating a hierarchy of modules that can be registered to a single router.
 
 Note that any modules returned from this function will be registered to a sub-router to the parent route. This means that any path prefix or `Middleware` applied to the parent module will also be applied to the child modules.
 

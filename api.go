@@ -1,18 +1,13 @@
 package torque
 
 import (
+	"embed"
 	"net/http"
 )
 
-type GuardProvider interface {
-	Guards() []Guard
-}
-
-// RouterProvider is executed when the torque app is initialized. It can
-// return a list of components to be nested in the current route. The parent
-// route path will be prefixed to any provided paths in the SubRouter.
-type RouterProvider interface {
-	Router(r Router)
+// ViewModel represents a type that binds data to a template.
+type ViewModel interface {
+	Templates() embed.FS
 }
 
 // Action is executed during an http POST request. Actions perform
@@ -26,7 +21,7 @@ type Action interface {
 // data to the Renderer
 // It can parse URL values, attach session data, etc.
 type Loader interface {
-	Load(req *http.Request) (any, error)
+	Load(req *http.Request) (ViewModel, error)
 }
 
 // Renderer is a response to an http GET that renders a template
@@ -51,4 +46,20 @@ type ErrorBoundary interface {
 // to the server logs.
 type PanicBoundary interface {
 	PanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
+}
+
+// RouterProvider is executed when the torque app is initialized. It can
+// return a list of components to be nested in the current route. The parent
+// route path will be prefixed to any provided paths in the SubRouter.
+type RouterProvider interface {
+	Router(r Router)
+}
+
+// FuncMapProvider provides a map of functions to be used in the ViewModel's template.
+type FuncMapProvider interface {
+	FuncMap() FuncMap
+}
+
+type GuardProvider interface {
+	Guards() []Guard
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/schema"
+	"github.com/tylermmorton/torque/internal/compiler"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -16,9 +17,12 @@ var (
 
 // New creates a new torque module handler based on the given route module.
 // The functionality of the handler is controlled by the methods implemented.
-func New(rm interface{}, opts ...Option) http.Handler {
+func New(rm interface{}, opts ...Option) (http.Handler, error) {
 	r := createRouter()
-	h := createModuleHandler(rm, r)
+	h, err := createModuleHandler(rm, r)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, opt := range opts {
 		opt(h)
@@ -26,10 +30,10 @@ func New(rm interface{}, opts ...Option) http.Handler {
 
 	r.Handle("/", h)
 
-	return r
+	return r, nil
 }
 
-func createModuleHandler(rm interface{}, r Router) *moduleHandler {
+func createModuleHandler(rm interface{}, r Router) (*moduleHandler, error) {
 	h := &moduleHandler{
 		module:  rm,
 		router:  r,
@@ -65,6 +69,7 @@ func createModuleHandler(rm interface{}, r Router) *moduleHandler {
 		h.panicBoundary = panicBoundary
 	}
 
+	// TODO: implement panic recovery here
 	if routerProvider, ok := rm.(RouterProvider); ok {
 		routerProvider.Router(r)
 	}
@@ -73,7 +78,7 @@ func createModuleHandler(rm interface{}, r Router) *moduleHandler {
 	//	//h.guards = gp.Guards()
 	//}
 
-	return h
+	return h, nil
 }
 
 type moduleHandler struct {
@@ -97,6 +102,9 @@ type moduleHandler struct {
 
 	errorBoundary ErrorBoundary
 	panicBoundary PanicBoundary
+
+	outlet   bool
+	template compiler.Template[ViewModel]
 }
 
 func (rh *moduleHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
@@ -179,7 +187,7 @@ func (rh *moduleHandler) handleAction(wr http.ResponseWriter, req *http.Request)
 func (rh *moduleHandler) handleRender(wr http.ResponseWriter, req *http.Request, data any) error {
 	// If the requester set the content-type to json, we can just
 	// render the result of the loader directly
-	if req.Header.Get("Content-Type") == "application/json" {
+	if req.Header.Get("Accept") == "application/json" {
 		log.Printf("[JSON] %s\n", req.URL)
 		encoder := json.NewEncoder(wr)
 		encoder.SetIndent("", "  ")

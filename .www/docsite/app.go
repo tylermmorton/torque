@@ -3,12 +3,12 @@ package main
 import (
 	"embed"
 	"fmt"
+	"github.com/tylermmorton/torque/pkg/plugins/templ"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 
-	algolia "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
@@ -23,47 +23,43 @@ var staticAssets embed.FS
 //go:embed content/docs/*
 var embeddedContent embed.FS
 
+// docsApp represents the root of the doc site application.
+type docsApp struct {
+	StaticAssets   fs.FS
+	ContentService content.Service
+}
+
+// Render is the handler for the root of the site ... just redirect to getting started
+func (*docsApp) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
+	http.Redirect(wr, req, "/getting-started", http.StatusFound)
+	return nil
+}
+
+func (d *docsApp) Router(r torque.Router) {
+	r.HandleModule("/{pageName}", &docs.RouteModule{ContentService: d.ContentService})
+	r.HandleFileSystem("/s", d.StaticAssets)
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Printf("failed to load env: %+v", err)
 	}
 
-	algoliaAppId, ok := os.LookupEnv("ALGOLIA_APP_ID")
-	if !ok {
-		log.Fatalf("ALGOLIA_APP_ID not set in environment")
+	assetsFs, err := fs.Sub(staticAssets, ".build/static")
+	if err != nil {
+		log.Fatalf("failed to create static assets filesystem: %+v", err)
 	}
 
-	algoliaApiKey, ok := os.LookupEnv("ALGOLIA_API_KEY")
-	if !ok {
-		log.Fatalf("ALGOLIA_API_KEY not set in environment")
-	}
-
-	algoliaClient := algolia.NewClient(algoliaAppId, algoliaApiKey)
-
-	contentSvc, err := content.New(embeddedContent, algoliaClient)
+	contentSvc, err := content.New(embeddedContent, nil)
 	if err != nil {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
-	var assetHandler torque.RouteComponent
-	if os.Getenv("EMBED_ASSETS") == "true" {
-		staticAssets, err := fs.Sub(staticAssets, ".build/static")
-		if err != nil {
-			log.Fatalf("failed to create static assets filesystem: %+v", err)
-		}
-		assetHandler = torque.WithFileSystemServer("/s", staticAssets)
-	} else {
-		assetHandler = torque.WithFileServer("/s", ".build/static")
-	}
-
-	r := torque.NewRouter(
-		assetHandler,
-
-		torque.WithRouteModule("/{pageName}", &docs.RouteModule{ContentSvc: contentSvc}),
-		torque.WithRouteModule("/panic", &testing.RouteModule{}),
-		torque.WithRedirect("/", "/getting-started", http.StatusTemporaryRedirect),
-	)
+	r := torque.New(&docsApp{
+		StaticAssets:   assetsFs,
+		ContentService: contentSvc,
+	}, torque.WithPlugin(&templ.Plugin{}))
 
 	var host, port = os.Getenv("HOST_ADDR"), os.Getenv("HOST_PORT")
 	if port == "" {

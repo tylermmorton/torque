@@ -63,8 +63,6 @@ func createControllerImpl[T ViewModel]() *controllerImpl[T] {
 		eventSource:   nil,
 		errorBoundary: nil,
 		panicBoundary: nil,
-
-		outlet: false,
 	}
 
 	h.encoder.SetAliasTag("json")

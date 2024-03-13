@@ -1,14 +1,15 @@
 package torque
 
 import (
-	"embed"
 	"net/http"
 )
 
-// ViewModel represents a type that binds data to a template.
-type ViewModel interface {
-	Templates() embed.FS
-}
+// ViewModel is a type that both provides a view and represents the
+// data model for the view. This is a conceptual type
+type ViewModel interface{}
+
+// HandlerModule is a conceptual type
+type HandlerModule interface{}
 
 // Action is executed during an http POST request. Actions perform
 // data mutations such as creating or updating resources and are
@@ -20,13 +21,13 @@ type Action interface {
 // Loader is executed during an http GET request and provides
 // data to the Renderer
 // It can parse URL values, attach session data, etc.
-type Loader interface {
-	Load(req *http.Request) (ViewModel, error)
+type Loader[T ViewModel] interface {
+	Load(req *http.Request) (T, error)
 }
 
 // Renderer is a response to an http GET that renders a template
-type Renderer interface {
-	Render(wr http.ResponseWriter, req *http.Request, loaderData any) error
+type Renderer[T ViewModel] interface {
+	Render(wr http.ResponseWriter, req *http.Request, vm T) error
 }
 
 // EventSource is a server-sent event stream. It is used to stream data to the
@@ -48,16 +49,11 @@ type PanicBoundary interface {
 	PanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
 }
 
-// RouterProvider is executed when the torque app is initialized. It can
+// RouterProvider is executed when the torque TestTemplateModule is initialized. It can
 // return a list of components to be nested in the current route. The parent
 // route path will be prefixed to any provided paths in the SubRouter.
 type RouterProvider interface {
 	Router(r Router)
-}
-
-// FuncMapProvider provides a map of functions to be used in the ViewModel's template.
-type FuncMapProvider interface {
-	FuncMap() FuncMap
 }
 
 type GuardProvider interface {

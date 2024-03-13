@@ -56,7 +56,7 @@ func main() {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
-	r := torque.New(&docsApp{
+	r := torque.NewViewController(&docsApp{
 		StaticAssets:   assetsFs,
 		ContentService: contentSvc,
 	}, torque.WithPlugin(&templ.Plugin{}))

@@ -5,66 +5,166 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
-type app struct {
+/** TestTemplate **/
+
+type TestTemplateModule struct {
+}
+type TestTemplateView struct{}
+
+var _ interface {
+	torque.Loader[TestTemplateView]
+} = &TestTemplateModule{}
+
+func (a *TestTemplateModule) Load(req *http.Request) (TestTemplateView, error) {
+	return TestTemplateView{}, nil
 }
 
-func (a *app) Router(r torque.Router) {
-	r.HandleModule("/page", &page{})
+func (TestTemplateView) TemplateText() string { return "<div>Hello from TemplateText!</div>" }
+
+/** TestTemplateExplicitRenderer **/
+
+type TestTemplateExplicitRendererModule struct{}
+
+var _ interface {
+	torque.Loader[TestTemplateView]
+} = &TestTemplateExplicitRendererModule{}
+
+func (*TestTemplateExplicitRendererModule) Load(req *http.Request) (TestTemplateView, error) {
+	return TestTemplateView{}, nil
 }
 
-//
-//func (a *app) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-//	wr.Write([]byte("Hello World"))
-//	wr.WriteHeader(http.StatusOK)
-//	return nil
-//}
-
-type page struct{}
-
-func (a *page) Router(r torque.Router) {
-	r.HandleModule("/component", &component{})
+func (*TestTemplateExplicitRendererModule) Render(wr http.ResponseWriter, req *http.Request, loaderData TestTemplateView) error {
+	wr.Write([]byte("<div>Hello from Render!</div>"))
+	wr.WriteHeader(http.StatusOK)
+	return nil
 }
 
-func (p *page) Load(req *http.Request) (any, error) {
+/** TestRenderer **/
+
+type TestRendererModule struct{}
+
+func (p *TestRendererModule) Load(req *http.Request) (any, error) {
 	return nil, nil
 }
 
-func (p *page) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-	wr.Write([]byte("Hello World"))
+func (p *TestRendererModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
+	wr.Write([]byte("<div>Hello from Render!</div>"))
 	wr.WriteHeader(http.StatusOK)
 	return nil
 }
 
-type component struct{}
+/** TestLoader **/
 
-func (p *component) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-	wr.Write([]byte("Component!"))
-	wr.WriteHeader(http.StatusOK)
-	return nil
+type TestLoaderModule struct{}
+
+func (p *TestLoaderModule) Load(req *http.Request) (any, error) {
+	return struct {
+		Hidden  string `json:"-"`
+		Message string `json:"message"`
+	}{
+		Hidden:  "Bad!",
+		Message: "Hello in JSON!",
+	}, nil
 }
 
 func Test_Torque(t *testing.T) {
-	h := torque.New(&app{})
-	req := httptest.NewRequest("GET", "/page/component", nil)
-	wr := httptest.NewRecorder()
+	testTable := map[string]struct {
+		SetupFunc      func(t *testing.T) torque.Controller[any]
+		RequestHeaders map[string]string
 
-	h.ServeHTTP(wr, req)
-	res := wr.Result()
-	defer res.Body.Close()
-
-	byt, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Fatal(err)
+		ExpectStatusCode   int
+		ExpectBodyContains []string
+	}{
+		"Loader -> TemplateProvider": {
+			SetupFunc: func(t *testing.T) torque.Controller[any] {
+				h, err := torque.NewController[TestTemplateView](&TestTemplateModule{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return h
+			},
+			ExpectStatusCode: http.StatusOK,
+			ExpectBodyContains: []string{
+				"<div>Hello from TemplateText!</div>",
+			},
+		},
+		"Loader -> Renderer": {
+			SetupFunc: func(t *testing.T) torque.Controller[any] {
+				h, err := torque.NewController[any](&TestRendererModule{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return h
+			},
+			ExpectStatusCode: http.StatusOK,
+			ExpectBodyContains: []string{
+				"<div>Hello from Render!</div>",
+			},
+		},
+		"Loader -> Renderer > TemplateProvider": {
+			SetupFunc: func(t *testing.T) torque.Controller[any] {
+				h, err := torque.NewController[TestTemplateView](&TestTemplateExplicitRendererModule{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return h
+			},
+			ExpectStatusCode: http.StatusOK,
+			ExpectBodyContains: []string{
+				"<div>Hello from Render!</div>",
+			},
+		},
+		"Loader -> JSON": {
+			SetupFunc: func(t *testing.T) torque.Controller[any] {
+				h, err := torque.NewController[any](&TestLoaderModule{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return h
+			},
+			RequestHeaders: map[string]string{
+				"Accept": "application/json",
+			},
+			ExpectStatusCode: http.StatusOK,
+			ExpectBodyContains: []string{
+				`{"message":"Hello in JSON!"}`,
+			},
+		},
 	}
 
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("expected status code %d, got %d", http.StatusOK, res.StatusCode)
-	}
+	for name, testCase := range testTable {
+		t.Run(name, func(t *testing.T) {
+			h := testCase.SetupFunc(t)
 
-	if string(byt) != "Component!" {
-		t.Fatalf("expected response body %q, got %q", "Component!", string(byt))
+			req := httptest.NewRequest("GET", "/", nil)
+			for key, val := range testCase.RequestHeaders {
+				req.Header.Set(key, val)
+			}
+
+			wr := httptest.NewRecorder()
+
+			h.ServeHTTP(wr, req)
+			res := wr.Result()
+			defer res.Body.Close()
+
+			byt, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if res.StatusCode != testCase.ExpectStatusCode {
+				t.Fatalf("expected status code %d, got %d", testCase.ExpectStatusCode, res.StatusCode)
+			}
+
+			for _, text := range testCase.ExpectBodyContains {
+				if !strings.Contains(string(byt), text) {
+					t.Fatalf("expected response body %q, got %q", testCase.ExpectBodyContains, string(byt))
+				}
+			}
+		})
 	}
 }

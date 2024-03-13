@@ -33,7 +33,7 @@ func HasFormData(req *http.Request) bool {
 
 // DecodeFormAction can be used to retrieve the action parameter from a form.
 // This is useful for determining which form was submitted when multiple forms
-// are present on a page. Usually, the 'action' value is attached to the submit
+// are present on a TestRendererModule. Usually, the 'action' value is attached to the submit
 // button.
 func DecodeFormAction(req *http.Request) string {
 	if req.Form == nil {

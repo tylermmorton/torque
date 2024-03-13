@@ -26,10 +26,12 @@ func RedirectS(rm interface{}, url string, code int) http.HandlerFunc {
 // boundary.
 //
 // A good use case for this is when a form submission fails validation one
-// can rerender the page with an error message passed through the context.
+// can rerender the TestRendererModule with an error message passed through the context.
+//
+// TODO(v2) fix and test
 func RetryWithError(rm interface {
-	Loader
-	Renderer
+	Loader[ViewModel]
+	Renderer[ViewModel]
 }, err error) http.HandlerFunc {
 	return func(wr http.ResponseWriter, req *http.Request) {
 		log.Printf("[RetryWithError] %s: %v", req.URL, err)

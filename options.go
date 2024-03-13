@@ -7,10 +7,10 @@ const (
 	ModeProduction  Mode = "production"
 )
 
-type Option func(h *moduleHandler)
-
-func WithMode(mode Mode) Option {
-	return func(h *moduleHandler) {
-		h.mode = mode
-	}
-}
+//type Option func(h *controllerImpl[T])
+//
+//func WithMode(mode Mode) Option {
+//	return func(h *controllerImpl[T]) {
+//		h.mode = mode
+//	}
+//}

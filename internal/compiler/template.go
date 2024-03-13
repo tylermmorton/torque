@@ -11,7 +11,7 @@ type TemplateProvider interface {
 	TemplateText() string
 }
 
-type Template[T TemplateProvider] interface {
+type Template[T any] interface {
 	// Render can be used to execute the internal template.
 	Render(w io.Writer, data T, opts ...RenderOption) error
 	// RenderToChan can be used to execute the internal template and write the result to a channel.
@@ -21,7 +21,7 @@ type Template[T TemplateProvider] interface {
 }
 
 // managedTemplate represents a loaded and compiled tmpl file
-type managedTemplate[T TemplateProvider] struct {
+type managedTemplate[T any] struct {
 	// mu is the mutex used to write to the underlying template
 	mu *sync.RWMutex
 	// template is the compiled Go template

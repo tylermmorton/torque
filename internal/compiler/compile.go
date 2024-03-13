@@ -103,7 +103,7 @@ func compile(tp TemplateProvider, opts ParseOptions, analyzers ...Analyzer) (*te
 // Compile also spawns a watcher routine. If the given TemplateProvider or any
 // nested templates within implement TemplateWatcher, they can send signals over
 // the given channel when it is time for the templateProvider to be recompiled.
-func Compile[T TemplateProvider](tp T, opts ...CompilerOption) (Template[T], error) {
+func Compile[T any](tp TemplateProvider, opts ...CompilerOption) (Template[T], error) {
 	var (
 		c = &CompilerOptions{
 			analyzers: builtinAnalyzers,
@@ -147,8 +147,8 @@ func Compile[T TemplateProvider](tp T, opts ...CompilerOption) (Template[T], err
 	return m, nil
 }
 
-func MustCompile[T TemplateProvider](p T, opts ...CompilerOption) Template[T] {
-	tmpl, err := Compile(p, opts...)
+func MustCompile[T any](p TemplateProvider, opts ...CompilerOption) Template[T] {
+	tmpl, err := Compile[T](p, opts...)
 	if err != nil {
 		panic(err)
 	}

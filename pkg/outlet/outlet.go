@@ -3,6 +3,7 @@ package outlet
 import (
 	"embed"
 	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/pkg/templates/html"
 	"net/http"
 )
 
@@ -15,8 +16,8 @@ type page struct{}
 //
 //tmpl:bind page.tmpl.html --mode=embed
 type PageView struct {
-	//html.Page `template:"page" json:"-"`
-	Title string
+	html.Page `template:",root" json:"-"`
+	Title     string
 }
 
 // Templates implements torque.ViewModel
@@ -25,11 +26,11 @@ func (*PageView) Templates() embed.FS {
 }
 
 var _ interface {
-	torque.Loader
+	torque.Loader[PageView]
 } = &page{}
 
-func (p *page) Load(req *http.Request) (torque.ViewModel, error) {
-	return &PageView{
+func (p *page) Load(req *http.Request) (PageView, error) {
+	return PageView{
 		//Page: html.Page{Title: "Hello, World!"},
 		Title: "Hello, World!",
 	}, nil

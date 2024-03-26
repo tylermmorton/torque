@@ -15,7 +15,6 @@ func RouteParam(req *http.Request, name string) string {
 type Router interface {
 	chi.Router
 
-	HandleModule(pattern string, rm interface{}) // TODO(v2) add generics
 	HandleFileSystem(pattern string, fs fs.FS)
 }
 
@@ -26,6 +25,19 @@ type router struct {
 func createRouter() Router {
 	return &router{
 		Router: chi.NewRouter(),
+	}
+}
+
+func (r *router) Handle(pattern string, h http.Handler) {
+	if c, ok := h.(OutletProvider); ok {
+		//r.Router.HandleFunc(pattern, func(wr http.ResponseWriter, req *http.Request) {
+		//	// clone using the same context.
+		//	creq := req.Clone(req.Context())
+		//
+		//})
+		log.Printf("%+v", c)
+	} else {
+		r.Router.Handle(pattern, h)
 	}
 }
 

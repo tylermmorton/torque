@@ -49,6 +49,14 @@ func NewController[T ViewModel](modules ...HandlerModule) (Controller[T], error)
 	return ctl, nil
 }
 
+func MustNewController[T ViewModel](modules ...HandlerModule) Controller[T] {
+	ctl, err := NewController[T](modules...)
+	if err != nil {
+		panic(err)
+	}
+	return wrapOutletProvider[T](ctl)
+}
+
 func createControllerImpl[T ViewModel]() *controllerImpl[T] {
 	h := &controllerImpl[T]{
 		module:  nil,
@@ -75,7 +83,7 @@ func assertImplementations[T ViewModel](ctl *controllerImpl[T], module HandlerMo
 	var (
 		// vm is the zero value of the generic constraint that
 		// can be used in type assertions
-		vm interface{} = *new(T)
+		vm interface{} = new(T)
 	)
 
 	if loader, ok := module.(Loader[T]); ok {

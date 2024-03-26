@@ -71,6 +71,29 @@ func (p *TestLoaderModule) Load(req *http.Request) (any, error) {
 	}, nil
 }
 
+/** TestRouter **/
+
+type TestOutletModule struct{}
+type TestOutletViewModel struct{}
+
+func (*TestOutletViewModel) TemplateText() string {
+	return "{{ outlet }}"
+}
+
+func (p *TestOutletModule) Load(req *http.Request) (any, error) {
+	return nil, nil
+}
+
+func (p *TestOutletModule) Router(r torque.Router) {
+	r.Handle("/child", torque.MustNewController[any](&TestOutletChildModule{}))
+}
+
+type TestOutletChildModule struct{}
+
+func (p *TestOutletChildModule) Load(req *http.Request) (any, error) {
+	return nil, nil
+}
+
 func Test_Torque(t *testing.T) {
 	testTable := map[string]struct {
 		SetupFunc      func(t *testing.T) torque.Controller[any]
@@ -132,6 +155,19 @@ func Test_Torque(t *testing.T) {
 			ExpectStatusCode: http.StatusOK,
 			ExpectBodyContains: []string{
 				`{"message":"Hello in JSON!"}`,
+			},
+		},
+		"Renderer -> Outlets": {
+			SetupFunc: func(t *testing.T) torque.Controller[any] {
+				h, err := torque.NewController[TestOutletViewModel](&TestOutletModule{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return h
+			},
+			ExpectStatusCode: http.StatusOK,
+			ExpectBodyContains: []string{
+				"child",
 			},
 		},
 	}

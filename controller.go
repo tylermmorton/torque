@@ -54,17 +54,17 @@ func MustNewController[T ViewModel](modules ...HandlerModule) Controller[T] {
 	if err != nil {
 		panic(err)
 	}
-	return wrapOutletProvider[T](ctl)
+	return ctl
 }
 
 func createControllerImpl[T ViewModel]() *controllerImpl[T] {
 	h := &controllerImpl[T]{
 		module:  nil,
-		router:  createRouter(),
 		encoder: schema.NewEncoder(),
 		decoder: schema.NewDecoder(),
 		mode:    ModeDevelopment,
 
+		router:        nil,
 		loader:        nil,
 		action:        nil,
 		renderer:      nil,
@@ -77,6 +77,15 @@ func createControllerImpl[T ViewModel]() *controllerImpl[T] {
 	h.decoder.SetAliasTag("json")
 
 	return h
+}
+
+// ServeHTTP implements the http.Handler interface
+func (ctl *controllerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+	if ctl.router != nil { // if controller is a RouterProvider
+		ctl.router.ServeHTTP(wr, req)
+	} else {
+		handleRequest(ctl, wr, req)
+	}
 }
 
 func assertImplementations[T ViewModel](ctl *controllerImpl[T], module HandlerModule) (err error) {
@@ -116,8 +125,8 @@ func assertImplementations[T ViewModel](ctl *controllerImpl[T], module HandlerMo
 		ctl.panicBoundary = panicBoundary
 	}
 
-	if routerProvider, ok := module.(RouterProvider); ok {
-		routerProvider.Router(ctl.router)
+	if _, ok := module.(RouterProvider); ok {
+		createNestedRouter[T](ctl, module)
 	}
 
 	return nil

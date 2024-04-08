@@ -13,7 +13,7 @@ var (
 	ErrNotImplemented = errors.New("method not implemented for route")
 )
 
-func (ctl *controllerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+func handleRequest[T ViewModel](ctl *controllerImpl[T], wr http.ResponseWriter, req *http.Request) {
 	// attach the decoder to the request context so it can be used
 	// by handlers in the request stack
 	req = req.WithContext(withDecoder(req.Context(), ctl.decoder))

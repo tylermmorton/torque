@@ -2,13 +2,13 @@ package torque
 
 import (
 	"github.com/tylermmorton/torque/internal/compiler"
+	"html/template"
 	"net/http"
 )
 
 type templateRenderer[T ViewModel] struct {
-	outlet bool
-	offset int
-	length int
+	HasOutlet     bool
+	OutletContent template.HTML
 
 	renderFn func(wr http.ResponseWriter, req *http.Request, vm T) error
 }
@@ -20,7 +20,7 @@ func (t templateRenderer[T]) Render(wr http.ResponseWriter, req *http.Request, v
 func createTemplateRenderer[T ViewModel](t compiler.TemplateProvider) (*templateRenderer[T], error) {
 	r := &templateRenderer[T]{}
 
-	template, err := compiler.Compile[T](
+	tmpl, err := compiler.Compile[T](
 		t,
 		compiler.UseAnalyzers(outletAnalyzer(r)),
 	)
@@ -29,7 +29,7 @@ func createTemplateRenderer[T ViewModel](t compiler.TemplateProvider) (*template
 	}
 
 	r.renderFn = func(wr http.ResponseWriter, req *http.Request, vm T) error {
-		return template.Render(wr, vm)
+		return tmpl.Render(wr, vm)
 	}
 
 	return r, nil

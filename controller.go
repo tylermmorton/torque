@@ -6,13 +6,19 @@ import (
 	"net/http"
 )
 
+// controller is an interface that exposes data on controllerImpl without
+// using generics.
+type controller interface {
+	Module() HandlerModule
+	Router() Router
+}
+
 type Controller[T ViewModel] interface {
 	http.Handler
 }
 
 type controllerImpl[T ViewModel] struct {
-	module  interface{}
-	router  Router
+	module  HandlerModule
 	encoder *schema.Encoder
 	decoder *schema.Decoder
 
@@ -22,44 +28,43 @@ type controllerImpl[T ViewModel] struct {
 
 	// api interfaces -- these are 'hot path' and pointers
 	// are used instead of a type assertion for each request
-	action   Action
 	loader   Loader[T]
 	renderer Renderer[T]
 
 	subscribers int
-	eventSource EventSource
 
+	action        Action
+	router        Router
+	eventSource   EventSource
 	errorBoundary ErrorBoundary
 	panicBoundary PanicBoundary
 }
 
-func NewController[T ViewModel](modules ...HandlerModule) (Controller[T], error) {
+func NewController[T ViewModel](module HandlerModule) (Controller[T], error) {
 	var (
 		err error
-		ctl = createControllerImpl[T]()
+		ctl = createControllerImpl[T](module)
 	)
 
-	for _, module := range modules {
-		err = assertImplementations(ctl, module)
-		if err != nil {
-			return nil, err
-		}
+	err = assertImplementations(ctl, module)
+	if err != nil {
+		return nil, err
 	}
 
 	return ctl, nil
 }
 
-func MustNewController[T ViewModel](modules ...HandlerModule) Controller[T] {
-	ctl, err := NewController[T](modules...)
+func MustNewController[T ViewModel](module HandlerModule) Controller[T] {
+	ctl, err := NewController[T](module)
 	if err != nil {
 		panic(err)
 	}
 	return ctl
 }
 
-func createControllerImpl[T ViewModel]() *controllerImpl[T] {
+func createControllerImpl[T ViewModel](module HandlerModule) *controllerImpl[T] {
 	h := &controllerImpl[T]{
-		module:  nil,
+		module:  module,
 		encoder: schema.NewEncoder(),
 		decoder: schema.NewDecoder(),
 		mode:    ModeDevelopment,
@@ -79,13 +84,12 @@ func createControllerImpl[T ViewModel]() *controllerImpl[T] {
 	return h
 }
 
-// ServeHTTP implements the http.Handler interface
-func (ctl *controllerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
-	if ctl.router != nil { // if controller is a RouterProvider
-		ctl.router.ServeHTTP(wr, req)
-	} else {
-		handleRequest(ctl, wr, req)
-	}
+func (ctl *controllerImpl[T]) Module() HandlerModule {
+	return ctl.module
+}
+
+func (ctl *controllerImpl[T]) Router() Router {
+	return ctl.router
 }
 
 func assertImplementations[T ViewModel](ctl *controllerImpl[T], module HandlerModule) (err error) {

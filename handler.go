@@ -13,6 +13,15 @@ var (
 	ErrNotImplemented = errors.New("method not implemented for route")
 )
 
+// ServeHTTP implements the http.Handler interface
+func (ctl *controllerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+	if ctl.router != nil { // if controller is a RouterProvider
+		ctl.router.ServeHTTP(wr, req)
+	} else {
+		handleRequest(ctl, wr, req)
+	}
+}
+
 func handleRequest[T ViewModel](ctl *controllerImpl[T], wr http.ResponseWriter, req *http.Request) {
 	// attach the decoder to the request context so it can be used
 	// by handlers in the request stack

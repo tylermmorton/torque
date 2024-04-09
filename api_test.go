@@ -77,7 +77,7 @@ type TestOutletModule struct{}
 type TestOutletViewModel struct{}
 
 func (*TestOutletViewModel) TemplateText() string {
-	return "<wrapper>{{ outlet }}</wrapper>"
+	return "<html>{{ outlet }}</html>"
 }
 
 func (p *TestOutletModule) Load(req *http.Request) (any, error) {
@@ -94,10 +94,26 @@ func (p *TestOutletChildModule) Load(req *http.Request) (any, error) {
 	return nil, nil
 }
 
+func (p *TestOutletChildModule) Router(r torque.Router) {
+	r.Handle("/inner", torque.MustNewController[TestOutletInnerChildViewModel](&TestOutletInnerChildModule{}))
+}
+
 type TestOutletChildViewModel struct{}
 
 func (*TestOutletChildViewModel) TemplateText() string {
-	return "<span>Hello world!</span>"
+	return "<body>{{ outlet }}</body>"
+}
+
+type TestOutletInnerChildModule struct{}
+
+func (p *TestOutletInnerChildModule) Load(req *http.Request) (any, error) {
+	return nil, nil
+}
+
+type TestOutletInnerChildViewModel struct{}
+
+func (*TestOutletInnerChildViewModel) TemplateText() string {
+	return "<main>Hello world!</main>"
 }
 
 func Test_Torque(t *testing.T) {
@@ -169,7 +185,7 @@ func Test_Torque(t *testing.T) {
 			},
 		},
 		"Renderer -> Outlets": {
-			Path: "/child",
+			Path: "/child/inner",
 			SetupFunc: func(t *testing.T) torque.Controller[any] {
 				h, err := torque.NewController[TestOutletViewModel](&TestOutletModule{})
 				if err != nil {
@@ -179,7 +195,7 @@ func Test_Torque(t *testing.T) {
 			},
 			ExpectStatusCode: http.StatusOK,
 			ExpectBodyContains: []string{
-				"<wrapper><span>Hello world!</span></wrapper>",
+				"<html><body><main>Hello world!</main></body></html>",
 			},
 		},
 	}
@@ -188,7 +204,7 @@ func Test_Torque(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			h := testCase.SetupFunc(t)
 
-			req := httptest.NewRequest("GET", "/child", nil)
+			req := httptest.NewRequest("GET", testCase.Path, nil)
 			for key, val := range testCase.RequestHeaders {
 				req.Header.Set(key, val)
 			}

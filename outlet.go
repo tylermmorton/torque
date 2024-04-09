@@ -25,6 +25,14 @@ type outletWrapper[T ViewModel] struct {
 	ctl *controllerImpl[T]
 }
 
+func (ow *outletWrapper[T]) Module() HandlerModule {
+	return ow.ctl.module
+}
+
+func (ow *outletWrapper[T]) Router() Router {
+	return ow.ctl.router
+}
+
 func (w *outletWrapper[T]) Outlet() {}
 
 func wrapOutletProvider[T ViewModel](ctl *controllerImpl[T]) *outletWrapper[T] {

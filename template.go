@@ -2,15 +2,12 @@ package torque
 
 import (
 	"github.com/tylermmorton/torque/internal/compiler"
-	"html/template"
 	"net/http"
 )
 
 type templateRenderer[T ViewModel] struct {
-	HasOutlet     bool
-	OutletContent template.HTML
-
-	renderFn func(wr http.ResponseWriter, req *http.Request, vm T) error
+	HasOutlet bool
+	renderFn  func(wr http.ResponseWriter, req *http.Request, vm T) error
 }
 
 func (t templateRenderer[T]) Render(wr http.ResponseWriter, req *http.Request, vm T) error {

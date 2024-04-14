@@ -3,7 +3,6 @@ package torque
 import (
 	"bytes"
 	"github.com/go-chi/chi/v5"
-	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
@@ -20,32 +19,26 @@ type Router interface {
 	HandleFileSystem(pattern string, fs fs.FS)
 }
 
-type router struct {
+type routeRecorder struct {
 	chi.Router
-	RouteMap   map[string]http.Handler
-	Controller interface{}
+
+	Handler IHandler
 }
 
-func createNestedRouter[T ViewModel](ctl *controllerImpl[T], module HandlerModule) {
-	r := &router{
-		Router:     chi.NewRouter(),
-		Controller: ctl,
-		RouteMap:   make(map[string]http.Handler),
-	}
-	ctl.router = r
-
-	if renderer, ok := ctl.renderer.(*templateRenderer[T]); ok && renderer.HasOutlet {
-		r.Controller = wrapOutletProvider[T](ctl)
+func createRouter[T ViewModel](h *handlerImpl[T], module HandlerModule) (chi.Router, error) {
+	rr := &routeRecorder{
+		Router:  chi.NewRouter(),
+		Handler: h,
 	}
 
-	if routerProvider, ok := module.(RouterProvider); ok {
-		routerProvider.Router(r)
+	if rp, ok := module.(RouterProvider); ok {
+		rp.Router(rr)
 	}
 
-}
+	r := buildRouter(nil, "/", h)
+	logRoutes("", r.Routes())
 
-func createRouter() {
-
+	return r, nil
 }
 
 type respRecorder struct {
@@ -71,51 +64,19 @@ func (rr *respRecorder) Write(byt []byte) (int, error) {
 
 func (rr *respRecorder) WriteHeader(statusCode int) { rr.Status = statusCode }
 
-func (r *router) Handle(pattern string, h http.Handler) {
-	// Right now a RouteModule is registering some child routes
-	// This if check asks: Is the http.Handler we are registering to this route a controllerImpl?
-	// If so, also check if that controller registers its own routes
-	// If everything checks out, merge the child routes into the parent router
-	if child, ok := h.(controller); ok {
-		if parent, ok := r.Controller.(controller); ok {
-			if rp, ok := child.Module().(RouterProvider); ok {
-				parent.Router().Route(pattern, func(r chi.Router) {
-					rp.Router(&router{
-						Router:     r,
-						Controller: child,
-					})
-				})
-			}
-		}
-		//if rp, ok := ctl.Module().(RouterProvider); ok {
-		//	r.Route(pattern, func(r chi.Router) {
-		//		rp.Router(&router{
-		//			Router:     r,
-		//			Controller: ctl,
-		//		})
-		//	})
-		//}
+func (r *routeRecorder) Handle(pattern string, h http.Handler) {
+	var parent = r.Handler
+
+	if child, ok := h.(IHandler); ok {
+		child.SetPath(pattern)
+		parent.AddChild(child)
 	}
 
-	if outlet, ok := (r.Controller).(OutletProvider); ok {
-		r.Router.HandleFunc(pattern, func(wr http.ResponseWriter, req *http.Request) {
-			recorder := newResponseRecorder()
-			clonedReq := req.Clone(req.Context())
-			h.ServeHTTP(recorder, clonedReq)
-
-			//switch recorder.HeaderMap.Get("Content-Type") {
-			//case "text/html":
-			outlet.ServeNested(template.HTML(recorder.Body.String()), wr, req)
-			return
-			//}
-		})
-	} else {
-		// call handle on the internal chi router
-		r.Router.Handle(pattern, h)
-	}
+	// call handle on the internal chi routerImpl
+	r.Router.Handle(pattern, h)
 }
 
-func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
+func (r *routeRecorder) HandleFileSystem(pattern string, fs fs.FS) {
 	r.Route(pattern, func(r chi.Router) {
 		r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
 			log.Printf("[FileSystem] %s", req.URL.Path)

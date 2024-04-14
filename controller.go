@@ -1,24 +1,41 @@
 package torque
 
 import (
+	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
 	"github.com/tylermmorton/torque/internal/compiler"
+	"log"
 	"net/http"
+	"path/filepath"
 )
-
-// controller is an interface that exposes data on controllerImpl without
-// using generics.
-type controller interface {
-	Module() HandlerModule
-	Router() Router
-}
 
 type Controller[T ViewModel] interface {
 	http.Handler
 }
 
-type controllerImpl[T ViewModel] struct {
-	module  HandlerModule
+type IHandler interface {
+	http.Handler
+	Serve(wr http.ResponseWriter, req *http.Request)
+
+	SetPath(string)
+	GetPath() string
+
+	SetParent(IHandler)
+	AddChild(IHandler)
+	Children() []IHandler
+
+	HasOutlet() bool
+}
+
+type handlerImpl[T ViewModel] struct {
+	// the interface this handler is based from
+	module HandlerModule
+
+	path     string
+	parent   IHandler
+	children []IHandler
+
 	encoder *schema.Encoder
 	decoder *schema.Decoder
 
@@ -34,7 +51,7 @@ type controllerImpl[T ViewModel] struct {
 	subscribers int
 
 	action        Action
-	router        Router
+	router        chi.Router
 	eventSource   EventSource
 	errorBoundary ErrorBoundary
 	panicBoundary PanicBoundary
@@ -43,15 +60,43 @@ type controllerImpl[T ViewModel] struct {
 func NewController[T ViewModel](module HandlerModule) (Controller[T], error) {
 	var (
 		err error
-		ctl = createControllerImpl[T](module)
+		h   = createHandlerImpl[T](module)
 	)
 
-	err = assertImplementations(ctl, module)
+	err = assertImplementations(h, module)
 	if err != nil {
 		return nil, err
 	}
 
-	return ctl, nil
+	return h, nil
+}
+
+func logRoutes(prefix string, r []chi.Route) {
+	for _, route := range r {
+		pattern := fmt.Sprintf("%s%s", prefix, route.Pattern)
+		log.Printf("Route: %s\n", pattern)
+		if route.SubRoutes != nil {
+			logRoutes(pattern, route.SubRoutes.Routes())
+		}
+	}
+}
+
+func buildRouter(r chi.Router, path string, h IHandler) chi.Router {
+	if r == nil {
+		r = chi.NewRouter()
+	}
+
+	for _, child := range h.Children() {
+		var childPath = filepath.Join(path + child.GetPath())
+		r.Handle(childPath, child)
+
+		if len(child.Children()) != 0 {
+			r = buildRouter(r, childPath, child)
+		}
+	}
+	r.Handle("/", h)
+
+	return r
 }
 
 func MustNewController[T ViewModel](module HandlerModule) Controller[T] {
@@ -62,12 +107,15 @@ func MustNewController[T ViewModel](module HandlerModule) Controller[T] {
 	return ctl
 }
 
-func createControllerImpl[T ViewModel](module HandlerModule) *controllerImpl[T] {
-	h := &controllerImpl[T]{
-		module:  module,
-		encoder: schema.NewEncoder(),
-		decoder: schema.NewDecoder(),
-		mode:    ModeDevelopment,
+func createHandlerImpl[T ViewModel](module HandlerModule) *handlerImpl[T] {
+	h := &handlerImpl[T]{
+		module:   module,
+		encoder:  schema.NewEncoder(),
+		decoder:  schema.NewDecoder(),
+		mode:     ModeDevelopment,
+		path:     "/",
+		parent:   nil,
+		children: make([]IHandler, 0),
 
 		router:        nil,
 		loader:        nil,
@@ -84,15 +132,35 @@ func createControllerImpl[T ViewModel](module HandlerModule) *controllerImpl[T] 
 	return h
 }
 
-func (ctl *controllerImpl[T]) Module() HandlerModule {
-	return ctl.module
+func (h *handlerImpl[T]) GetPath() string {
+	return h.path
 }
 
-func (ctl *controllerImpl[T]) Router() Router {
-	return ctl.router
+func (h *handlerImpl[T]) SetPath(pattern string) {
+	h.path = pattern
 }
 
-func assertImplementations[T ViewModel](ctl *controllerImpl[T], module HandlerModule) (err error) {
+func (h *handlerImpl[T]) SetParent(parent IHandler) {
+	h.parent = parent
+}
+
+func (h *handlerImpl[T]) AddChild(child IHandler) {
+	h.children = append(h.children, child)
+	child.SetParent(h)
+}
+
+func (h *handlerImpl[T]) Children() []IHandler {
+	return h.children
+}
+
+func (h *handlerImpl[T]) HasOutlet() bool {
+	if r, ok := h.renderer.(*templateRenderer[T]); ok {
+		return r.HasOutlet
+	}
+	return false
+}
+
+func assertImplementations[T ViewModel](h *handlerImpl[T], module HandlerModule) (err error) {
 	var (
 		// vm is the zero value of the generic constraint that
 		// can be used in type assertions
@@ -100,37 +168,40 @@ func assertImplementations[T ViewModel](ctl *controllerImpl[T], module HandlerMo
 	)
 
 	if loader, ok := module.(Loader[T]); ok {
-		ctl.loader = loader
+		h.loader = loader
 	}
 
 	// explicit Renderer implementations take precedence
 	if renderer, ok := module.(Renderer[T]); ok {
-		ctl.renderer = renderer
+		h.renderer = renderer
 	} else if tp, ok := vm.(compiler.TemplateProvider); ok {
-		ctl.renderer, err = createTemplateRenderer[T](tp)
+		h.renderer, err = createTemplateRenderer[T](tp)
 		if err != nil {
 			return err
 		}
 	}
 
 	if action, ok := module.(Action); ok {
-		ctl.action = action
+		h.action = action
 	}
 
 	if eventSource, ok := module.(EventSource); ok {
-		ctl.eventSource = eventSource
+		h.eventSource = eventSource
 	}
 
 	if errorBoundary, ok := module.(ErrorBoundary); ok {
-		ctl.errorBoundary = errorBoundary
+		h.errorBoundary = errorBoundary
 	}
 
 	if panicBoundary, ok := module.(PanicBoundary); ok {
-		ctl.panicBoundary = panicBoundary
+		h.panicBoundary = panicBoundary
 	}
 
 	if _, ok := module.(RouterProvider); ok {
-		createNestedRouter[T](ctl, module)
+		h.router, err = createRouter[T](h, module)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

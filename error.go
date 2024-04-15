@@ -20,8 +20,10 @@ type ErrorResponse struct {
 }
 
 func writeErrorResponse(wr http.ResponseWriter, req *http.Request, err error, stack []byte) error {
+	var mode = UseMode(req.Context())
+
 	// in development mode, write detailed error reports to the response
-	if ModeFromContext(req.Context()) == ModeDevelopment {
+	if mode == ModeDevelopment {
 		defer wr.WriteHeader(http.StatusInternalServerError)
 
 		var res = ErrorResponse{

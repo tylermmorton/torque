@@ -19,11 +19,13 @@ func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	if len(h.children) != 0 { // if controller is a RouterProvider
 		h.router.ServeHTTP(wr, req)
 	} else {
-		h.Serve(wr, req)
+		h.serveInternal(wr, req)
 	}
 }
 
-func (h *handlerImpl[T]) Serve(wr http.ResponseWriter, req *http.Request) {
+// serveInternal is the main entrypoint for handling HTTP requests made to a route module
+// and is designed as a layer of indirection to be called recursively
+func (h *handlerImpl[T]) serveInternal(wr http.ResponseWriter, req *http.Request) {
 	if h.parent != nil && h.parent.HasOutlet() {
 		h.handleOutlet(wr, req)
 		return
@@ -32,10 +34,12 @@ func (h *handlerImpl[T]) Serve(wr http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// handleRequest is the core handler logic for torque. It is responsible for handling incoming
+// HTTP requests and applying the appropriate API methods.
 func handleRequest[T ViewModel](h *handlerImpl[T], wr http.ResponseWriter, req *http.Request) {
 	// attach the decoder to the request context so it can be used
 	// by handlers in the request stack
-	req = req.WithContext(withDecoder(req.Context(), h.decoder))
+	*req = *req.WithContext(withDecoder(req.Context(), h.decoder))
 
 	// defer a panic recoverer and pass panics to the PanicBoundary
 	defer func() {
@@ -115,7 +119,7 @@ func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request,
 	if req.Header.Get("Accept") == "application/json" {
 		log.Printf("[JSON] %s\n", req.URL)
 		encoder := json.NewEncoder(wr)
-		if ModeFromContext(req.Context()) == ModeDevelopment {
+		if UseMode(req.Context()) == ModeDevelopment {
 			encoder.SetIndent("", "  ")
 		}
 		return encoder.Encode(vm)
@@ -211,19 +215,22 @@ func (h *handlerImpl[T]) handlePanic(wr http.ResponseWriter, req *http.Request, 
 }
 
 func (h *handlerImpl[T]) handleOutlet(wr http.ResponseWriter, req *http.Request) {
-	parentResp := newResponseRecorder()
-	clonedReq := req.Clone(req.Context())
-	h.parent.Serve(parentResp, clonedReq)
+	// the context will be pulled later from the request object
+	cloneReq := req.Clone(req.Context())
 
-	childResp := newResponseRecorder()
-	handleRequest(h, childResp, req)
+	// child before parent, because it can set additional context
+	childRes := newResponseRecorder()
+	handleRequest(h, childRes, req)
 
-	t, err := template.New("outlet").Parse(parentResp.Body.String())
+	parentRes := newResponseRecorder()
+	h.parent.serveInternal(parentRes, cloneReq.WithContext(req.Context()))
+
+	t, err := template.New("outlet").Parse(parentRes.Body.String())
 	if err != nil {
 		panic(err)
 	}
 
-	err = t.Execute(wr, template.HTML(childResp.Body.String()))
+	err = t.Execute(wr, template.HTML(childRes.Body.String()))
 	if err != nil {
 		panic(err)
 	}

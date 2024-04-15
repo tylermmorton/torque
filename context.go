@@ -3,21 +3,30 @@ package torque
 import (
 	"context"
 	"github.com/gorilla/schema"
+	"net/http"
 )
 
 type key string
 
 const (
+	titleKey   key = "title"
 	errorKey   key = "error"
 	decoderKey key = "decoder"
 	modeKey    key = "mode"
+)
+
+type Mode string
+
+const (
+	ModeDevelopment Mode = "development"
+	ModeProduction  Mode = "production"
 )
 
 func withError(ctx context.Context, err error) context.Context {
 	return context.WithValue(ctx, errorKey, err)
 }
 
-func ErrorFromContext(ctx context.Context) error {
+func UseError(ctx context.Context) error {
 	if err, ok := ctx.Value(errorKey).(error); ok {
 		return err
 	}
@@ -28,20 +37,44 @@ func withDecoder(ctx context.Context, d *schema.Decoder) context.Context {
 	return context.WithValue(ctx, decoderKey, d)
 }
 
-func DecoderFromContext(ctx context.Context) *schema.Decoder {
+func UseDecoder(ctx context.Context) *schema.Decoder {
 	if d, ok := ctx.Value(decoderKey).(*schema.Decoder); ok {
 		return d
 	}
 	return nil
 }
 
-func withMode(ctx context.Context, mode Mode) context.Context {
+func WithMode(ctx context.Context, mode Mode) context.Context {
 	return context.WithValue(ctx, modeKey, mode)
 }
 
-func ModeFromContext(ctx context.Context) Mode {
+func UseMode(ctx context.Context) Mode {
 	if mode, ok := ctx.Value(modeKey).(Mode); ok {
 		return mode
 	}
 	return ModeProduction
+}
+
+// WithTitle sets the page title in the request context.
+func WithTitle(req *http.Request, title string) {
+	*req = *req.WithContext(context.WithValue(req.Context(), titleKey, title))
+}
+
+// UseTitle returns the page title set in the request context.
+func UseTitle(req *http.Request) string {
+	if title, ok := req.Context().Value(titleKey).(string); ok {
+		return title
+	}
+	return ""
+}
+
+func With[T any](req *http.Request, key any, value *T) {
+	*req = *req.WithContext(context.WithValue(req.Context(), key, value))
+}
+
+func Use[T any](req *http.Request, key any) *T {
+	if value, ok := req.Context().Value(key).(T); ok {
+		return &value
+	}
+	return nil
 }

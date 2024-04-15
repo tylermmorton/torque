@@ -3,6 +3,8 @@ package torque
 import (
 	"github.com/tylermmorton/torque/internal/compiler"
 	"net/http"
+	"reflect"
+	"text/template/parse"
 )
 
 type templateRenderer[T ViewModel] struct {
@@ -30,4 +32,22 @@ func createTemplateRenderer[T ViewModel](t compiler.TemplateProvider) (*template
 	}
 
 	return r, nil
+}
+
+const outletIdent = "outlet"
+
+func outletAnalyzer[T ViewModel](t *templateRenderer[T]) compiler.Analyzer {
+	return func(h *compiler.AnalysisHelper) compiler.AnalyzerFunc {
+		return func(val reflect.Value, node parse.Node) {
+			switch node := node.(type) {
+			case *parse.IdentifierNode:
+				if node.Ident == outletIdent && t.HasOutlet == true {
+					h.AddError(node, "outlet can only be defined once per template")
+				} else if node.Ident == outletIdent {
+					t.HasOutlet = true
+					h.AddFunc(outletIdent, func() string { return "{{ . }}" })
+				}
+			}
+		}
+	}
 }

@@ -3,7 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/tylermmorton/torque/pkg/plugins/templ"
+	"github.com/tylermmorton/torque/.www/docsite/routes"
 	"io/fs"
 	"log"
 	"net/http"
@@ -11,34 +11,14 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
-	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
 )
-
-//go:generate tmpl bind ./... --outfile=tmpl.gen.go
 
 //go:embed .build/static/*
 var staticAssets embed.FS
 
 //go:embed content/docs/*
 var embeddedContent embed.FS
-
-// docsApp represents the root of the doc site application.
-type docsApp struct {
-	StaticAssets   fs.FS
-	ContentService content.Service
-}
-
-// Render is the handler for the root of the site ... just redirect to getting started
-func (*docsApp) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-	http.Redirect(wr, req, "/getting-started", http.StatusFound)
-	return nil
-}
-
-func (d *docsApp) Router(r torque.Router) {
-	r.HandleModule("/{pageName}", &docs.RouteModule{ContentService: d.ContentService})
-	r.HandleFileSystem("/s", d.StaticAssets)
-}
 
 func main() {
 	err := godotenv.Load()
@@ -56,10 +36,13 @@ func main() {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
-	r := torque.NewViewController(&docsApp{
+	r, err := torque.New[routes.IndexView](&routes.IndexHandlerModule{
 		StaticAssets:   assetsFs,
 		ContentService: contentSvc,
-	}, torque.WithPlugin(&templ.Plugin{}))
+	})
+	if err != nil {
+		log.Fatalf("failed to create controller: %+v", err)
+	}
 
 	var host, port = os.Getenv("HOST_ADDR"), os.Getenv("HOST_PORT")
 	if port == "" {

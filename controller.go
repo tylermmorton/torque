@@ -1,40 +1,21 @@
 package torque
 
 import (
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
 	"github.com/tylermmorton/torque/internal/compiler"
-	"log"
 	"net/http"
-	"path/filepath"
 )
 
-type Controller[T ViewModel] interface {
-	http.Handler
-}
-
-type IHandler interface {
-	http.Handler
-	Serve(wr http.ResponseWriter, req *http.Request)
-
-	SetPath(string)
-	GetPath() string
-
-	SetParent(IHandler)
-	AddChild(IHandler)
-	Children() []IHandler
-
-	HasOutlet() bool
-}
+type Handler http.Handler
 
 type handlerImpl[T ViewModel] struct {
 	// the interface this handler is based from
 	module HandlerModule
 
 	path     string
-	parent   IHandler
-	children []IHandler
+	parent   handlerImplFacade
+	children []handlerImplFacade
 
 	encoder *schema.Encoder
 	decoder *schema.Decoder
@@ -57,10 +38,10 @@ type handlerImpl[T ViewModel] struct {
 	panicBoundary PanicBoundary
 }
 
-func NewController[T ViewModel](module HandlerModule) (Controller[T], error) {
+func New[T ViewModel](module HandlerModule) (Handler, error) {
 	var (
-		err error
 		h   = createHandlerImpl[T](module)
+		err error
 	)
 
 	err = assertImplementations(h, module)
@@ -68,39 +49,15 @@ func NewController[T ViewModel](module HandlerModule) (Controller[T], error) {
 		return nil, err
 	}
 
+	if h.router != nil {
+		logRoutes("/", h.router.Routes())
+	}
+
 	return h, nil
 }
 
-func logRoutes(prefix string, r []chi.Route) {
-	for _, route := range r {
-		pattern := fmt.Sprintf("%s%s", prefix, route.Pattern)
-		log.Printf("Route: %s\n", pattern)
-		if route.SubRoutes != nil {
-			logRoutes(pattern, route.SubRoutes.Routes())
-		}
-	}
-}
-
-func buildRouter(r chi.Router, path string, h IHandler) chi.Router {
-	if r == nil {
-		r = chi.NewRouter()
-	}
-
-	for _, child := range h.Children() {
-		var childPath = filepath.Join(path + child.GetPath())
-		r.Handle(childPath, child)
-
-		if len(child.Children()) != 0 {
-			r = buildRouter(r, childPath, child)
-		}
-	}
-	r.Handle("/", h)
-
-	return r
-}
-
-func MustNewController[T ViewModel](module HandlerModule) Controller[T] {
-	ctl, err := NewController[T](module)
+func MustNew[T ViewModel](module HandlerModule) Handler {
+	ctl, err := New[T](module)
 	if err != nil {
 		panic(err)
 	}
@@ -115,7 +72,7 @@ func createHandlerImpl[T ViewModel](module HandlerModule) *handlerImpl[T] {
 		mode:     ModeDevelopment,
 		path:     "/",
 		parent:   nil,
-		children: make([]IHandler, 0),
+		children: make([]handlerImplFacade, 0),
 
 		router:        nil,
 		loader:        nil,
@@ -130,34 +87,6 @@ func createHandlerImpl[T ViewModel](module HandlerModule) *handlerImpl[T] {
 	h.decoder.SetAliasTag("json")
 
 	return h
-}
-
-func (h *handlerImpl[T]) GetPath() string {
-	return h.path
-}
-
-func (h *handlerImpl[T]) SetPath(pattern string) {
-	h.path = pattern
-}
-
-func (h *handlerImpl[T]) SetParent(parent IHandler) {
-	h.parent = parent
-}
-
-func (h *handlerImpl[T]) AddChild(child IHandler) {
-	h.children = append(h.children, child)
-	child.SetParent(h)
-}
-
-func (h *handlerImpl[T]) Children() []IHandler {
-	return h.children
-}
-
-func (h *handlerImpl[T]) HasOutlet() bool {
-	if r, ok := h.renderer.(*templateRenderer[T]); ok {
-		return r.HasOutlet
-	}
-	return false
 }
 
 func assertImplementations[T ViewModel](h *handlerImpl[T], module HandlerModule) (err error) {
@@ -198,10 +127,7 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], module HandlerModule)
 	}
 
 	if _, ok := module.(RouterProvider); ok {
-		h.router, err = createRouter[T](h, module)
-		if err != nil {
-			return err
-		}
+		h.router = createRouterProvider[T](h, module)
 	}
 
 	return nil

@@ -85,7 +85,7 @@ func (p *TestOutletModule) Load(req *http.Request) (any, error) {
 }
 
 func (p *TestOutletModule) Router(r torque.Router) {
-	r.Handle("/child", torque.MustNewController[TestOutletChildViewModel](&TestOutletChildModule{}))
+	r.Handle("/child", torque.MustNew[TestOutletChildViewModel](&TestOutletChildModule{}))
 }
 
 type TestOutletChildModule struct{}
@@ -95,7 +95,7 @@ func (p *TestOutletChildModule) Load(req *http.Request) (any, error) {
 }
 
 func (p *TestOutletChildModule) Router(r torque.Router) {
-	r.Handle("/inner", torque.MustNewController[TestOutletInnerChildViewModel](&TestOutletInnerChildModule{}))
+	r.Handle("/inner", torque.MustNew[TestOutletInnerChildViewModel](&TestOutletInnerChildModule{}))
 }
 
 type TestOutletChildViewModel struct{}
@@ -119,7 +119,7 @@ func (*TestOutletInnerChildViewModel) TemplateText() string {
 func Test_Torque(t *testing.T) {
 	testTable := map[string]struct {
 		Path           string
-		SetupFunc      func(t *testing.T) torque.Controller[any]
+		SetupFunc      func(t *testing.T) torque.Handler
 		RequestHeaders map[string]string
 
 		ExpectStatusCode   int
@@ -127,8 +127,8 @@ func Test_Torque(t *testing.T) {
 	}{
 		"Loader -> TemplateProvider": {
 			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Controller[any] {
-				h, err := torque.NewController[TestTemplateView](&TestTemplateModule{})
+			SetupFunc: func(t *testing.T) torque.Handler {
+				h, err := torque.New[TestTemplateView](&TestTemplateModule{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -141,8 +141,8 @@ func Test_Torque(t *testing.T) {
 		},
 		"Loader -> Renderer": {
 			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Controller[any] {
-				h, err := torque.NewController[any](&TestRendererModule{})
+			SetupFunc: func(t *testing.T) torque.Handler {
+				h, err := torque.New[any](&TestRendererModule{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -155,8 +155,8 @@ func Test_Torque(t *testing.T) {
 		},
 		"Loader -> Renderer > TemplateProvider": {
 			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Controller[any] {
-				h, err := torque.NewController[TestTemplateView](&TestTemplateExplicitRendererModule{})
+			SetupFunc: func(t *testing.T) torque.Handler {
+				h, err := torque.New[TestTemplateView](&TestTemplateExplicitRendererModule{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -169,8 +169,8 @@ func Test_Torque(t *testing.T) {
 		},
 		"Loader -> JSON": {
 			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Controller[any] {
-				h, err := torque.NewController[any](&TestLoaderModule{})
+			SetupFunc: func(t *testing.T) torque.Handler {
+				h, err := torque.New[any](&TestLoaderModule{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -186,8 +186,8 @@ func Test_Torque(t *testing.T) {
 		},
 		"Renderer -> Outlets": {
 			Path: "/child/inner",
-			SetupFunc: func(t *testing.T) torque.Controller[any] {
-				h, err := torque.NewController[TestOutletViewModel](&TestOutletModule{})
+			SetupFunc: func(t *testing.T) torque.Handler {
+				h, err := torque.New[TestOutletViewModel](&TestOutletModule{})
 				if err != nil {
 					t.Fatal(err)
 				}

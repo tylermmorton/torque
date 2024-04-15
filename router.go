@@ -2,10 +2,12 @@ package torque
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"io/fs"
 	"log"
 	"net/http"
+	"path/filepath"
 )
 
 // RouteParam returns the named route parameter from the request url
@@ -19,14 +21,42 @@ type Router interface {
 	HandleFileSystem(pattern string, fs fs.FS)
 }
 
-type routeRecorder struct {
+type routerImpl struct {
 	chi.Router
-
-	Handler IHandler
+	Handler handlerImplFacade
 }
 
-func createRouter[T ViewModel](h *handlerImpl[T], module HandlerModule) (chi.Router, error) {
-	rr := &routeRecorder{
+func logRoutes(prefix string, r []chi.Route) {
+	for _, route := range r {
+		pattern := fmt.Sprintf("%s%s", prefix, route.Pattern)
+		log.Printf("Route: %s\n", pattern)
+		if route.SubRoutes != nil {
+			logRoutes(pattern, route.SubRoutes.Routes())
+		}
+	}
+}
+
+func buildRouter(r chi.Router, path string, h handlerImplFacade) chi.Router {
+	if r == nil {
+		r = chi.NewRouter()
+	}
+
+	for _, child := range h.Children() {
+		var childPath = filepath.Join(path + child.GetPath())
+		r.Handle(childPath, child)
+
+		if len(child.Children()) != 0 {
+			r = buildRouter(r, childPath, child)
+		}
+	}
+	r.Handle("/", h)
+
+	return r
+}
+
+// createRouterProvider takes the given HandlerModule and builds
+func createRouterProvider[T ViewModel](h *handlerImpl[T], module HandlerModule) chi.Router {
+	rr := &routerImpl{
 		Router:  chi.NewRouter(),
 		Handler: h,
 	}
@@ -35,10 +65,7 @@ func createRouter[T ViewModel](h *handlerImpl[T], module HandlerModule) (chi.Rou
 		rp.Router(rr)
 	}
 
-	r := buildRouter(nil, "/", h)
-	logRoutes("", r.Routes())
-
-	return r, nil
+	return buildRouter(nil, "/", h)
 }
 
 type respRecorder struct {
@@ -64,10 +91,10 @@ func (rr *respRecorder) Write(byt []byte) (int, error) {
 
 func (rr *respRecorder) WriteHeader(statusCode int) { rr.Status = statusCode }
 
-func (r *routeRecorder) Handle(pattern string, h http.Handler) {
+func (r *routerImpl) Handle(pattern string, h http.Handler) {
 	var parent = r.Handler
 
-	if child, ok := h.(IHandler); ok {
+	if child, ok := h.(handlerImplFacade); ok {
 		child.SetPath(pattern)
 		parent.AddChild(child)
 	}
@@ -76,8 +103,8 @@ func (r *routeRecorder) Handle(pattern string, h http.Handler) {
 	r.Router.Handle(pattern, h)
 }
 
-func (r *routeRecorder) HandleFileSystem(pattern string, fs fs.FS) {
-	r.Route(pattern, func(r chi.Router) {
+func (r *routerImpl) HandleFileSystem(pattern string, fs fs.FS) {
+	r.Router.Route(pattern, func(r chi.Router) {
 		r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
 			log.Printf("[FileSystem] %s", req.URL.Path)
 			http.StripPrefix(pattern, http.FileServer(http.FS(fs))).ServeHTTP(wr, req)

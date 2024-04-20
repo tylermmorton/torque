@@ -1,10 +1,13 @@
 package torque
 
 import (
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
+	"github.com/pkg/errors"
 	"github.com/tylermmorton/torque/internal/compiler"
 	"net/http"
+	"reflect"
 )
 
 type Handler http.Handler
@@ -46,7 +49,7 @@ func New[T ViewModel](module HandlerModule) (Handler, error) {
 
 	err = assertImplementations(h, module)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to assert controller interface")
 	}
 
 	if h.router != nil {
@@ -95,6 +98,11 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], module HandlerModule)
 		// can be used in type assertions
 		vm interface{} = new(T)
 	)
+
+	// check if the module is a pointer before asserting any types.
+	if reflect.ValueOf(module).Kind() != reflect.Ptr {
+		return fmt.Errorf("controller type %T is not a pointer", module)
+	}
 
 	if loader, ok := module.(Loader[T]); ok {
 		h.loader = loader

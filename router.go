@@ -1,8 +1,6 @@
 package torque
 
 import (
-	"bytes"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"io/fs"
 	"log"
@@ -28,30 +26,28 @@ type routerImpl struct {
 
 func logRoutes(prefix string, r []chi.Route) {
 	for _, route := range r {
-		pattern := fmt.Sprintf("%s%s", prefix, route.Pattern)
+		pattern := filepath.Join(prefix, route.Pattern)
 		log.Printf("Route: %s\n", pattern)
 		if route.SubRoutes != nil {
 			logRoutes(pattern, route.SubRoutes.Routes())
 		}
 	}
+	log.Printf("----\n")
 }
 
-func buildRouter(r chi.Router, path string, h handlerImplFacade) chi.Router {
-	if r == nil {
-		r = chi.NewRouter()
-	}
-
+// mountRouterProvider is a recursive function that takes a handler and attaches
+// to its router the tree of HandlerModule provided by the RouterProvider API.
+func mountRouterProvider(r chi.Router, path string, h handlerImplFacade) {
 	for _, child := range h.Children() {
 		var childPath = filepath.Join(path + child.GetPath())
 		r.Handle(childPath, child)
 
 		if len(child.Children()) != 0 {
-			r = buildRouter(r, childPath, child)
+			mountRouterProvider(r, childPath, child)
 		}
 	}
-	r.Handle("/", h)
 
-	return r
+	r.Handle("/", h)
 }
 
 // createRouterProvider takes the given HandlerModule and builds
@@ -65,42 +61,21 @@ func createRouterProvider[T ViewModel](h *handlerImpl[T], module HandlerModule) 
 		rp.Router(rr)
 	}
 
-	return buildRouter(nil, "/", h)
-}
+	mountRouterProvider(rr.Router, "/", h)
 
-type respRecorder struct {
-	HeaderMap http.Header
-	Body      bytes.Buffer
-	Status    int
+	return rr.Router
 }
-
-func newResponseRecorder() *respRecorder {
-	return &respRecorder{
-		Status:    -1,
-		HeaderMap: http.Header{},
-		Body:      bytes.Buffer{},
-	}
-}
-
-func (rr *respRecorder) Header() http.Header {
-	return rr.HeaderMap
-}
-func (rr *respRecorder) Write(byt []byte) (int, error) {
-	return rr.Body.Write(byt)
-}
-
-func (rr *respRecorder) WriteHeader(statusCode int) { rr.Status = statusCode }
 
 func (r *routerImpl) Handle(pattern string, h http.Handler) {
 	var parent = r.Handler
 
 	if child, ok := h.(handlerImplFacade); ok {
+		// the tree will be resolved during steps in mountRouterProvider
 		child.SetPath(pattern)
 		parent.AddChild(child)
+	} else {
+		r.Router.Handle(pattern, h)
 	}
-
-	// call handle on the internal chi routerImpl
-	r.Router.Handle(pattern, h)
 }
 
 func (r *routerImpl) HandleFileSystem(pattern string, fs fs.FS) {

@@ -1,34 +1,29 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-auto">
-<head>
-  <title>{{ .Title }}</title>
+  <head>
+    <title>{{ .Title }}</title>
 
-  {{ range .Links -}}
+    {{ range .Links -}}
     <link rel="{{ .Rel }}" href="{{ .Href }}" />
-  {{ end -}}
+    {{ end -}}
 
-  <style>
+    <style>
       html,
       body {
-          height: 100%;
+        height: 100%;
       }
-  </style>
+    </style>
 
-  {{ range .Scripts -}}
+    {{ range .Scripts -}}
     <script src="{{ . }}"></script>
-  {{ end -}}
+    {{ end -}}
 
+    <!-- FullStory Snippet -->
+    {{ template "fs" . }}
+  </head>
 
-  <!-- FullStory Snippet -->
-  {{ template "fs" . }}
-</head>
-
-<body class="flex h-full flex-col antialiased">
-{{ template "nav" .Navigator }}
-<div class="mx-auto max-w-[90rem] px-4 sm:px-6 md:px-8">
-  <main id="hx-swappable-outlet" class="mt-[60px] xl:pl-[19.5rem]">
-      {{ outlet }}
-  </main>
-</div>
-</body>
+  <body class="flex h-full flex-col antialiased">
+    {{ template "nav" .Navigator }}
+    <div class="mx-auto max-w-[90rem] px-4 sm:px-6 md:px-8">{{ outlet }}</div>
+  </body>
 </html>

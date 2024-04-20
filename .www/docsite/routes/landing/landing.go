@@ -1,19 +1,18 @@
 package landing
 
 import (
-	"github.com/tylermmorton/tmpl"
-	"github.com/tylermmorton/torque"
-	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
+	_ "embed"
 	"net/http"
 	"os"
+
+	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
 )
 
-var (
-	Template = tmpl.MustCompile(&DotContext{})
-)
+//go:embed landing.tmpl.html
+var templateText string
 
-//tmpl:bind landing.tmpl.html
-type DotContext struct {
+type ViewModel struct {
 	fullstory.Snippet `tmpl:"fs"`
 
 	Title string
@@ -26,29 +25,22 @@ type Link struct {
 	Href string
 }
 
-type RouteModule struct {
+type Controller struct {
 }
 
 var _ interface {
-	torque.Loader
-	torque.Renderer
-} = &RouteModule{}
+	torque.Loader[ViewModel]
+} = &Controller{}
 
-func (rm *RouteModule) Load(req *http.Request) (any, error) {
-	return nil, nil
-}
-
-func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-	return Template.Render(wr,
-		&DotContext{
-			Snippet: fullstory.Snippet{
-				Enabled: os.Getenv("FULLSTORY_ENABLED") == "true",
-				OrgId:   os.Getenv("FULLSTORY_ORG_ID"),
-			},
-			Title: "torque",
-			Links: []Link{
-				{Rel: "stylesheet", Href: "/s/app.css"},
-			},
+func (rm *Controller) Load(req *http.Request) (ViewModel, error) {
+	return ViewModel{
+		Snippet: fullstory.Snippet{
+			Enabled: os.Getenv("FULLSTORY_ENABLED") == "true",
+			OrgId:   os.Getenv("FULLSTORY_ORG_ID"),
 		},
-	)
+		Title: "torque",
+		Links: []Link{
+			{Rel: "stylesheet", Href: "/s/app.css"},
+		},
+	}, nil
 }

@@ -4,7 +4,7 @@ title: Guards
 
 # Guards {#guards}
 
-A `Guard` is a type of middleware pattern used to prevent `Loader`s and `Action`s from executing. One or many Guards can be assigned to a route. Guards allow requests to pass by returning nil. If a Guard determines that a request should not be handled, it can return a `http.HandlerFunc` to divert the request. 
+A `Guard` is a type of middleware pattern used to prevent `Loader`s and `Action`s from executing. One or many Guards can be assigned to a route. Guards allow requests to pass by returning nil. If a Guard determines that a request should not be handled, it can return a `http.HandlerFunc` to divert the request.
 
 Another way to think about `Guard`s is like an "incoming request boundary"
 

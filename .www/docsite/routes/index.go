@@ -4,10 +4,10 @@ import (
 	_ "embed"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
+	"github.com/tylermmorton/torque/.www/docsite/routes/landing"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
 	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
 	"github.com/tylermmorton/torque/.www/docsite/templates/navigator"
-	"github.com/tylermmorton/torque/.www/docsite/templates/sidebar"
 	"io/fs"
 	"net/http"
 	"os"
@@ -22,35 +22,39 @@ type Link struct {
 	Href string
 }
 
-type IndexView struct {
+type ViewModel struct {
 	fullstory.Snippet `tmpl:"fs"`
 
 	Navigator navigator.Navigator `tmpl:"nav"`
-	Sidebar   sidebar.Sidebar     `tmpl:"sidebar"`
 
 	Title   string
 	Links   []Link
 	Scripts []string
 }
 
-func (IndexView) TemplateText() string {
+func (ViewModel) TemplateText() string {
 	return indexTemplateText
 }
 
-type IndexHandlerModule struct {
-	StaticAssets fs.FS
-
+type Controller struct {
+	StaticAssets   fs.FS
 	ContentService content.Service
 }
 
 var _ interface {
-	torque.Loader[IndexView]
-} = &IndexHandlerModule{}
+	torque.Loader[ViewModel]
+} = &Controller{}
 
-func (m *IndexHandlerModule) Load(req *http.Request) (IndexView, error) {
-	title := torque.UseTitle(req) + " | Torque"
+func (m *Controller) Router(r torque.Router) {
+	r.Handle("/about", torque.MustNew[landing.ViewModel](&landing.Controller{}))
+	r.Handle("/docs", torque.MustNew[docs.ViewModel](&docs.Controller{ContentService: m.ContentService}))
+	r.HandleFileSystem("/s", m.StaticAssets)
+}
 
-	return IndexView{
+func (m *Controller) Load(req *http.Request) (ViewModel, error) {
+	title := torque.UseTitle(req) + " | torque"
+
+	return ViewModel{
 		Title: title,
 		Snippet: fullstory.Snippet{
 			Enabled: os.Getenv("FULLSTORY_ENABLED") == "true",
@@ -68,9 +72,4 @@ func (m *IndexHandlerModule) Load(req *http.Request) (IndexView, error) {
 			TopNavItems:       []navigator.NavItem{},
 		},
 	}, nil
-}
-
-func (m *IndexHandlerModule) Router(r torque.Router) {
-	r.Handle("/docs/{pageName}", torque.MustNew[docs.ViewModel](&docs.HandlerModule{ContentService: m.ContentService}))
-	r.HandleFileSystem("/s", m.StaticAssets)
 }

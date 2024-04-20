@@ -4,11 +4,13 @@ title: Module API
 ---
 
 # Module API {#module-api}
+
 Route Modules, a core component of the torque framework, are a type of `http.Handler` that can handle requests of multiple different types. They take advantage of Golang's [implicit interface implementations](https://go.dev/tour/methods/10) so you can build your application with less boilerplate. It enables torque to handle the wiring and plumbing of the application and leave you to focus on adding value for your users.
 
 In `torque` you can build Route Modules by implementing _one or many_ of the interfaces in the _Module API_. The interfaces that your module implements define its behavior when handling incoming requests.
 
 ## Action {#action}
+
 ```go
 type Action interface {
     Action(wr http.ResponseWriter, req *http.Request) error
@@ -54,6 +56,7 @@ func (rm *LoginRoute) Action(wr http.ResponseWriter, req *http.Request) error {
 ```
 
 ## Loader {#loader}
+
 ```go
 type Loader interface {
     Load(req *http.Request) (any, error)
@@ -90,8 +93,8 @@ func (rm *LoginRoute) Load(req *http.Request) (any, error) {
 }
 ```
 
-
 ## Renderer {#renderer}
+
 ```go
 type Renderer interface {
     Render(wr http.ResponseWriter, req *http.Request, loaderData any) error
@@ -99,13 +102,14 @@ type Renderer interface {
 ```
 
 ## ErrorBoundary {#error-boundary}
+
 ```go
 type ErrorBoundary interface {
     ErrorBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
 }
 ```
 
-An `ErrorBoundary` handles all non-nil runtime `error` values returned from other parts of the module such as the `Action`, `Loader` or `Renderer`. 
+An `ErrorBoundary` handles all non-nil runtime `error` values returned from other parts of the module such as the `Action`, `Loader` or `Renderer`.
 
 The boundary can return an alternate `http.HandlerFunc` used to handle the failed request:
 
@@ -123,15 +127,15 @@ func (rm *LoginRoute) ErrorBoundary(wr http.ResponseWriter, req *http.Request, e
 
 The torque framework offers a couple of useful error handlers:
 
-| Error Handlers | Description                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Error Handlers   | Description                                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `Redirect`       | Returns an http.HandlerFunc that redirects the request to the given url and sets the statusCode to 302.            |
 | `RedirectS`      | Returns an http.HandlerFunc that redirects the request to the given url and sets the statusCode to the given code. |
 | `RetryWithError` | Attaches the given error value to the request context and re-executes the Loader → Renderer flow.                  |
 
 ### RetryWithError {#retry-with-error}
 
-The `RetryWithError` utility function allows one to re-execute the `Loader` -> `Renderer` flow with the given `error` attached to the request context. 
+The `RetryWithError` utility function allows one to re-execute the `Loader` -> `Renderer` flow with the given `error` attached to the request context.
 
 ⚠️ Any errors returned by this handler automatically get sent to the `PanicBoundary`
 
@@ -173,6 +177,7 @@ func (rm *LoginRoute) Load(req *http.Request) (any, error) {
 ```
 
 ## PanicBoundary {#panic-boundary}
+
 ```go
 type PanicBoundary interface {
     PanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
@@ -184,9 +189,10 @@ The `PanicBoundary` catches all panics thrown during any `Action`, `Loader`, or 
 If no `http.HandlerFunc` is returned from the `PanicBoundary`, the error is safely logged and a stack trace is printed to stdout detailing the issue.
 
 ## RouterProvider {#router-provider}
+
 ```go
 type RouterProvider interface {
-    Router(r torque.Router) 
+    Router(r torque.Router)
 }
 ```
 
@@ -219,6 +225,3 @@ var _ interface {
 	torque.Loader
 } = (*MyRoute)(nil)
 ```
-
-
-

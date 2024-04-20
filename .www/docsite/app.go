@@ -36,7 +36,7 @@ func main() {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
-	r, err := torque.New[routes.IndexView](&routes.IndexHandlerModule{
+	r, err := torque.New[routes.ViewModel](&routes.Controller{
 		StaticAssets:   assetsFs,
 		ContentService: contentSvc,
 	})

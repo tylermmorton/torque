@@ -57,7 +57,7 @@ func (rm *RouteModule) Load(req *http.Request, wr http.ResponseWriter) (any, err
     if err != nil {
         return nil, err
     }
-	
+
     res, err := rm.UserService.Search(req.Context(), &model.UserSearchQuery{
         Name: query.Name,
         Age:  query.Age,
@@ -65,7 +65,7 @@ func (rm *RouteModule) Load(req *http.Request, wr http.ResponseWriter) (any, err
     if err != nil {
         return nil, err
     }
-	
+
     return res, nil
 }
 ```

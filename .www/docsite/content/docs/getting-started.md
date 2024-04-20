@@ -7,7 +7,7 @@ title: Getting Started
 
 Welcome, and thank you for your interest in `torque`!
 
-🪲 **Found a bug?** Please direct all issues to the [GitHub Issues tracker](https://github.com/tylermmorton/torque/issues). 
+🪲 **Found a bug?** Please direct all issues to the [GitHub Issues tracker](https://github.com/tylermmorton/torque/issues).
 
 🎁 **All feedback is a gift!** Please leave comments and questions in the [GitHub Discussions space](https://github.com/tylermmorton/torque/discussions).
 
@@ -19,146 +19,153 @@ go get github.com/tylermmorton/torque
 
 # Quick Start {#quick-start}
 
-To get started, declare a new struct type that will represent the root _module_ in your torque application. 
+This quick start tutorial will show you how to use `torque` to build out a dynamically rendered webpage using the `net/http` package and an `html/template` from Go's standard library.
+
+[**See the fully working example code.**](https://github.com/tylermmorton/torque/tree/master/examples/quick-start)
+
+The torque workflow starts with a standard `html/template`. For more information on the syntax, see this [useful syntax primer from HashiCorp](https://developer.hashicorp.com/nomad/tutorials/templates/go-template-syntax).
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ .Title }} | torque</title>
+  </head>
+  <body>
+    <h1>{{ .Title }}</h1>
+    <p>Hello, {{ .FirstName }} {{ .LastName }}!</p>
+  </body>
+</html>
+```
+
+### ViewModel {#viewmodel}
+
+In order to tie your template to your Go code, declare a `ViewModel` struct that represents the "dot context" of the template. The dot context is the value of the "dot" (`{{ . }}`) in Go's templating language.
+
+> Conceptually `ViewModel` is a type that represents the shape of the data that is rendered in response to an HTTP request. Think the same _data model_ that can be _viewed_ in different formats such as JSON response body or HTML template data.
+
+In this struct, any _exported_ fields (or methods attached via pointer receiver) will be accessible in your template from the all powerful dot.
 
 ```go
-package main
+package homepage
+
+type ViewModel struct {
+    Title     string `json:"title"`
+    FirstName string `json:"firstName"`
+    LastName  string `json:"lastName"`
+}
+```
+
+### TemplateProvider {#templateprovider}
+
+To turn your `ViewModel` struct into a target for the template compiler, your struct type must implement the TemplateProvider interface:
+
+```go
+type TemplateProvider interface {
+    TemplateText() string
+}
+```
+
+The most straightforward approach is to embed the template into your Go program using the embed package from the standard library.
+
+```go
+package homepage
+
+import (
+    _ "embed"
+)
+
+var (
+    //go:embed homepage.tmpl.html
+    templateText string
+)
+
+type ViewModel struct {
+    ...
+}
+
+func (ViewModel) TemplateText() string {
+    return templateText
+}
+```
+
+### Controller {#controller}
+
+To turn your template into a fully functioning web page, you'll need to build a `Controller` that will handle incoming HTTP requests and render the template.
+
+```go
+package homepage
+
+type Controller struct{}
+```
+
+The `torque` _Handler API_ provides a set of interfaces that your `Controller` struct can implement to handle different types of HTTP requests made by a web browser.
+
+### Loader[T] {#loader}
+
+The `Loader[T]` interface is the most ubiquitous interface in the `torque` framework. It's job is to fetch data, usually from a database, and return a `ViewModel` struct.
+
+```go
+package homepage
 
 import "net/http"
 
-type root struct{}
+type ViewModel struct { ... }
+type Controller struct { ... }
+
+func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
+    return ViewModel{
+        Title:     "Welcome to torque!",
+        FirstName: "Michael",
+        LastName: "Scott",
+    }, nil
+}
 ```
 
-Next, call `torque.New` and pass an instance of your root module struct. This will return an `http.Handler` that can be plugged into any `net/http` compatible server or router!
+By implementing `Loader[T]`, you're enabling your `Controller` to fetch the `ViewModel` and render it in response to an HTTP GET request from the browser.
+
+It is best practice to enforce Go's static type system by asserting the interfaces you'd like to implement at compile time:
+
+```go
+var _ interface {
+    torque.Loader[ViewModel]
+    // ... other interfaces
+} = &Controller{}
+```
+
+### Page Server {#server}
+
+To serve your new page, create a new `http.Handler` instance using the `torque.New[T]` function by passing an instance of your `Controller` struct. This is also where you'd do dependency injection, if necessary.
 
 ```go
 package main
 
 import (
-    "net/http"
+	"net/http"
 
-    "github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/examples/quick-start/homepage"
 )
 
-type root struct{}
-
 func main() {
-    h := torque.New(&root{})
-
+    h := torque.MustNew[homepage.ViewModel](&homepage.Controller{})
     http.ListenAndServe("localhost:9001", h)
 }
 ```
 
-💡 The interfaces your module struct implements determine its functionality. 
+Finally, visit `http://localhost:9001` in your browser to see the rendered page.
 
-Add some new routes to your app by implementing the `torque.RouterProvider` interface. To do this, create a new `loginPage` module struct and add the `/login` route by using `HandleModule`
+Congratulations! You've just built a server rendered webpage using `torque`.
 
-```go
-package main
+# Next Steps {#next-steps}
 
-import "github.com/tylermmorton/torque"
+Hopefully that's enough to get you started! There's plenty more to learn about `torque`, though. Here's a few next steps to consider:
 
-type root struct{}
+📎 Bookmark the [Handler API Reference](/handler-api-reference) and keep it on hand as you build out your applications.
 
-// create a new module struct for the login page
-type loginPage struct{}
+🛠️ Check out the [examples workspace]() to see some fully functioning applications built with `torque`! Including this [docsite]().
 
-func (*root) Router(r torque.Router) {
-	// nest an additional torque module
-	r.HandleModule("/login", &loginPage{})
+🎁 Please leave comments and questions in the [GitHub Discussions space](https://github.com/tylermmorton/torque/discussions)!
 
-	// vanilla handlers are suitable, too!
-	r.Handle("/logout", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
-		http.SetCookie(wr, &http.Cookie{
-			Name:   "authToken",
-			Value:  "",
-			MaxAge: -1,
-		})
-		http.Redirect(wr, req, "/", http.StatusFound)
-	}))
-}
-```
-
-Now your application has the following routes:
-```md
-/ -> root
-/login -> loginPage
-/logout -> http.HandlerFunc
-```
-
-Next, add some UI to the new login page by implementing the `torque.Renderer`  interface. This enables your module to handle incoming HTTP GET requests and write directly to the response body.
-
-💡 Note the use of a multiline string for now, but you might want to render templates here!
-
-```go
-func (*loginPage) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-    wr.Write([]byte(`
-        <html>
-            <body>
-                <h1>Login</h1>
-                <form method="POST" action="/login">
-                    <input type="text" name="username" />
-                    <input type="password" name="password" />
-                    <button type="submit">Login</button>
-                </form>
-            </body>
-        </html>
-    `))
-    return nil
-}
-```
-
-Finally, to handle the login form, implement the `torque.Action` interface, which enables your module to handle incoming form submissions as HTTP POST requests.
-
-`torque` also provides some utilities for efficiently parsing and decoding form data:
-
-```go
-package main 
-
-type LoginForm struct {
-    Username string `json:"username"`
-    Password string `json:"password"`
-}
-
-func (p *loginPage) Action(wr http.ResponseWriter, req *http.Request) error {
-    // parse the incoming form data
-    form, err := torque.DecodeForm[LoginForm](req)
-    if err != nil {
-        return err
-    }
-
-    // call into another service, perform authentication logic
-    authToken, err := p.AuthService.Login(
-        req.Context(),
-        form.Username,
-        form.Password,
-    )
-    if err != nil {
-        return err
-    }
-
-    // set an http-only cookie with the auth token
-    http.SetCookie(wr, &http.Cookie{
-        Name:     "authToken",
-        Value:    *authToken,
-        Secure:   true,
-        HttpOnly: true,
-        Expires:  time.Now().Add(time.Hour * 36),
-    })
-
-    // finally, redirect to the root page
-    http.Redirect(wr, req, "/", http.StatusFound)
-
-    return nil
-}
-```
-
----
-
-Hopefully that's enough to get you started! There's plenty more to learn about `torque`, routing, and the Module API.
-
-For next steps, check out the [Module API Reference](/module-api).
-
-Thanks again for giving torque a try! 
-
-
+Thanks again for giving torque a try!

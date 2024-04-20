@@ -22,6 +22,17 @@ const (
 	ModeProduction  Mode = "production"
 )
 
+func With[T any](req *http.Request, key any, value *T) {
+	*req = *req.WithContext(context.WithValue(req.Context(), key, value))
+}
+
+func Use[T any](req *http.Request, key any) *T {
+	if value, ok := req.Context().Value(key).(T); ok {
+		return &value
+	}
+	return nil
+}
+
 func withError(ctx context.Context, err error) context.Context {
 	return context.WithValue(ctx, errorKey, err)
 }
@@ -66,15 +77,4 @@ func UseTitle(req *http.Request) string {
 		return title
 	}
 	return ""
-}
-
-func With[T any](req *http.Request, key any, value *T) {
-	*req = *req.WithContext(context.WithValue(req.Context(), key, value))
-}
-
-func Use[T any](req *http.Request, key any) *T {
-	if value, ok := req.Context().Value(key).(T); ok {
-		return &value
-	}
-	return nil
 }

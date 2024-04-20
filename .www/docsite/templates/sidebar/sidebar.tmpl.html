@@ -5,73 +5,75 @@
 >
   <nav class="relative lg:text-sm lg:leading-6">
     {{ if .EnableSearch }}
-      <div class="pointer-events-none sticky top-0 -ml-0.5">
-        <div class="pointer-events-auto relative bg-white dark:bg-slate-900">
-          <button
-            class="dark:highlight-white/5 hidden w-full items-center rounded-md py-1.5 pl-2 pr-3 text-sm leading-6 text-slate-400 shadow-sm ring-1 ring-slate-900/10 hover:ring-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 lg:flex"
+    <div class="pointer-events-none top-0 -ml-0.5 mb-6">
+      <div class="pointer-events-auto relative bg-white dark:bg-slate-900">
+        <button
+          class="dark:highlight-white/5 hidden w-full items-center rounded-md py-1.5 pl-2 pr-3 text-sm leading-6 text-slate-400 shadow-sm ring-1 ring-slate-900/10 hover:ring-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 lg:flex"
+        >
+          <svg
+            width="24"
+            height="24"
+            fill="none"
+            aria-hidden="true"
+            class="mr-3 flex-none"
           >
-            <svg
-              width="24"
-              height="24"
-              fill="none"
-              aria-hidden="true"
-              class="mr-3 flex-none"
-            >
-              <path
-                d="m19 19-3.5-3.5"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ></path>
-              <circle
-                cx="11"
-                cy="11"
-                r="6"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ></circle>
-            </svg>
-            Quick search...
-            <span class="ml-auto flex-none pl-3 text-xs font-semibold">⌘K</span>
-          </button>
-        </div>
+            <path
+              d="m19 19-3.5-3.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+            <circle
+              cx="11"
+              cy="11"
+              r="6"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></circle>
+          </svg>
+          Quick search...
+          <span class="ml-auto flex-none pl-3 text-xs font-semibold">⌘K</span>
+        </button>
       </div>
+    </div>
     {{ end }}
-
 
     <!-- Left-hand navigation items -->
     <ul>
-      {{ range .LeftNavGroups }}
-        {{- /* gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.LeftNavGroup */ -}}
-        <li class="mb-12 lg:mb-8">
-          <h5
-            class="mb-8 font-semibold text-slate-900 dark:text-slate-200 lg:mb-3"
-          >
-            {{ .Text }}
-          </h5>
-          <ul
-            class="space-y-6 border-l border-slate-100 dark:border-slate-800 lg:space-y-2"
-          >
-            {{ range .NavItems }}
-              {{- /* gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.NavItem */ -}}
-              <li>
-                <a
-                  class="-ml-px block border-l border-transparent pl-4 text-slate-700 hover:border-slate-400 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-300"
-                  href="{{ .Href }}"
-                  hx-boost="true"
-                  hx-get="{{ .Href }}"
-                  hx-swap="innerHTML"
-                  hx-target="#hx-swappable-outlet"
-                  hx-replace-url="{{ .Href }}"
-                  >{{ .Text }}</a
-                >
-              </li>
-            {{ end }}
-          </ul>
-        </li>
+      {{ range .LeftNavGroups }} {{- /*
+      gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.LeftNavGroup
+      */ -}}
+      <li class="mb-12 lg:mb-8">
+        <h5
+          class="mb-8 font-semibold text-slate-900 dark:text-slate-200 lg:mb-3"
+        >
+          {{ .Text }}
+        </h5>
+        <ul
+          class="space-y-6 border-l border-slate-100 dark:border-slate-800 lg:space-y-2"
+        >
+          {{ range .NavItems }} {{- /*
+          gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.NavItem
+          */ -}}
+          <li>
+            <a
+              class="-ml-px block border-l border-transparent pl-4 text-slate-700 hover:border-slate-400 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-300"
+              href="{{ .Href }}"
+              hx-boost="true"
+              hx-get="{{ .Href }}"
+              hx-swap="innerHTML"
+              hx-target="#hx-swappable-outlet"
+              hx-select="#page"
+              hx-replace-url="{{ .Href }}"
+              >{{ .Text }}</a
+            >
+          </li>
+          {{ end }}
+        </ul>
+      </li>
       {{ end }}
     </ul>
   </nav>
@@ -79,7 +81,7 @@
 
 <!-- Left-hand mobile nav -->
 <dialog id="mobile-nav-l" class="bg-transparent">
-  <nav class="fixed inset-0 z-50  overflow-y-auto lg:hidden">
+  <nav class="fixed inset-0 z-50 overflow-y-auto lg:hidden">
     <div
       class="relative h-screen w-80 max-w-[calc(100%-3rem)] bg-white p-6 dark:bg-slate-800"
     >
@@ -98,41 +100,43 @@
             stroke-width="2"
             stroke-linecap="round"
             data-darkreader-inline-stroke=""
-            style="--darkreader-inline-stroke: currentColor;"
+            style="--darkreader-inline-stroke: currentColor"
           ></path>
         </svg>
       </button>
       <nav id="nav" class="relative mt-12 lg:text-sm lg:leading-6">
         <ul>
-          {{ range .LeftNavGroups }}
-            {{- /* gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.LeftNavGroup */ -}}
-            <li class="mb-12 lg:mb-8">
-              <h5
-                class="mb-8 font-semibold text-slate-900 dark:text-slate-200 lg:mb-3"
-              >
-                {{ .Text }}
-              </h5>
-              <ul
-                class="space-y-6 border-l border-slate-100 dark:border-slate-800 lg:space-y-2"
-              >
-                {{ range .NavItems }}
-                  {{- /* gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.NavItem */ -}}
-                  <li>
-                    <a
-                      _="on click get #mobile-nav-l then call it.close()"
-                      class="-ml-px block border-l border-transparent pl-4 text-slate-700 hover:border-slate-400 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-300"
-                      href="{{ .Href }}"
-                      hx-boost="true"
-                      hx-get="{{ .Href }}"
-                      hx-swap="innerHTML"
-                      hx-target="#hx-swappable-outlet"
-                      hx-replace-url="{{ .Href }}"
-                      >{{ .Text }}</a
-                    >
-                  </li>
-                {{ end }}
-              </ul>
-            </li>
+          {{ range .LeftNavGroups }} {{- /*
+          gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.LeftNavGroup
+          */ -}}
+          <li class="mb-12 lg:mb-8">
+            <h5
+              class="mb-8 font-semibold text-slate-900 dark:text-slate-200 lg:mb-3"
+            >
+              {{ .Text }}
+            </h5>
+            <ul
+              class="space-y-6 border-l border-slate-100 dark:border-slate-800 lg:space-y-2"
+            >
+              {{ range .NavItems }} {{- /*
+              gotype:github.com/tylermmorton/torque/.www/docsite/endpoints/docs.NavItem
+              */ -}}
+              <li>
+                <a
+                  _="on click get #mobile-nav-l then call it.close()"
+                  class="-ml-px block border-l border-transparent pl-4 text-slate-700 hover:border-slate-400 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-300"
+                  href="{{ .Href }}"
+                  hx-boost="true"
+                  hx-get="{{ .Href }}"
+                  hx-swap="innerHTML"
+                  hx-target="#hx-swappable-outlet"
+                  hx-replace-url="{{ .Href }}"
+                  >{{ .Text }}</a
+                >
+              </li>
+              {{ end }}
+            </ul>
+          </li>
           {{ end }}
         </ul>
       </nav>

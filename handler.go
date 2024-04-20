@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"runtime/debug"
 	"time"
 )
@@ -30,13 +31,13 @@ func (h *handlerImpl[T]) serveInternal(wr http.ResponseWriter, req *http.Request
 		h.handleOutlet(wr, req)
 		return
 	} else {
-		handleRequest(h, wr, req)
+		h.handleRequest(wr, req)
 	}
 }
 
 // handleRequest is the core handler logic for torque. It is responsible for handling incoming
 // HTTP requests and applying the appropriate API methods.
-func handleRequest[T ViewModel](h *handlerImpl[T], wr http.ResponseWriter, req *http.Request) {
+func (h *handlerImpl[T]) handleRequest(wr http.ResponseWriter, req *http.Request) {
 	// attach the decoder to the request context so it can be used
 	// by handlers in the request stack
 	*req = *req.WithContext(withDecoder(req.Context(), h.decoder))
@@ -215,22 +216,20 @@ func (h *handlerImpl[T]) handlePanic(wr http.ResponseWriter, req *http.Request, 
 }
 
 func (h *handlerImpl[T]) handleOutlet(wr http.ResponseWriter, req *http.Request) {
-	// the context will be pulled later from the request object
-	cloneReq := req.Clone(req.Context())
+	var (
+		childReq   = req
+		childResp  = httptest.NewRecorder()
+		parentReq  = req.Clone(req.Context())
+		parentResp = httptest.NewRecorder()
+	)
 
-	// child before parent, because it can set additional context
-	childRes := newResponseRecorder()
-	handleRequest(h, childRes, req)
+	// child before parent, because it can set additional context with hooks
+	h.handleRequest(childResp, childReq)
+	h.parent.serveInternal(parentResp, parentReq.WithContext(childReq.Context()))
 
-	parentRes := newResponseRecorder()
-	h.parent.serveInternal(parentRes, cloneReq.WithContext(req.Context()))
+	t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
 
-	t, err := template.New("outlet").Parse(parentRes.Body.String())
-	if err != nil {
-		panic(err)
-	}
-
-	err = t.Execute(wr, template.HTML(childRes.Body.String()))
+	err := t.Execute(wr, template.HTML(childResp.Body.String()))
 	if err != nil {
 		panic(err)
 	}

@@ -38,6 +38,8 @@ func logRoutes(prefix string, r []chi.Route) {
 // mountRouterProvider is a recursive function that takes a handler and attaches
 // to its router the tree of HandlerModule provided by the RouterProvider API.
 func mountRouterProvider(r chi.Router, path string, h handlerImplFacade) {
+	r.Handle(path, h)
+
 	for _, child := range h.Children() {
 		var childPath = filepath.Join(path + child.GetPath())
 		r.Handle(childPath, child)
@@ -46,8 +48,6 @@ func mountRouterProvider(r chi.Router, path string, h handlerImplFacade) {
 			mountRouterProvider(r, childPath, child)
 		}
 	}
-
-	r.Handle("/", h)
 }
 
 // createRouterProvider takes the given HandlerModule and builds

@@ -73,6 +73,12 @@ func (p *TestLoaderModule) Load(req *http.Request) (any, error) {
 
 /** TestRouter **/
 
+type TestRouterModule struct{}
+
+func (p *TestRouterModule) Router(r torque.Router) {
+	r.Handle("/", torque.MustNew[any](&TestLoaderModule{}))
+}
+
 type TestOutletModule struct{}
 type TestOutletViewModel struct{}
 
@@ -171,6 +177,23 @@ func Test_Torque(t *testing.T) {
 			Path: "/",
 			SetupFunc: func(t *testing.T) torque.Handler {
 				h, err := torque.New[any](&TestLoaderModule{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				return h
+			},
+			RequestHeaders: map[string]string{
+				"Accept": "application/json",
+			},
+			ExpectStatusCode: http.StatusOK,
+			ExpectBodyContains: []string{
+				`{"message":"Hello in JSON!"}`,
+			},
+		},
+		"Router": {
+			Path: "/",
+			SetupFunc: func(t *testing.T) torque.Handler {
+				h, err := torque.New[any](&TestRouterModule{})
 				if err != nil {
 					t.Fatal(err)
 				}

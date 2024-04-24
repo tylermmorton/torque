@@ -49,6 +49,16 @@ type PanicBoundary interface {
 	PanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
 }
 
+// TODO(v2.1) Each controller can specify a CORS configuration that applies to its subtree
+//type CORSProvider interface {
+//	CORS() []string
+//}
+
+// TODO(v2.1) Each controller can supply a filesystem for serving static files
+//type FileSystemProvider interface {
+//	FileSystem() embed.FS
+//}
+
 // RouterProvider is executed when the torque TestTemplateModule is initialized. It can
 // return a list of components to be nested in the current route. The parent
 // route path will be prefixed to any provided paths in the SubRouter.
@@ -56,6 +66,7 @@ type RouterProvider interface {
 	Router(r Router)
 }
 
+// TODO(v2)
 type GuardProvider interface {
 	Guards() []Guard
 }

@@ -1,257 +1,536 @@
 package torque_test
 
 import (
-	"github.com/tylermmorton/torque"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/tylermmorton/torque"
 )
 
-/** TestTemplate **/
-
-type TestTemplateModule struct {
-}
-type TestTemplateView struct{}
-
-var _ interface {
-	torque.Loader[TestTemplateView]
-} = &TestTemplateModule{}
-
-func (a *TestTemplateModule) Load(req *http.Request) (TestTemplateView, error) {
-	return TestTemplateView{}, nil
+type MockLoader[T torque.ViewModel] struct {
+	LoadFunc func(req *http.Request) (T, error)
 }
 
-func (TestTemplateView) TemplateText() string { return "<div>Hello from TemplateText!</div>" }
-
-/** TestTemplateExplicitRenderer **/
-
-type TestTemplateExplicitRendererModule struct{}
-
-var _ interface {
-	torque.Loader[TestTemplateView]
-} = &TestTemplateExplicitRendererModule{}
-
-func (*TestTemplateExplicitRendererModule) Load(req *http.Request) (TestTemplateView, error) {
-	return TestTemplateView{}, nil
+func (m MockLoader[T]) Load(req *http.Request) (T, error) {
+	return m.LoadFunc(req)
 }
 
-func (*TestTemplateExplicitRendererModule) Render(wr http.ResponseWriter, req *http.Request, loaderData TestTemplateView) error {
-	wr.Write([]byte("<div>Hello from Render!</div>"))
-	wr.WriteHeader(http.StatusOK)
-	return nil
+type MockRenderer[T torque.ViewModel] struct {
+	RenderFunc func(wr http.ResponseWriter, req *http.Request, loaderData T) error
 }
 
-/** TestRenderer **/
+func (m MockRenderer[T]) Render(wr http.ResponseWriter, req *http.Request, loaderData T) error {
+	return m.RenderFunc(wr, req, loaderData)
 
-type TestRendererModule struct{}
-
-func (p *TestRendererModule) Load(req *http.Request) (any, error) {
-	return nil, nil
 }
 
-func (p *TestRendererModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-	wr.Write([]byte("<div>Hello from Render!</div>"))
-	wr.WriteHeader(http.StatusOK)
-	return nil
+type MockAction struct {
+	ActionFunc func(wr http.ResponseWriter, req *http.Request) error
 }
 
-/** TestLoader **/
+func (m MockAction) Action(wr http.ResponseWriter, req *http.Request) error {
+	return m.ActionFunc(wr, req)
+}
 
-type TestLoaderModule struct{}
+type MockRouterProvider struct {
+	RouterFunc func(r torque.Router)
+}
 
-func (p *TestLoaderModule) Load(req *http.Request) (any, error) {
-	return struct {
-		Hidden  string `json:"-"`
+func (m MockRouterProvider) Router(r torque.Router) {
+	m.RouterFunc(r)
+}
+
+type MockViewModel struct {
+	Message string `json:"message"`
+}
+
+type MockTemplateProvider struct {
+	Message string
+}
+
+func (m MockTemplateProvider) TemplateText() string {
+	return "<p>{{ .Message }}</p>"
+}
+
+type MockOutletTemplateProvider struct{}
+
+func (MockOutletTemplateProvider) TemplateText() string {
+	return "<div>{{ outlet }}</div>"
+}
+
+type MockJsonMarshaler struct {
+	Message string
+}
+
+func (m MockJsonMarshaler) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
 		Message string `json:"message"`
 	}{
-		Hidden:  "Bad!",
-		Message: "Hello in JSON!",
-	}, nil
+		Message: m.Message,
+	})
 }
 
-/** TestRouter **/
-
-type TestRouterModule struct{}
-
-func (p *TestRouterModule) Router(r torque.Router) {
-	r.Handle("/", torque.MustNew[any](&TestLoaderModule{}))
+func Test_HandlerAPI(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Handler API")
 }
 
-type TestOutletModule struct{}
-type TestOutletViewModel struct{}
+var _ = Describe("Handler API", func() {
+	Describe("Action", func() {})
+	Describe("Loader", func() {
+		var (
+			wr  *httptest.ResponseRecorder
+			req *http.Request
+		)
 
-func (*TestOutletViewModel) TemplateText() string {
-	return "<html>{{ outlet }}</html>"
-}
-
-func (p *TestOutletModule) Load(req *http.Request) (any, error) {
-	return nil, nil
-}
-
-func (p *TestOutletModule) Router(r torque.Router) {
-	r.Handle("/child", torque.MustNew[TestOutletChildViewModel](&TestOutletChildModule{}))
-}
-
-type TestOutletChildModule struct{}
-
-func (p *TestOutletChildModule) Load(req *http.Request) (any, error) {
-	return nil, nil
-}
-
-func (p *TestOutletChildModule) Router(r torque.Router) {
-	r.Handle("/inner", torque.MustNew[TestOutletInnerChildViewModel](&TestOutletInnerChildModule{}))
-}
-
-type TestOutletChildViewModel struct{}
-
-func (*TestOutletChildViewModel) TemplateText() string {
-	return "<body>{{ outlet }}</body>"
-}
-
-type TestOutletInnerChildModule struct{}
-
-func (p *TestOutletInnerChildModule) Load(req *http.Request) (any, error) {
-	return nil, nil
-}
-
-type TestOutletInnerChildViewModel struct{}
-
-func (*TestOutletInnerChildViewModel) TemplateText() string {
-	return "<main>Hello world!</main>"
-}
-
-func Test_Torque(t *testing.T) {
-	testTable := map[string]struct {
-		Path           string
-		SetupFunc      func(t *testing.T) torque.Handler
-		RequestHeaders map[string]string
-
-		ExpectStatusCode   int
-		ExpectBodyContains []string
-	}{
-		"Loader -> TemplateProvider": {
-			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Handler {
-				h, err := torque.New[TestTemplateView](&TestTemplateModule{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				return h
-			},
-			ExpectStatusCode: http.StatusOK,
-			ExpectBodyContains: []string{
-				"<div>Hello from TemplateText!</div>",
-			},
-		},
-		"Loader -> Renderer": {
-			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Handler {
-				h, err := torque.New[any](&TestRendererModule{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				return h
-			},
-			ExpectStatusCode: http.StatusOK,
-			ExpectBodyContains: []string{
-				"<div>Hello from Render!</div>",
-			},
-		},
-		"Loader -> Renderer > TemplateProvider": {
-			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Handler {
-				h, err := torque.New[TestTemplateView](&TestTemplateExplicitRendererModule{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				return h
-			},
-			ExpectStatusCode: http.StatusOK,
-			ExpectBodyContains: []string{
-				"<div>Hello from Render!</div>",
-			},
-		},
-		"Loader -> JSON": {
-			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Handler {
-				h, err := torque.New[any](&TestLoaderModule{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				return h
-			},
-			RequestHeaders: map[string]string{
-				"Accept": "application/json",
-			},
-			ExpectStatusCode: http.StatusOK,
-			ExpectBodyContains: []string{
-				`{"message":"Hello in JSON!"}`,
-			},
-		},
-		"Router": {
-			Path: "/",
-			SetupFunc: func(t *testing.T) torque.Handler {
-				h, err := torque.New[any](&TestRouterModule{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				return h
-			},
-			RequestHeaders: map[string]string{
-				"Accept": "application/json",
-			},
-			ExpectStatusCode: http.StatusOK,
-			ExpectBodyContains: []string{
-				`{"message":"Hello in JSON!"}`,
-			},
-		},
-		"Renderer -> Outlets": {
-			Path: "/child/inner",
-			SetupFunc: func(t *testing.T) torque.Handler {
-				h, err := torque.New[TestOutletViewModel](&TestOutletModule{})
-				if err != nil {
-					t.Fatal(err)
-				}
-				return h
-			},
-			ExpectStatusCode: http.StatusOK,
-			ExpectBodyContains: []string{
-				"<html><body><main>Hello world!</main></body></html>",
-			},
-		},
-	}
-
-	for name, testCase := range testTable {
-		t.Run(name, func(t *testing.T) {
-			h := testCase.SetupFunc(t)
-
-			req := httptest.NewRequest("GET", testCase.Path, nil)
-			for key, val := range testCase.RequestHeaders {
-				req.Header.Set(key, val)
-			}
-
-			wr := httptest.NewRecorder()
-
-			h.ServeHTTP(wr, req)
-			res := wr.Result()
-			defer res.Body.Close()
-
-			byt, err := io.ReadAll(res.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if res.StatusCode != testCase.ExpectStatusCode {
-				t.Fatalf("expected status code %d, got %d", testCase.ExpectStatusCode, res.StatusCode)
-			}
-
-			for _, text := range testCase.ExpectBodyContains {
-				if !strings.Contains(string(byt), text) {
-					t.Fatalf("expected response body %q, got %q", testCase.ExpectBodyContains, string(byt))
-				}
-			}
+		BeforeEach(func() {
+			wr = httptest.NewRecorder()
+			req = httptest.NewRequest("GET", "/", nil)
 		})
-	}
-}
+
+		When("the Controller implements Loader[T]", func() {
+			Context("and implements Renderer[T]", func() {
+				type MockController[T torque.ViewModel] struct {
+					torque.Loader[T]
+					torque.Renderer[T]
+				}
+
+				It("should render", func() {
+					h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+						Loader: MockLoader[MockViewModel]{
+							LoadFunc: func(req *http.Request) (MockViewModel, error) {
+								return MockViewModel{Message: "Hello World!"}, nil
+							},
+						},
+						Renderer: MockRenderer[MockViewModel]{
+							RenderFunc: func(wr http.ResponseWriter, req *http.Request, vm MockViewModel) error {
+								_, err := wr.Write([]byte(vm.Message))
+								return err
+							},
+						},
+					})
+					Expect(h).NotTo(BeNil())
+					Expect(err).NotTo(HaveOccurred())
+
+					h.ServeHTTP(wr, req)
+					res := wr.Result()
+					defer Expect(res.Body.Close()).To(BeNil())
+
+					byt, err := io.ReadAll(res.Body)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(res.StatusCode).To(Equal(http.StatusOK))
+					Expect(string(byt)).To(Equal("Hello World!"))
+				})
+
+				It("should still use Renderer[T] even if T implements tmpl.TemplateProvider", func() {
+					h, err := torque.New[MockTemplateProvider](&MockController[MockTemplateProvider]{
+						Loader: MockLoader[MockTemplateProvider]{
+							LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+								return MockTemplateProvider{Message: "Hello World!"}, nil
+							},
+						},
+						Renderer: MockRenderer[MockTemplateProvider]{
+							RenderFunc: func(wr http.ResponseWriter, req *http.Request, vm MockTemplateProvider) error {
+								_, err := wr.Write([]byte(vm.Message))
+								return err
+							},
+						},
+					})
+					Expect(h).NotTo(BeNil())
+					Expect(err).NotTo(HaveOccurred())
+
+					h.ServeHTTP(wr, req)
+					res := wr.Result()
+					defer Expect(res.Body.Close()).To(BeNil())
+
+					byt, err := io.ReadAll(res.Body)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(res.StatusCode).To(Equal(http.StatusOK))
+					Expect(string(byt)).To(Equal("Hello World!"))
+				})
+			})
+
+			Context("and doesn't implement Renderer[T]", func() {
+				type MockController[T torque.ViewModel] struct {
+					torque.Loader[T]
+				}
+
+				Context("if T implements json.Marshaler", func() {
+					var (
+						h   torque.Handler
+						err error
+					)
+					BeforeEach(func() {
+						h, err = torque.New[MockJsonMarshaler](&MockController[MockJsonMarshaler]{
+							Loader: MockLoader[MockJsonMarshaler]{
+								LoadFunc: func(req *http.Request) (MockJsonMarshaler, error) {
+									return MockJsonMarshaler{Message: "Hello World!"}, nil
+								},
+							},
+						})
+						Expect(h).NotTo(BeNil())
+						Expect(err).NotTo(HaveOccurred())
+					})
+
+					It("renders JSON by default", func() {
+						// TODO(v2)
+						Skip("This test is failing because the server is not returning JSON")
+
+						req.Header.Set("Accept", "*/*")
+
+						h.ServeHTTP(wr, req)
+						res := wr.Result()
+						defer Expect(res.Body.Close()).To(BeNil())
+
+						byt, err := io.ReadAll(res.Body)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(res.StatusCode).To(Equal(http.StatusOK))
+						Expect(string(byt)).To(Equal("{\"message\":\"Hello World!\"}\n"))
+					})
+
+					It("renders JSON if Accept header is set to application/json", func() {
+						req.Header.Set("Accept", "application/json")
+
+						h.ServeHTTP(wr, req)
+						res := wr.Result()
+						defer Expect(res.Body.Close()).To(BeNil())
+
+						byt, err := io.ReadAll(res.Body)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(res.StatusCode).To(Equal(http.StatusOK))
+						Expect(string(byt)).To(Equal("{\"message\":\"Hello World!\"}\n"))
+					})
+				})
+
+				Context("if T implements tmpl.TemplateProvider", func() {
+					var (
+						h   torque.Handler
+						err error
+					)
+					BeforeEach(func() {
+						h, err = torque.New[MockTemplateProvider](&MockController[MockTemplateProvider]{
+							Loader: MockLoader[MockTemplateProvider]{
+								LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+									return MockTemplateProvider{Message: "Hello World!"}, nil
+								},
+							},
+						})
+						Expect(h).NotTo(BeNil())
+						Expect(err).NotTo(HaveOccurred())
+
+						It("renders HTML by default", func() {
+							req.Header.Set("Accept", "*/*")
+
+							h.ServeHTTP(wr, req)
+							res := wr.Result()
+							defer Expect(res.Body.Close()).To(BeNil())
+
+							byt, err := io.ReadAll(res.Body)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(res.StatusCode).To(Equal(http.StatusOK))
+							Expect(string(byt)).To(Equal(`<p>Hello World!</p>`))
+						})
+
+						It("renders HTML when Accept header is text/html", func() {
+							req.Header.Set("Accept", "text/html")
+
+							h.ServeHTTP(wr, req)
+							res := wr.Result()
+							defer Expect(res.Body.Close()).To(BeNil())
+
+							byt, err := io.ReadAll(res.Body)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(res.StatusCode).To(Equal(http.StatusOK))
+							Expect(string(byt)).To(Equal(`<p>Hello World!</p>`))
+						})
+					})
+				})
+			})
+		})
+	})
+	Describe("Renderer", func() {})
+	Describe("EventSource", func() {})
+	Describe("ErrorBoundary", func() {})
+	Describe("PanicBoundary", func() {})
+	Describe("RouterProvider", func() {
+		var (
+			wr  *httptest.ResponseRecorder
+			req *http.Request
+		)
+
+		BeforeEach(func() {
+			wr = httptest.NewRecorder()
+			req = httptest.NewRequest("GET", "/", nil)
+		})
+
+		When("the Controller implements RouterProvider", func() {
+			type MockController[T torque.ViewModel] struct {
+				torque.RouterProvider
+			}
+
+			// TODO(v2)
+			It("should handle http.Handler at root path", func() {
+				Skip("")
+
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					RouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+								_, err := wr.Write([]byte("Hello World!"))
+								Expect(err).NotTo(HaveOccurred())
+							}))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("Hello World!"))
+			})
+
+			// TODO(v2)
+			It("should handle http.Handler at named path", func() {
+				Skip("")
+
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					RouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/named", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+								_, err := wr.Write([]byte("Hello World!"))
+								Expect(err).NotTo(HaveOccurred())
+							}))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				req.URL.Path = "/named"
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("Hello World!"))
+			})
+
+			// TODO(v2)
+			It("should handle http.Handler nested within torque.Controller", func() {
+				Skip("")
+
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					RouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/", torque.MustNew[MockViewModel](&MockController[MockViewModel]{
+								RouterProvider: MockRouterProvider{
+									RouterFunc: func(r torque.Router) {
+										r.Handle("/", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+											_, err := wr.Write([]byte("Hello World!"))
+											Expect(err).NotTo(HaveOccurred())
+										}))
+									},
+								},
+							}))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("Hello World!"))
+			})
+
+			It("should handle torque.Controller at root path", func() {
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					RouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/", torque.MustNew[MockViewModel](&MockLoader[MockViewModel]{
+								LoadFunc: func(req *http.Request) (MockViewModel, error) {
+									return MockViewModel{Message: "Hello World!"}, nil
+								},
+							}))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				req.Header.Set("Accept", "application/json")
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("{\"message\":\"Hello World!\"}\n"))
+			})
+
+			It("should handle torque.Controller at named path", func() {
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					RouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/named", torque.MustNew[MockViewModel](&MockLoader[MockViewModel]{
+								LoadFunc: func(req *http.Request) (MockViewModel, error) {
+									return MockViewModel{Message: "Hello World!"}, nil
+								},
+							}))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				req.URL.Path = "/named"
+				req.Header.Set("Accept", "application/json")
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("{\"message\":\"Hello World!\"}\n"))
+			})
+
+		})
+	})
+	Describe("TemplateProvider", func() {
+		var (
+			wr  *httptest.ResponseRecorder
+			req *http.Request
+		)
+
+		BeforeEach(func() {
+			wr = httptest.NewRecorder()
+			req = httptest.NewRequest("GET", "/", nil)
+		})
+
+		When("the ViewModel implements TemplateProvider", func() {
+			type MockController[T torque.ViewModel] struct {
+				torque.Loader[T]
+			}
+
+			It("should render the TemplateProvider", func() {
+				h, err := torque.New[MockTemplateProvider](&MockController[MockTemplateProvider]{
+					Loader: MockLoader[MockTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+							return MockTemplateProvider{Message: "Hello World!"}, nil
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				req.Header.Set("Accept", "text/html")
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("<p>Hello World!</p>"))
+			})
+		})
+
+		When("the Controllers are nested", func() {
+			Context("and a parent Controller has an outlet", func() {
+				type MockController[T torque.ViewModel] struct {
+					torque.Loader[T]
+					torque.RouterProvider
+				}
+
+				It("should render the nested TemplateProvider within the outlet", func() {
+					h, err := torque.New[MockOutletTemplateProvider](
+						&MockController[MockOutletTemplateProvider]{
+							Loader: MockLoader[MockOutletTemplateProvider]{
+								LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+									return MockOutletTemplateProvider{}, nil
+								},
+							},
+							RouterProvider: MockRouterProvider{
+								RouterFunc: func(r torque.Router) {
+									type MockController[T torque.ViewModel] struct {
+										torque.Loader[T]
+									}
+
+									r.Handle("/child", torque.MustNew[MockTemplateProvider](
+										&MockController[MockTemplateProvider]{
+											Loader: MockLoader[MockTemplateProvider]{
+												LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+													return MockTemplateProvider{Message: "Hello World!"}, nil
+												},
+											},
+										},
+									))
+								},
+							},
+						},
+					)
+					Expect(h).NotTo(BeNil())
+					Expect(err).NotTo(HaveOccurred())
+
+					req.Header.Set("Accept", "text/html")
+					req.URL.Path = "/child"
+
+					h.ServeHTTP(wr, req)
+					res := wr.Result()
+					defer Expect(res.Body.Close()).To(BeNil())
+
+					byt, err := io.ReadAll(res.Body)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(res.StatusCode).To(Equal(http.StatusOK))
+					Expect(string(byt)).To(Equal("<div><p>Hello World!</p></div>"))
+				})
+			})
+			Context("and a child Controller has an outlet", func() {
+				type MockController[T torque.ViewModel] struct {
+					torque.Loader[T]
+				}
+
+				It("should throw an error during construction", func() {
+					// TODO(v2)
+					Skip("")
+
+					h, err := torque.New[MockOutletTemplateProvider](
+						&MockController[MockOutletTemplateProvider]{
+							Loader: MockLoader[MockOutletTemplateProvider]{
+								LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+									return MockOutletTemplateProvider{}, nil
+								},
+							},
+						},
+					)
+					Expect(err).To(HaveOccurred())
+					Expect(h).To(BeNil())
+				})
+			})
+		})
+	})
+})

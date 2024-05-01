@@ -3,6 +3,7 @@ package torque
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -50,7 +51,7 @@ func (h *handlerImpl[T]) handleRequest(wr http.ResponseWriter, req *http.Request
 		}
 	}()
 
-	log.Printf("[Request] (http) %s -> %T\n", req.URL, h.module)
+	log.Printf("[Request] (%s) %s -> %T\n", req.Method, req.URL, h.module)
 
 	// guards can prevent a request from going through by
 	// returning an alternate http.HandlerFunc
@@ -110,7 +111,7 @@ func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request)
 			return nil
 		}
 	} else {
-		return ErrNotImplemented
+		return fmt.Errorf("failed to handle action: %w", ErrNotImplemented)
 	}
 }
 
@@ -137,7 +138,7 @@ func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request,
 			return nil
 		}
 	} else {
-		return ErrNotImplemented
+		return fmt.Errorf("failed to handle renderer: %w", ErrNotImplemented)
 	}
 }
 
@@ -154,10 +155,11 @@ func (h *handlerImpl[T]) handleLoader(wr http.ResponseWriter, req *http.Request)
 			return vm, err
 		} else {
 			log.Printf("[Loader] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
+			return vm, nil
 		}
+	} else {
+		return vm, fmt.Errorf("failed to handle loader: %w", ErrNotImplemented)
 	}
-
-	return vm, nil
 }
 
 func (h *handlerImpl[T]) handleEventSource(wr http.ResponseWriter, req *http.Request) error {
@@ -173,12 +175,23 @@ func (h *handlerImpl[T]) handleEventSource(wr http.ResponseWriter, req *http.Req
 		}
 		return err
 	} else {
-		return ErrNotImplemented
+		return fmt.Errorf("failed to handle event source: %w", ErrNotImplemented)
 	}
 }
 
+func (h *handlerImpl[T]) handleInternalError(wr http.ResponseWriter, req *http.Request, err error) bool {
+	if errors.Is(err, ErrNotImplemented) {
+		http.Error(wr, "method not allowed", http.StatusMethodNotAllowed)
+		return true
+	}
+	return false
+}
+
 func (h *handlerImpl[T]) handleError(wr http.ResponseWriter, req *http.Request, err error) {
-	if h.errorBoundary != nil {
+	if ok := h.handleInternalError(wr, req, err); ok {
+		log.Printf("[Error] %s", err.Error())
+		return
+	} else if h.errorBoundary != nil {
 		// Calls to ErrorBoundary can return an http.HandlerFunc
 		// that can be used to cleanly handle the error. Or not
 		h := h.errorBoundary.ErrorBoundary(wr, req, err)

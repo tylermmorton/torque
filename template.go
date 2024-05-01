@@ -28,6 +28,7 @@ func createTemplateRenderer[T ViewModel](t compiler.TemplateProvider) (*template
 	}
 
 	r.renderFn = func(wr http.ResponseWriter, req *http.Request, vm T) error {
+		// TODO(v2.1) Expose the ability to configure render options using context functions
 		return tmpl.Render(wr, vm)
 	}
 

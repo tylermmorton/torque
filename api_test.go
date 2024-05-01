@@ -309,6 +309,23 @@ var _ = Describe("Handler API", func() {
 				})
 			})
 		})
+
+		When("the Controller doesn't implement Loader[T]", func() {
+			It("should return a 405 method not allowed", func() {
+				h, err := torque.New[MockViewModel](&struct{}{})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusMethodNotAllowed))
+				Expect(string(byt)).To(Equal("method not allowed\n"))
+			})
+		})
 	})
 	Describe("Renderer", func() {})
 	Describe("EventSource", func() {})

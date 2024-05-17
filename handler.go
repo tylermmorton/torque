@@ -12,10 +12,6 @@ import (
 	"time"
 )
 
-var (
-	ErrNotImplemented = errors.New("method not implemented for route")
-)
-
 // ServeHTTP implements the http.Handler interface
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	if len(h.children) != 0 { // if controller is a RouterProvider
@@ -28,7 +24,7 @@ func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 // serveInternal is the main entrypoint for handling HTTP requests made to a route module
 // and is designed as a layer of indirection to be called recursively
 func (h *handlerImpl[T]) serveInternal(wr http.ResponseWriter, req *http.Request) {
-	if h.parent != nil && h.parent.HasOutlet() {
+	if req.Method == http.MethodGet && h.parent != nil && h.parent.HasOutlet() {
 		h.handleOutlet(wr, req)
 		return
 	} else {
@@ -75,7 +71,7 @@ func (h *handlerImpl[T]) handleRequest(wr http.ResponseWriter, req *http.Request
 		}
 
 		vm, err := h.handleLoader(wr, req)
-		if err != nil {
+		if err != nil && !errors.Is(err, errNotImplemented) {
 			h.handleError(wr, req, err)
 			return
 		}
@@ -111,7 +107,7 @@ func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request)
 			return nil
 		}
 	} else {
-		return fmt.Errorf("failed to handle action: %w", ErrNotImplemented)
+		return fmt.Errorf("failed to handle action: %w", errNotImplemented)
 	}
 }
 
@@ -138,7 +134,7 @@ func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request,
 			return nil
 		}
 	} else {
-		return fmt.Errorf("failed to handle renderer: %w", ErrNotImplemented)
+		return fmt.Errorf("failed to handle renderer: %w", errNotImplemented)
 	}
 }
 
@@ -158,7 +154,7 @@ func (h *handlerImpl[T]) handleLoader(wr http.ResponseWriter, req *http.Request)
 			return vm, nil
 		}
 	} else {
-		return vm, fmt.Errorf("failed to handle loader: %w", ErrNotImplemented)
+		return vm, fmt.Errorf("failed to handle loader: %w", errNotImplemented)
 	}
 }
 
@@ -175,12 +171,29 @@ func (h *handlerImpl[T]) handleEventSource(wr http.ResponseWriter, req *http.Req
 		}
 		return err
 	} else {
-		return fmt.Errorf("failed to handle event source: %w", ErrNotImplemented)
+		return fmt.Errorf("failed to handle event source: %w", errNotImplemented)
 	}
 }
 
+func (h *handlerImpl[T]) handleReloadError(wr http.ResponseWriter, req *http.Request, err error) bool {
+	if err, ok := err.(*errReload); !ok {
+		return false
+	} else if req.Method == http.MethodGet {
+		panic(errors.New("ReloadWithError can only be returned from an Action"))
+	} else if err.err != nil {
+		req = req.WithContext(withError(req.Context(), err.err))
+	}
+
+	log.Printf("[ReloadWithError] %s -> %s\n", req.URL, err.Error())
+
+	req.Method = http.MethodGet
+	h.serveInternal(wr, req)
+
+	return true
+}
+
 func (h *handlerImpl[T]) handleInternalError(wr http.ResponseWriter, req *http.Request, err error) bool {
-	if errors.Is(err, ErrNotImplemented) {
+	if errors.Is(err, errNotImplemented) {
 		http.Error(wr, "method not allowed", http.StatusMethodNotAllowed)
 		return true
 	}
@@ -188,7 +201,9 @@ func (h *handlerImpl[T]) handleInternalError(wr http.ResponseWriter, req *http.R
 }
 
 func (h *handlerImpl[T]) handleError(wr http.ResponseWriter, req *http.Request, err error) {
-	if ok := h.handleInternalError(wr, req, err); ok {
+	if ok := h.handleReloadError(wr, req, err); ok {
+		return
+	} else if ok := h.handleInternalError(wr, req, err); ok {
 		log.Printf("[Error] %s", err.Error())
 		return
 	} else if h.errorBoundary != nil {

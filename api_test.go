@@ -2,9 +2,13 @@ package torque_test
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/gorilla/schema"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -85,13 +89,15 @@ func Test_HandlerAPI(t *testing.T) {
 var _ = Describe("Handler API", func() {
 	Describe("Action", func() {
 		var (
-			wr  *httptest.ResponseRecorder
-			req *http.Request
+			wr   *httptest.ResponseRecorder
+			req  *http.Request
+			form url.Values
 		)
 
 		BeforeEach(func() {
 			wr = httptest.NewRecorder()
 			req = httptest.NewRequest(http.MethodPost, "/", nil)
+			form = url.Values{}
 		})
 
 		When("the Controller implements Action", func() {
@@ -119,6 +125,89 @@ var _ = Describe("Handler API", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(http.StatusOK))
 				Expect(string(byt)).To(Equal("Hello World!"))
+			})
+
+			It("should enable FormData decoding", func() {
+				// TODO(v2)
+				Skip("Broken")
+
+				type FormData struct {
+					Message string `json:"message"`
+				}
+
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					MockAction{
+						ActionFunc: func(wr http.ResponseWriter, req *http.Request) error {
+							Expect(req.Form).NotTo(BeNil())
+							formData, err := torque.DecodeForm[FormData](req)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(formData.Message).To(Equal("Hello world!"))
+							return nil
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				var formData = FormData{
+					Message: "Hello world!",
+				}
+				err = schema.NewEncoder().Encode(formData, form)
+				Expect(err).NotTo(HaveOccurred())
+
+				req = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(form.Encode()))
+				req.Header.Set("Content-Type", "application/form-data")
+
+				req.Form = url.Values{
+					"message": []string{"Hello world!"},
+				}
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+			})
+
+			It("should execute the Loader when ReloadWithError is returned", func() {
+				type MockController[T torque.ViewModel] struct {
+					MockAction
+					MockLoader[T]
+					MockRenderer[T]
+				}
+
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					MockAction{
+						ActionFunc: func(wr http.ResponseWriter, req *http.Request) error {
+							return torque.ReloadWithError(errors.New("hello world"))
+						},
+					},
+					MockLoader[MockViewModel]{
+						LoadFunc: func(req *http.Request) (MockViewModel, error) {
+							err := torque.UseError(req.Context())
+							Expect(err).NotTo(BeNil())
+							Expect(err.Error()).To(Equal("hello world"))
+							return MockViewModel{Message: err.Error()}, nil
+						},
+					},
+					MockRenderer[MockViewModel]{
+						RenderFunc: func(wr http.ResponseWriter, req *http.Request, vm MockViewModel) error {
+							_, err := wr.Write([]byte(vm.Message))
+							return err
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("hello world"))
 			})
 		})
 
@@ -151,6 +240,38 @@ var _ = Describe("Handler API", func() {
 		})
 
 		When("the Controller implements Loader[T]", func() {
+			It("should execute the Loader when ReloadWithError is returned", func() {
+				type MockController[T torque.ViewModel] struct {
+					MockLoader[T]
+					MockRenderer[T]
+				}
+
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					MockLoader[MockViewModel]{
+						LoadFunc: func(req *http.Request) (MockViewModel, error) {
+							return MockViewModel{}, torque.ReloadWithError(nil)
+						},
+					},
+					MockRenderer[MockViewModel]{
+						RenderFunc: func(wr http.ResponseWriter, req *http.Request, vm MockViewModel) error {
+							_, err := wr.Write([]byte(vm.Message))
+							return err
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusInternalServerError))
+				Expect(string(byt)).To(Equal("ReloadWithError can only be returned from an Action\n"))
+			})
+
 			Context("and implements Renderer[T]", func() {
 				type MockController[T torque.ViewModel] struct {
 					MockLoader[T]

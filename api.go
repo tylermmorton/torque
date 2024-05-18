@@ -66,7 +66,6 @@ type RouterProvider interface {
 	Router(r Router)
 }
 
-// TODO(v2)
 type GuardProvider interface {
 	Guards() []Guard
 }

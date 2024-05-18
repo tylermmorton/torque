@@ -36,6 +36,7 @@ type handlerImpl[T ViewModel] struct {
 
 	action        Action
 	router        chi.Router
+	guards        []Guard
 	eventSource   EventSource
 	errorBoundary ErrorBoundary
 	panicBoundary PanicBoundary
@@ -77,9 +78,10 @@ func createHandlerImpl[T ViewModel](module HandlerModule) *handlerImpl[T] {
 		parent:   nil,
 		children: make([]handlerImplFacade, 0),
 
-		router:        nil,
-		loader:        nil,
 		action:        nil,
+		loader:        nil,
+		router:        nil,
+		guards:        []Guard{},
 		renderer:      nil,
 		eventSource:   nil,
 		errorBoundary: nil,
@@ -136,6 +138,10 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], module HandlerModule)
 
 	if _, ok := module.(RouterProvider); ok {
 		h.router = createRouterProvider[T](h, module)
+	}
+
+	if guardProvider, ok := module.(GuardProvider); ok {
+		h.guards = append(h.guards, guardProvider.Guards()...)
 	}
 
 	return nil

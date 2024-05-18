@@ -51,13 +51,13 @@ func (h *handlerImpl[T]) handleRequest(wr http.ResponseWriter, req *http.Request
 
 	// guards can prevent a request from going through by
 	// returning an alternate http.HandlerFunc
-	//for _, guard := range h.guards {
-	//	if h := guard(h.module, req); h != nil {
-	//		log.Printf("[Guard] %s -> handled by %T\n", req.URL, guard)
-	//		h(wr, req)
-	//		return
-	//	}
-	//}
+	for _, guard := range h.guards {
+		if h := guard(h.module, req); h != nil {
+			log.Printf("[Guard] %s -> handled by %T\n", req.URL, guard)
+			h(wr, req)
+			return
+		}
+	}
 
 	var err error
 	switch req.Method {

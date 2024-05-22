@@ -9,4 +9,4 @@ import "net/http"
 //
 // For example, a guard could check if a user is logged in and return a redirect
 // if they are not. Another way to think about Guards is like an "incoming request boundary"
-type Guard = func(rm interface{}, req *http.Request) http.HandlerFunc // or nil
+type Guard = func(req *http.Request) http.HandlerFunc

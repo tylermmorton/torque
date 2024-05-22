@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strings"
 )
 
 // RouteParam returns the named route parameter from the request url
@@ -82,7 +83,29 @@ func (r *routerImpl) HandleFileSystem(pattern string, fs fs.FS) {
 	r.Router.Route(pattern, func(r chi.Router) {
 		r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
 			log.Printf("[FileSystem] %s", req.URL.Path)
+			logFileSystem(fs)
+			log.Printf("Stripping Prefix: %s, (%s)", pattern, strings.TrimPrefix(req.URL.Path, pattern))
 			http.StripPrefix(pattern, http.FileServer(http.FS(fs))).ServeHTTP(wr, req)
 		})
 	})
+}
+
+func logFileSystem(fsys fs.FS) {
+	var walkFn func(path string, d fs.DirEntry, err error) error
+
+	walkFn = func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		} else if d.IsDir() {
+			log.Printf("Dir: %s", path)
+		} else {
+			log.Printf("File: %s", path)
+		}
+		return nil
+	}
+
+	err := fs.WalkDir(fsys, ".", walkFn)
+	if err != nil {
+		panic(err)
+	}
 }

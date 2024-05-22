@@ -49,6 +49,11 @@ type PanicBoundary interface {
 	PanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
 }
 
+// TODO(v2.1) Context driven boundaries may be useful in some scenarios
+//type CancelBoundary interface {
+//	CancelBoundary(wr http.ResponseWriter, req *http.Request) http.HandlerFunc
+//}
+
 // TODO(v2.1) Each controller can specify a CORS configuration that applies to its subtree
 //type CORSProvider interface {
 //	CORS() []string

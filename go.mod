@@ -8,6 +8,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.33.0
 	github.com/pkg/errors v0.9.1
+	rogchap.com/v8go v0.9.0
 )
 
 require (

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
-	"strings"
 )
 
 // RouteParam returns the named route parameter from the request url
@@ -22,7 +21,7 @@ type Router interface {
 
 type routerImpl struct {
 	chi.Router
-	Handler handlerImplFacade
+	Handler Handler
 }
 
 func logRoutes(prefix string, r []chi.Route) {
@@ -33,26 +32,25 @@ func logRoutes(prefix string, r []chi.Route) {
 			logRoutes(pattern, route.SubRoutes.Routes())
 		}
 	}
-	log.Printf("----\n")
 }
 
 // mountRouterProvider is a recursive function that takes a handler and attaches
-// to its router the tree of HandlerModule provided by the RouterProvider API.
-func mountRouterProvider(r chi.Router, path string, h handlerImplFacade) {
+// to its router the tree of Handlers provided by the RouterProvider API.
+func mountRouterProvider(r chi.Router, path string, h Handler) {
 	r.Handle(path, h)
 
-	for _, child := range h.Children() {
+	for _, child := range h.GetChildren() {
 		var childPath = filepath.Join(path + child.GetPath())
 		r.Handle(childPath, child)
 
-		if len(child.Children()) != 0 {
+		if len(child.GetChildren()) != 0 {
 			mountRouterProvider(r, childPath, child)
 		}
 	}
 }
 
 // createRouterProvider takes the given HandlerModule and builds
-func createRouterProvider[T ViewModel](h *handlerImpl[T], module HandlerModule) chi.Router {
+func createRouterProvider[T ViewModel](h *handlerImpl[T], module Controller) chi.Router {
 	rr := &routerImpl{
 		Router:  chi.NewRouter(),
 		Handler: h,
@@ -70,10 +68,10 @@ func createRouterProvider[T ViewModel](h *handlerImpl[T], module HandlerModule) 
 func (r *routerImpl) Handle(pattern string, h http.Handler) {
 	var parent = r.Handler
 
-	if child, ok := h.(handlerImplFacade); ok {
+	if child, ok := h.(Handler); ok {
 		// the tree will be resolved during steps in mountRouterProvider
-		child.SetPath(pattern)
-		parent.AddChild(child)
+		child.setPath(pattern)
+		parent.addChild(child)
 	} else {
 		r.Router.Handle(pattern, h)
 	}
@@ -83,11 +81,13 @@ func (r *routerImpl) HandleFileSystem(pattern string, fs fs.FS) {
 	r.Router.Route(pattern, func(r chi.Router) {
 		r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
 			log.Printf("[FileSystem] %s", req.URL.Path)
-			logFileSystem(fs)
-			log.Printf("Stripping Prefix: %s, (%s)", pattern, strings.TrimPrefix(req.URL.Path, pattern))
 			http.StripPrefix(pattern, http.FileServer(http.FS(fs))).ServeHTTP(wr, req)
 		})
 	})
+	if r.Handler.GetMode() == ModeDevelopment {
+		log.Printf("-- HandleFileSystem(%s) --", pattern)
+		logFileSystem(fs)
+	}
 }
 
 func logFileSystem(fsys fs.FS) {

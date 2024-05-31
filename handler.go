@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/schema"
 	"html/template"
 	"log"
 	"net/http"
@@ -11,6 +13,62 @@ import (
 	"runtime/debug"
 	"time"
 )
+
+type handlerImpl[T ViewModel] struct {
+	// the interface this handler is derived from
+	ctl Controller
+
+	mode    Mode
+	encoder *schema.Encoder
+	decoder *schema.Decoder
+
+	router   chi.Router
+	path     string
+	parent   Handler
+	children []Handler
+
+	subscribers int
+	eventSource EventSource
+
+	action        Action
+	loader        Loader[T]
+	rendererT     Renderer[T]
+	rendererVM    DynamicRenderer
+	guards        []Guard
+	plugins       []Plugin
+	errorBoundary ErrorBoundary
+	panicBoundary PanicBoundary
+}
+
+func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
+	h := &handlerImpl[T]{
+		ctl: ctl,
+
+		mode:    ModeDevelopment,
+		encoder: schema.NewEncoder(),
+		decoder: schema.NewDecoder(),
+
+		router:   nil,
+		path:     "/",
+		parent:   nil,
+		children: make([]Handler, 0),
+
+		action:        nil,
+		loader:        nil,
+		rendererT:     nil,
+		rendererVM:    nil,
+		eventSource:   nil,
+		errorBoundary: nil,
+		panicBoundary: nil,
+		guards:        []Guard{},
+		plugins:       []Plugin{},
+	}
+
+	h.encoder.SetAliasTag("json")
+	h.decoder.SetAliasTag("json")
+
+	return h
+}
 
 // ServeHTTP implements the http.Handler interface
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
@@ -21,7 +79,7 @@ func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// serveInternal is the main entrypoint for handling HTTP requests made to a route module
+// serveInternal is the main entrypoint for handling HTTP requests made to a route ctl
 // and is designed as a layer of indirection to be called recursively
 func (h *handlerImpl[T]) serveInternal(wr http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet && h.parent != nil && h.parent.HasOutlet() {
@@ -47,7 +105,7 @@ func (h *handlerImpl[T]) handleRequest(wr http.ResponseWriter, req *http.Request
 		}
 	}()
 
-	log.Printf("[Request] (%s) %s -> %T\n", req.Method, req.URL, h.module)
+	log.Printf("[Request] (%s) %s -> %T\n", req.Method, req.URL, h.ctl)
 
 	// guards can prevent a request from going through by
 	// returning an alternate http.HandlerFunc
@@ -123,18 +181,24 @@ func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request,
 		return encoder.Encode(vm)
 	}
 
-	var start = time.Now()
-	if h.renderer != nil {
-		err := h.renderer.Render(wr, req, vm)
-		if err != nil {
-			log.Printf("[Renderer] %s -> error: %s\n", req.URL, err.Error())
-			return err
-		} else {
-			log.Printf("[Renderer] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
-			return nil
-		}
+	var (
+		err   error
+		start = time.Now()
+	)
+	if h.rendererT != nil {
+		err = h.rendererT.Render(wr, req, vm)
+	} else if h.rendererVM != nil {
+		err = h.rendererVM.Render(wr, req, vm)
 	} else {
-		return fmt.Errorf("failed to handle renderer: %w", errNotImplemented)
+		return fmt.Errorf("failed to handle rendererT: %w", errNotImplemented)
+	}
+
+	if err != nil {
+		log.Printf("[Renderer] %s -> error: %s\n", req.URL, err.Error())
+		return err
+	} else {
+		log.Printf("[Renderer] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
+		return nil
 	}
 }
 
@@ -216,7 +280,7 @@ func (h *handlerImpl[T]) handleError(wr http.ResponseWriter, req *http.Request, 
 			return
 		}
 	} else {
-		// No ErrorBoundary was implemented in the route module.
+		// No ErrorBoundary was implemented in the route ctl.
 		// So your error goes to the PanicBoundary.
 		log.Printf("[ErrorBoundary] %s -> not implemented\n", req.URL)
 		panic(err)
@@ -235,7 +299,7 @@ func (h *handlerImpl[T]) handlePanic(wr http.ResponseWriter, req *http.Request, 
 		}
 	} else {
 		stack := debug.Stack()
-		log.Printf("[UncaughtPanic] %s\n-- ERROR --\nUncaught panic in route module %T: %+v\n-- STACK TRACE --\n%s", req.URL, h.module, err, stack)
+		log.Printf("[UncaughtPanic] %s\n-- ERROR --\nUncaught panic in route ctl %T: %+v\n-- STACK TRACE --\n%s", req.URL, h.ctl, err, stack)
 		err = writeErrorResponse(wr, req, err, stack)
 		if err != nil {
 			log.Printf("[UncaughtPanic] %s -> failed to write error response: %v\n", req.URL, err)

@@ -26,8 +26,8 @@ func ParseManifest(byt []byte) (Manifest, error) {
 
 // ParseManifestFromFS reads the manifest file from the given fs.FS and returns a Manifest.
 // The manifest is expected to be at .vite/manifest.json
-func ParseManifestFromFS(fs fs.FS) (Manifest, error) {
-	file, err := fs.Open("manifest.json")
+func ParseManifestFromFS(fs fs.FS, path string) (Manifest, error) {
+	file, err := fs.Open(path)
 	if err != nil {
 		return nil, err
 	}

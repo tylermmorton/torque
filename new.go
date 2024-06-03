@@ -17,7 +17,7 @@ func New[T ViewModel](ctl Controller) (Handler, error) {
 	}
 
 	for _, plugin := range h.plugins {
-		err = plugin.Setup(h)(ctl, vm)
+		err = plugin.Install(h)(ctl, vm)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to install Plugin %T", plugin)
 		}

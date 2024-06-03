@@ -13,6 +13,7 @@ const (
 	errorKey   key = "error"
 	decoderKey key = "decoder"
 	modeKey    key = "mode"
+	scriptsKey key = "scripts"
 )
 
 type Mode string
@@ -77,4 +78,22 @@ func UseTitle(req *http.Request) string {
 		return title
 	}
 	return ""
+}
+
+func WithScript(req *http.Request, script string) {
+	var scripts, ok = req.Context().Value(scriptsKey).([]string)
+	if !ok {
+		scripts = []string{script}
+	} else {
+		scripts = append(scripts, script)
+	}
+
+	*req = *req.WithContext(context.WithValue(req.Context(), scriptsKey, scripts))
+}
+
+func UseScripts(req *http.Request) []string {
+	if scripts, ok := req.Context().Value(scriptsKey).([]string); ok {
+		return scripts
+	}
+	return nil
 }

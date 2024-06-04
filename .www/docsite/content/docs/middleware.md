@@ -55,14 +55,14 @@ package main
 
 import (
     "net/http"
-    
+
     "github.com/tylermmorton/torque"
 )
 
 func main() {
     // Example dummy auth service
     authService := auth.NewService()
-	
+
     r := torque.NewRouter(
         torque.WithMiddleware(createAuthMiddleware(authService)),
     )
@@ -81,7 +81,7 @@ package main
 import (
     "fmt"
     "net/http"
-    
+
     "github.com/tylermmorton/torque"
 )
 
@@ -91,7 +91,7 @@ func main() {
             return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
                 // Call the next handler in the chain
                 h.ServeHTTP(w, r)
-				
+
                 // Once the request has been handled:
                 fmt.Println("Request complete!")
            })
@@ -107,7 +107,6 @@ func main() {
 
 `torque` uses standard `net/http` middleware to promote the wide range of middleware packages that have already been built by the Go community.
 
-
 The [`rs/cors`](https://github.com/rs/cors) middleware package is a great example of such a project. It provides a simple way to configure CORS headers for your application.
 
 ```go
@@ -115,7 +114,7 @@ package main
 
 import (
 	"net/http"
-	
+
 	"github.com/rs/cors"
 	"github.com/tylermmorton/torque"
 )

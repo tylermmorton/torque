@@ -1,34 +1,34 @@
 html,
 body {
-    width: 100%;
-    height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 .hero {
-    padding-top: 4rem;
-    background-image: linear-gradient(
-            to top,
-            #000111,
-            #040816,
-            #080e1c,
-            #0f1222,
-            #151728,
-            #18192b,
-            #1b1b2f,
-            #1f1d32,
-            #221d35,
-            #241e37,
-            #261e3a,
-            #291e3b
-    );
+  padding-top: 4rem;
+  background-image: linear-gradient(
+    to top,
+    #000111,
+    #040816,
+    #080e1c,
+    #0f1222,
+    #151728,
+    #18192b,
+    #1b1b2f,
+    #1f1d32,
+    #221d35,
+    #241e37,
+    #261e3a,
+    #291e3b
+  );
 }
 
 .logo {
-    font-family: "Bruno Ace SC", monospace;
-    color: #fff;
+  font-family: "Bruno Ace SC", monospace;
+  color: #fff;
 }
 
 .headline {
-    font-family: "Fira Code", monospace;
-    color: #fff;
+  font-family: "Fira Code", monospace;
+  color: #fff;
 }

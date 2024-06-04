@@ -3,19 +3,16 @@ package main
 import (
 	"embed"
 	"fmt"
+	"github.com/tylermmorton/torque/.www/docsite/routes"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 
-	algolia "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/joho/godotenv"
 	"github.com/tylermmorton/torque"
-	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
 )
-
-//go:generate tmpl bind ./... --outfile=tmpl.gen.go
 
 //go:embed .build/static/*
 var staticAssets embed.FS
@@ -29,41 +26,23 @@ func main() {
 		log.Printf("failed to load env: %+v", err)
 	}
 
-	algoliaAppId, ok := os.LookupEnv("ALGOLIA_APP_ID")
-	if !ok {
-		log.Fatalf("ALGOLIA_APP_ID not set in environment")
+	assetsFs, err := fs.Sub(staticAssets, ".build/static")
+	if err != nil {
+		log.Fatalf("failed to create static assets filesystem: %+v", err)
 	}
 
-	algoliaApiKey, ok := os.LookupEnv("ALGOLIA_API_KEY")
-	if !ok {
-		log.Fatalf("ALGOLIA_API_KEY not set in environment")
-	}
-
-	algoliaClient := algolia.NewClient(algoliaAppId, algoliaApiKey)
-
-	contentSvc, err := content.New(embeddedContent, algoliaClient)
+	contentSvc, err := content.New(embeddedContent, nil)
 	if err != nil {
 		log.Fatalf("failed to create content service: %+v", err)
 	}
 
-	var assetHandler torque.RouteComponent
-	if os.Getenv("EMBED_ASSETS") == "true" {
-		staticAssets, err := fs.Sub(staticAssets, ".build/static")
-		if err != nil {
-			log.Fatalf("failed to create static assets filesystem: %+v", err)
-		}
-		assetHandler = torque.WithFileSystemServer("/s", staticAssets)
-	} else {
-		assetHandler = torque.WithFileServer("/s", ".build/static")
+	r, err := torque.New[routes.ViewModel](&routes.Controller{
+		StaticAssets:   assetsFs,
+		ContentService: contentSvc,
+	})
+	if err != nil {
+		log.Fatalf("failed to create controller: %+v", err)
 	}
-
-	r := torque.NewRouter(
-		assetHandler,
-
-		torque.WithRouteModule("/{pageName}", &docs.RouteModule{ContentSvc: contentSvc}),
-		torque.WithRouteModule("/panic", &testing.RouteModule{}),
-		torque.WithRedirect("/", "/getting-started", http.StatusTemporaryRedirect),
-	)
 
 	var host, port = os.Getenv("HOST_ADDR"), os.Getenv("HOST_PORT")
 	if port == "" {

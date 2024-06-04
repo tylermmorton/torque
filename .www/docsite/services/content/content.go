@@ -7,11 +7,8 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/model"
 	"io/fs"
 	"log"
-	"os"
 	"strings"
 )
-
-const searchIndexName = "torque-docsite-content"
 
 var (
 	ErrNotFound = errors.New("content not found")
@@ -20,7 +17,6 @@ var (
 // Service represents the content service used to get and search for content on the doc site.
 type Service interface {
 	GetByID(ctx context.Context, name string) (*model.Article, error)
-	Search(ctx context.Context, query string) ([]*model.Article, error)
 }
 
 // contentService is the implementation of the content service. Internally
@@ -29,9 +25,6 @@ type Service interface {
 type contentService struct {
 	// content is the map of content loaded into this service
 	content []*model.Article
-
-	// index is the search index used to search the content
-	index *search.Index
 }
 
 func New(fsys fs.FS, sc *search.Client) (Service, error) {
@@ -40,12 +33,7 @@ func New(fsys fs.FS, sc *search.Client) (Service, error) {
 		return nil, err
 	}
 
-	index, err := prepareSearchIndex(content, sc)
-	if err != nil {
-		return nil, err
-	}
-
-	svc := &contentService{content, index}
+	svc := &contentService{content}
 
 	return svc, nil
 }
@@ -88,29 +76,6 @@ func loadFromFilesystem(fsys fs.FS) ([]*model.Article, error) {
 	return docs, nil
 }
 
-func prepareSearchIndex(content []*model.Article, sc *search.Client) (*search.Index, error) {
-	index := sc.InitIndex(searchIndexName)
-	if val, ok := os.LookupEnv("ALGOLIA_INDEX_RESET"); ok && val == "true" {
-		_, err := index.ClearObjects()
-		if err != nil {
-			return nil, err
-		}
-
-		log.Printf("[info] resetting objects in index %s", searchIndexName)
-		res, err := index.SaveObjects(content)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, res := range res.Responses {
-			log.Printf("-- [batch] %d: %d objects: [%s]", res.TaskID, len(res.ObjectIDs), strings.Join(res.ObjectIDs, ", "))
-		}
-
-		log.Printf("[info] saved %d object batch to search index: %s", len(res.Responses), searchIndexName)
-	}
-	return index, nil
-}
-
 func (svc *contentService) GetByID(ctx context.Context, objectID string) (*model.Article, error) {
 	for _, doc := range svc.content {
 		if doc.ObjectID == objectID {
@@ -118,26 +83,4 @@ func (svc *contentService) GetByID(ctx context.Context, objectID string) (*model
 		}
 	}
 	return nil, ErrNotFound
-}
-
-func (svc *contentService) Search(ctx context.Context, query string) ([]*model.Article, error) {
-	queryRes, err := svc.index.Search(query, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]*model.Article, 0)
-	for _, hit := range queryRes.Hits {
-		if id, ok := hit["objectID"]; ok {
-			doc, err := svc.GetByID(ctx, id.(string))
-			if err != nil {
-				log.Printf("[warn] failed to get doc by an id found in the search index %s: %s", id, err)
-				continue
-			}
-			res = append(res, doc)
-		}
-
-	}
-
-	return res, nil
 }

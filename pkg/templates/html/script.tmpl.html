@@ -1,0 +1,8 @@
+<script
+  type="{{ .Type }}"
+  {{ if ne .Src "" -}}src="{{.Src}}"{{ end -}}
+>
+  {{ if ne .Content "" }}
+    {{ .Content }}
+  {{ end }}
+</script>

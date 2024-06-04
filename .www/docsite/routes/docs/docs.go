@@ -2,149 +2,95 @@ package docs
 
 import (
 	_ "embed"
-	"errors"
-	"fmt"
-	"net/http"
-	"os"
-
-	"github.com/tylermmorton/tmpl"
 	"github.com/tylermmorton/torque"
-	"github.com/tylermmorton/torque/.www/docsite/model"
+	"github.com/tylermmorton/torque/.www/docsite/routes/docs/page"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
-	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
-	"github.com/tylermmorton/torque/.www/docsite/templates/layout"
-	"github.com/tylermmorton/torque/.www/docsite/templates/navigator"
 	"github.com/tylermmorton/torque/.www/docsite/templates/sidebar"
-	"github.com/tylermmorton/torque/pkg/htmx"
+	"net/http"
 )
 
-var (
-	ErrPageNotFound = fmt.Errorf("page not found")
-)
+//go:embed docs.tmpl.html
+var docsTemplateText string
 
-// DotContext is the dot context of the index page template.
-//
-//tmpl:bind docs.tmpl.html
-type DotContext struct {
-	layout.Layout `tmpl:"layout"`
-
-	Article model.Article `tmpl:"article"`
+type ViewModel struct {
+	Sidebar sidebar.Sidebar `tmpl:"sidebar"`
 }
 
-var Template = tmpl.MustCompile(&DotContext{})
+func (ViewModel) TemplateText() string {
+	return docsTemplateText
+}
 
-// RouteModule is the torque route module to be registered with the torque app.
-type RouteModule struct {
-	ContentSvc content.Service
+type Controller struct {
+	ContentService content.Service
 }
 
 var _ interface {
-	torque.SubRouterProvider
+	torque.Loader[ViewModel]
+	torque.RouterProvider
+} = &Controller{}
 
-	torque.Loader
-	torque.Renderer
-	torque.ErrorBoundary
-} = &RouteModule{}
-
-func (rm *RouteModule) SubRouter() []torque.RouteComponent {
-	return []torque.RouteComponent{}
+func (ctl *Controller) Router(r torque.Router) {
+	r.Handle("/{pageName}", torque.MustNew[page.ViewModel](&page.Controller{ContentService: ctl.ContentService}))
 }
 
-func (rm *RouteModule) Load(req *http.Request) (any, error) {
-	doc, err := rm.ContentSvc.GetByID(req.Context(), torque.RouteParam(req, "pageName"))
-	if err != nil {
-		return nil, ErrPageNotFound
-	}
-
-	return doc, nil
-}
-
-func (rm *RouteModule) Render(wr http.ResponseWriter, req *http.Request, loaderData any) error {
-	article, ok := loaderData.(*model.Article)
-	if !ok {
-		return errors.New("invalid loader data type")
-	}
-
-	return torque.VaryRender(wr, req, htmx.HxRequestHeader, map[any]torque.RenderFn{
-		// If the htmx request header is present and set to "true"
-		// render the htmx swappable fragment
-		"true": func(wr http.ResponseWriter, req *http.Request) error {
-			return Template.Render(wr, &DotContext{Article: *article})
-		},
-
-		// The default case if the htmx request header is not present
-		torque.VaryDefault: func(wr http.ResponseWriter, req *http.Request) error {
-			return Template.Render(wr, &DotContext{
-				Article: *article,
-				Layout: layout.Layout{
-					Snippet: fullstory.Snippet{
-						Enabled: os.Getenv("FULLSTORY_ENABLED") == "true",
-						OrgId:   os.Getenv("FULLSTORY_ORG_ID"),
+func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
+	return ViewModel{
+		Sidebar: sidebar.Sidebar{
+			EnableSearch: true,
+			LeftNavGroups: []sidebar.LeftNavGroup{
+				{
+					Text: "Getting Started",
+					NavItems: []sidebar.NavItem{
+						{Text: "About", Href: "/docs/about"},
+						{Text: "Quick Start", Href: "/docs/getting-started"},
+						{Text: "Examples", Href: "/docs/examples"},
+						{Text: "Project Template", Href: "/docs/project-template"},
 					},
-					Sidebar: sidebar.Sidebar{
-						EnableSearch: os.Getenv("SEARCH_ENABLED") == "true",
-						LeftNavGroups: []sidebar.LeftNavGroup{
-							{
-								Text: "Getting Started",
-								NavItems: []sidebar.NavItem{
-									{Text: "Installation", Href: "/getting-started"},
-									{Text: "Quick Start", Href: "/getting-started#quick-start"},
-									{Text: "RouteComponent Modules 101", Href: "/getting-started#route-modules-101"},
-								},
-							},
-							{
-								Text: "Framework",
-								NavItems: []sidebar.NavItem{
-									{Text: "Router", Href: "/router"},
-									{Text: "Middleware", Href: "/middleware"},
-									{Text: "Forms", Href: "/forms"},
-									{Text: "Queries", Href: "/queries"},
-									{Text: "WebSockets", Href: "/websockets"},
-									{Text: "Server Sent Events", Href: "/server-sent-events"},
-								},
-							},
-							{
-								Text: "RouteComponent Modules",
-								NavItems: []sidebar.NavItem{
-									{Text: "Module API", Href: "/module-api"},
-									{Text: "Guards", Href: "/guards"},
-								},
-							},
-						},
+				},
+				{
+					Text: "Views",
+					NavItems: []sidebar.NavItem{
+						{Text: "ViewModel", Href: "/docs/view-model"},
+						{Text: "TemplateProvider", Href: "/docs/template-provider"},
+						{Text: "Outlet", Href: "/docs/outlet"},
+						{Text: "Analyzers", Href: "/docs/template-analyzer"},
 					},
-					Navigator: navigator.Navigator{
-						EnableBreadcrumbs: os.Getenv("BREADCRUMBS_ENABLED") == "true",
-						EnableSearch:      os.Getenv("SEARCH_ENABLED") == "true",
-						EnableTheme:       os.Getenv("THEME_ENABLED") == "true",
-						TopNavItems: []navigator.NavItem{
-							{Text: "Docs", Href: "/"},
-						},
+				},
+				{
+					Text: "Controller API",
+					NavItems: []sidebar.NavItem{
+						{Text: "Loader", Href: "/docs/loader"},
+						{Text: "RouterProvider", Href: "/docs/router-provider"},
+						{Text: "Action", Href: "/docs/action"},
+						{Text: "Guard", Href: "/docs/guard"},
+						{Text: "Renderer", Href: "/docs/renderer"},
+						{Text: "EventSource", Href: "/docs/event-source"},
+						{Text: "ErrorBoundary", Href: "/docs/error-boundary"},
+						{Text: "PanicBoundary", Href: "/docs/panic-boundary"},
 					},
-					Title: fmt.Sprintf("%s | %s", article.Title, "torque"),
-					Links: []layout.Link{{Rel: "stylesheet", Href: "/s/app.css"}},
-					Scripts: []string{
-						"https://unpkg.com/htmx.org@1.9.2",
-						"https://unpkg.com/hyperscript.org@0.9.9",
+				},
+				{
+					Text: "Patterns",
+					NavItems: []sidebar.NavItem{
+						{Text: "Assets", Href: "/docs/queries"},
+						{Text: "Hooks", Href: "/docs/queries"},
+						{Text: "Forms", Href: "/docs/forms"},
+						{Text: "Queries", Href: "/docs/queries"},
+						{Text: "Errors", Href: "/docs/errors"},
+						{Text: "Validation", Href: "/docs/validation"},
+					},
+				},
+				{
+					Text: "Integrations",
+					NavItems: []sidebar.NavItem{
+						{Text: "HTMX", Href: "/docs/integrations/htmx"},
+						{Text: "Tailwind CSS", Href: "/docs/integrations/tailwindcss"},
+						{Text: "eslint", Href: "/docs/integrations/eslint"},
+						{Text: "Prettier", Href: "/docs/integrations/prettier"},
+						{Text: "GoLand", Href: "/docs/integrations/goland"},
 					},
 				},
 			},
-				tmpl.WithName("outlet"),
-				tmpl.WithTarget("layout"),
-			)
 		},
-	})
-}
-
-func (rm *RouteModule) ErrorBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc {
-	if errors.Is(err, ErrPageNotFound) {
-		return func(wr http.ResponseWriter, req *http.Request) {
-			http.Error(wr, "That page does not exist", http.StatusNotFound)
-		}
-	} else if errors.Is(err, torque.ErrRenderFnNotDefined) {
-		return func(wr http.ResponseWriter, req *http.Request) {
-			http.Error(wr, "Internal error", http.StatusInternalServerError)
-		}
-	} else {
-		panic(err) // Send the error to the PanicBoundary
-	}
+	}, nil
 }

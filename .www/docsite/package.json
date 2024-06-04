@@ -8,7 +8,7 @@
   "scripts": {
     "clean": "rm -rf ./.build/",
     "lint": "eslint ./**/*.tmpl.html --fix",
-    "format": "prettier --write --parser go-template ./**/**/*.tmpl.html",
+    "format": "prettier --write .",
     "dev": "air",
     "dev:reset": "kill-port 8080 && npm run clean",
     "dev:css": "tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css --watch",

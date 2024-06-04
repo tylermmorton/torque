@@ -1,0 +1,118 @@
+<div
+  id="page"
+  class="max-w-[768px] pt-20 lg:pt-10 xl:ml-0 xl:mr-[15.5rem] xl:max-w-none xl:pr-16"
+>
+  <div class="prose prose-slate relative z-20">{{ .Article.HTML }}</div>
+
+  <footer class="mt-12 text-sm leading-6">
+    <div
+      class="mb-10 flex items-center font-semibold text-slate-700 dark:text-slate-200"
+    >
+      {{ if ne .Article.Prev "" }}
+      <a
+        class="group flex items-center hover:text-slate-900 dark:hover:text-white"
+        href="{{ .Article.Prev }}"
+        ><svg
+          viewBox="0 0 3 6"
+          class="mr-3 h-2 w-auto overflow-visible text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+        >
+          <path
+            d="M3 0L0 3L3 6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+        >Previous</a
+      >
+      {{ else }}
+      <div></div>
+      {{ end }} {{ if ne .Article.Next "" }}
+      <a
+        class="group ml-auto flex items-center hover:text-slate-900 dark:hover:text-white"
+        href="{{ .Article.Next }}"
+        >Next<svg
+          viewBox="0 0 3 6"
+          class="ml-3 h-2 w-auto overflow-visible text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+        >
+          <path
+            d="M0 0L3 3L0 6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          ></path></svg
+      ></a>
+      {{ else }}
+      <div></div>
+      {{ end }}
+    </div>
+    <div
+      class="justify-between border-t border-slate-200 pb-28 pt-10 text-slate-500 dark:border-slate-200/5 sm:flex"
+    >
+      <div class="mb-6 sm:mb-0 sm:flex">
+        <p>
+          Copyright ©
+          <!-- -->2023<!-- -->
+          lbft.dev
+        </p>
+      </div>
+      <a
+        class="hover:text-slate-900 dark:hover:text-slate-400"
+        href="https://github.com/tylermmorton/torque/.www/docsite/content/docs/{{ .Article.ObjectID }}.md"
+        >Edit this page on GitHub</a
+      >
+    </div>
+  </footer>
+
+  <!-- Right Toolbox -->
+  <div
+    class="fixed bottom-0 right-[max(0px,calc(50%-45rem))] top-[3.8125rem] z-20 z-20 hidden w-[19.5rem] overflow-y-auto py-10 xl:block"
+  >
+    <div class="px-8">
+      <h5
+        class="mb-4 text-sm font-semibold leading-6 text-slate-900 dark:text-slate-100"
+      >
+        On this page
+      </h5>
+      <ul class="text-sm leading-6 text-slate-700">
+        {{ range .Article.Headings }} {{- /*
+        gotype:github.com/tylermmorton/torque/.www/docsite/model.Heading */ -}}
+        {{ if eq .Level 1 }}
+        <li class="mb-2">
+          <a
+            href="#{{ .ID }}"
+            class="block py-1 font-medium hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-300"
+            >{{ .Text }}</a
+          >
+        </li>
+        {{ else }}
+        <li class="ml-4">
+          <a
+            href="#{{ .ID }}"
+            class="group flex items-start py-1 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-300"
+            ><svg
+              width="3"
+              height="24"
+              viewBox="0 -9 3 24"
+              class="mr-2 overflow-visible text-slate-400 group-hover:text-slate-600 dark:text-slate-600 dark:group-hover:text-slate-500"
+            >
+              <path
+                d="M0 0L3 3L0 6"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              ></path>
+            </svg>
+            {{ .Text }}</a
+          >
+        </li>
+        {{ end }} {{ end }}
+      </ul>
+    </div>
+  </div>
+  <!-- End Toolbox -->
+</div>

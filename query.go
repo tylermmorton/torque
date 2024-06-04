@@ -10,7 +10,7 @@ var (
 )
 
 func DecodeQuery[T any](req *http.Request) (*T, error) {
-	d := DecoderFromContext(req.Context())
+	d := UseDecoder(req.Context())
 	if d == nil {
 		return nil, ErrDecoderUndefined
 	}

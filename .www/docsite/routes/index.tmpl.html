@@ -4,9 +4,8 @@
     <title>{{ .Title }}</title>
 
     {{ range .Links -}}
-      <link rel="{{ .Rel }}" href="{{ .Href }}" />
+    <link rel="{{ .Rel }}" href="{{ .Href }}" />
     {{ end -}}
-
 
     <style>
       html,
@@ -16,9 +15,8 @@
     </style>
 
     {{ range .Scripts -}}
-      <script src="{{ . }}"></script>
+    <script src="{{ . }}"></script>
     {{ end -}}
-
 
     <!-- FullStory Snippet -->
     {{ template "fs" . }}
@@ -26,11 +24,6 @@
 
   <body class="flex h-full flex-col antialiased">
     {{ template "nav" .Navigator }}
-    <div class="mx-auto max-w-[90rem] px-4 sm:px-6 md:px-8">
-      {{ template "sidebar" .Sidebar }}
-      <main id="hx-swappable-outlet" class="mt-[60px] xl:pl-[19.5rem]">
-        {{ template "outlet" . }}
-      </main>
-    </div>
+    <div class="mx-auto max-w-[90rem] px-4 sm:px-6 md:px-8">{{ outlet }}</div>
   </body>
 </html>

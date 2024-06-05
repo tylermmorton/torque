@@ -2,10 +2,11 @@ package torque
 
 import (
 	"fmt"
-	"github.com/tylermmorton/torque/internal/compiler"
 	"log"
 	"net/http"
 	"reflect"
+
+	"github.com/tylermmorton/tmpl"
 )
 
 // ViewModel is a type that both provides a view and represents the
@@ -103,7 +104,7 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 	// explicit Renderer implementations take precedence
 	if renderer, ok := ctl.(Renderer[T]); ok {
 		h.rendererT = renderer
-	} else if tp, ok := vm.(compiler.TemplateProvider); ok {
+	} else if tp, ok := vm.(tmpl.TemplateProvider); ok {
 		h.rendererT, err = createTemplateRenderer[T](tp)
 		if err != nil {
 			return err

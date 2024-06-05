@@ -1,0 +1,17 @@
+name: Verify Commit
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Go Setup
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21.x'
+      - name: Install Dependencies
+        run: go get -v -t -d
+      - name: Test
+        run: go test ./...

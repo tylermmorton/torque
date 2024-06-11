@@ -1,6 +1,7 @@
 ---
 icon: 💡
 title: Templates
+prev: './renderer'
 ---
 
 # Templates
@@ -62,49 +63,59 @@ func (c *Controller) Load(req *http.Request) (ViewModel, error) {
 }
 ```
 
-### Renderer[T]
+## Features
 
-Note that you can overwrite the default behavior of `torque` by implementing a custom `Renderer[T]`. This is useful, for example, if you use another template or component library.
+`tmpl` offers a number of features that make working with templates in Go more enjoyable:
 
-> ⚠️ Implementing `Renderer[T]` disables the Outlet feature. See the Outlet section of the docs for more information.
+### Nesting
 
-As an example, you can use `tmpl` directly to render templates in your own way. The `ViewModel` returned from `Loader[T]` is passed to the `Render` method.
+One major advantage of using structs to bind templates is that nesting templates is as easy as nesting structs.
+
+The tmpl compiler knows to recursively look for fields on your `ViewModel` struct that also implement the `TemplateProvider` interface. This includes fields that are embedded, slices or pointers.
+
+Note that you can name your nested template using the `tmpl:` struct tag. Any embedded templates will be accessible using the `{{ template }}` directive.
 
 ```go
 package example
 
-import (
-    _ "embed"
-    "net/http"
+type Head struct {
+    Title   string
+    Scripts []string
+}
 
-    "github.com/tylermmorton/tmpl"
-    "github.com/tylermmorton/torque"
-)
+func (Head) TemplateText() string {
+    return `
+    <head>
+        <meta charset="UTF-8">
+        <title>{{ .Title }} | torque</title>
+        
+        {{ range .Scripts -}}
+            <script src="{{ . }}"></script>
+        {{ end -}}
+    </head>
+    `
+}
 
-var (
-    //go:embed example.tmpl.html
-    templateText string
-    // compile the template once at program startup
-    Template = tmpl.MustCompile(ViewModel{})
-)
-
-type ViewModel struct{}
+type ViewModel struct {
+    Head `tmpl:"head"`
+    Content string
+}
 
 func (ViewModel) TemplateText() string {
-    return templateText
-}
-
-type Controller struct{}
-
-var _ interface {
-    torque.Loader[ViewModel]
-} = &Controller{}
-
-func (c *Controller) Load(req *http.Request) (ViewModel, error) {
-    return ViewModel{}, nil
-}
-
-func (c *Controller) Render(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {
-    return Template.Render(wr, vm)
+    return `
+    <html>
+        {{ template "head" .Head }}
+        <body>
+            <p>{{ .Content }}</p>
+        </body>
+    </html>
+    `
 }
 ```
+
+### Fragments
+
+### Outlets
+
+### Compiler Plugins
+

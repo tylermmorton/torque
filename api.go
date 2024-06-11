@@ -35,6 +35,11 @@ type Renderer[T ViewModel] interface {
 	Render(wr http.ResponseWriter, req *http.Request, vm T) error
 }
 
+type LoaderRenderer[T ViewModel] interface {
+	Loader[T]
+	Renderer[T]
+}
+
 // DynamicRenderer is a Renderer that is not constrained by a generic type.
 type DynamicRenderer interface {
 	Render(wr http.ResponseWriter, req *http.Request, vm ViewModel) error

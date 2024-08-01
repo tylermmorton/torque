@@ -468,10 +468,7 @@ var _ = Describe("Handler API", func() {
 				MockRouterProvider
 			}
 
-			// TODO(v2)
 			It("should handle http.Handler at root path", func() {
-				Skip("")
-
 				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
 					MockRouterProvider{
 						RouterFunc: func(r torque.Router) {
@@ -495,15 +492,12 @@ var _ = Describe("Handler API", func() {
 				Expect(string(byt)).To(Equal("Hello World!"))
 			})
 
-			// TODO(v2)
 			It("should handle http.Handler at named path", func() {
-				Skip("")
-
 				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
 					MockRouterProvider{
 						RouterFunc: func(r torque.Router) {
 							r.Handle("/named", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
-								_, err := wr.Write([]byte("Hello World!"))
+								_, err := wr.Write([]byte("Hello Named!"))
 								Expect(err).NotTo(HaveOccurred())
 							}))
 						},
@@ -521,13 +515,53 @@ var _ = Describe("Handler API", func() {
 				byt, err := io.ReadAll(res.Body)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res.StatusCode).To(Equal(http.StatusOK))
-				Expect(string(byt)).To(Equal("Hello World!"))
+				Expect(string(byt)).To(Equal("Hello Named!"))
 			})
 
-			// TODO(v2)
-			It("should handle http.Handler nested within torque.Controller", func() {
-				Skip("")
+			It("should still be able to render root with named paths", func() {
+				type MockController[T torque.ViewModel] struct {
+					MockLoader[MockViewModel]
+					MockRenderer[MockViewModel]
+					MockRouterProvider
+				}
 
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					MockLoader[MockViewModel]{
+						LoadFunc: func(req *http.Request) (MockViewModel, error) {
+							return MockViewModel{Message: "Hello From Root!"}, nil
+						},
+					},
+					MockRenderer[MockViewModel]{
+						RenderFunc: func(wr http.ResponseWriter, req *http.Request, vm MockViewModel) error {
+							_, err := wr.Write([]byte(vm.Message))
+							return err
+						},
+					},
+					MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/named", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+								_, err := wr.Write([]byte("Hello From Named!"))
+								Expect(err).NotTo(HaveOccurred())
+							}))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				req.URL.Path = "/"
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("Hello From Root!"))
+			})
+
+			It("should handle http.Handler nested within Controller", func() {
 				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
 					MockRouterProvider{
 						RouterFunc: func(r torque.Router) {
@@ -557,7 +591,7 @@ var _ = Describe("Handler API", func() {
 				Expect(string(byt)).To(Equal("Hello World!"))
 			})
 
-			It("should handle torque.Controller at root path", func() {
+			It("should handle Controller at root path", func() {
 				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
 					MockRouterProvider{
 						RouterFunc: func(r torque.Router) {
@@ -584,7 +618,7 @@ var _ = Describe("Handler API", func() {
 				Expect(string(byt)).To(Equal("{\"message\":\"Hello World!\"}\n"))
 			})
 
-			It("should handle torque.Controller at named path", func() {
+			It("should handle Controller at named path", func() {
 				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
 					MockRouterProvider{
 						RouterFunc: func(r torque.Router) {
@@ -612,6 +646,129 @@ var _ = Describe("Handler API", func() {
 				Expect(string(byt)).To(Equal("{\"message\":\"Hello World!\"}\n"))
 			})
 
+			It("should override the Loader/Renderer when Router provides http.Handler at root path", func() {
+				type MockController[T torque.ViewModel] struct {
+					MockLoader[MockViewModel]
+					MockRenderer[MockViewModel]
+					MockRouterProvider
+				}
+
+				h, err := torque.New[MockViewModel](&MockController[MockViewModel]{
+					MockLoader[MockViewModel]{
+						LoadFunc: func(req *http.Request) (MockViewModel, error) {
+							return MockViewModel{Message: "This is being overridden"}, nil
+						},
+					},
+					MockRenderer[MockViewModel]{
+						RenderFunc: func(wr http.ResponseWriter, req *http.Request, vm MockViewModel) error {
+							_, err := wr.Write([]byte(vm.Message))
+							return err
+						},
+					},
+					MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+								_, err := wr.Write([]byte("Hello From Child Override!"))
+								Expect(err).NotTo(HaveOccurred())
+							}))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				req.URL.Path = "/"
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("Hello From Child Override!"))
+			})
+
+			It("should render the outlet as an override when Router provides Controller at root path", func() {
+				type MockController[T torque.ViewModel] struct {
+					MockLoader[MockOutletTemplateProvider]
+					MockRouterProvider
+				}
+
+				h, err := torque.New[MockOutletTemplateProvider](&MockController[MockOutletTemplateProvider]{
+					MockLoader[MockOutletTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+							return MockOutletTemplateProvider{}, nil
+						},
+					},
+					MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							type MockController[T torque.ViewModel] struct {
+								torque.Loader[T]
+							}
+
+							r.Handle("/", torque.MustNew[MockTemplateProvider](
+								&MockController[MockTemplateProvider]{
+									Loader: MockLoader[MockTemplateProvider]{
+										LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+											return MockTemplateProvider{Message: "Hello From Child Controller!"}, nil
+										},
+									},
+								},
+							))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				req.URL.Path = "/"
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("<div><p>Hello From Child Controller!</p></div>"))
+			})
+
+			It("should render the outlet as an override when Router provides http.Handler at root path", func() {
+				type MockController[T torque.ViewModel] struct {
+					MockLoader[MockOutletTemplateProvider]
+					MockRouterProvider
+				}
+
+				h, err := torque.New[MockOutletTemplateProvider](&MockController[MockOutletTemplateProvider]{
+					MockLoader[MockOutletTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+							return MockOutletTemplateProvider{}, nil
+						},
+					},
+					MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+								_, err := wr.Write([]byte("Hello From Child http.Handler!"))
+								Expect(err).NotTo(HaveOccurred())
+							}))
+						},
+					},
+				})
+				Expect(h).NotTo(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+
+				req.URL.Path = "/"
+
+				h.ServeHTTP(wr, req)
+				res := wr.Result()
+				defer Expect(res.Body.Close()).To(BeNil())
+
+				byt, err := io.ReadAll(res.Body)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res.StatusCode).To(Equal(http.StatusOK))
+				Expect(string(byt)).To(Equal("<div>Hello From Child http.Handler!</div>"))
+			})
 		})
 	})
 	Describe("TemplateProvider", func() {

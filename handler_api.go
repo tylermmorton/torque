@@ -5,6 +5,9 @@ import "net/http"
 type Handler interface {
 	http.Handler
 	serveInternal(wr http.ResponseWriter, req *http.Request)
+	serveOutlet(wr http.ResponseWriter, req *http.Request)
+
+	setOverride(http.Handler)
 
 	setPath(string)
 	GetPath() string
@@ -26,6 +29,10 @@ type Handler interface {
 
 	SetErrorBoundary(ErrorBoundary)
 	SetPanicBoundary(PanicBoundary)
+}
+
+func (h *handlerImpl[T]) setOverride(override http.Handler) {
+	h.override = override
 }
 
 func (h *handlerImpl[T]) setPath(pattern string) {

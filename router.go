@@ -2,9 +2,11 @@ package torque
 
 import (
 	"github.com/go-chi/chi/v5"
+	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 )
 
@@ -34,19 +36,74 @@ func logRoutes(prefix string, r []chi.Route) {
 	}
 }
 
-// mountRouterProvider is a recursive function that takes a handler and attaches
+// mountRouterSubtrees is a recursive function that takes a handler and attaches
 // to its router the tree of Handlers provided by the RouterProvider API.
-func mountRouterProvider(r chi.Router, path string, h Handler) {
-	r.Handle(path, h)
+func mountRouterSubtrees(r chi.Router, path string, parent Handler) chi.Router {
+	for _, route := range r.Routes() {
+		// The RouterProvider has registered an http.Handler at the 'root' level.
+		// This "overrides" the default behavior of the Controller and serves the
+		// given handler instead.
+		if route.Pattern == "/" {
+			parent.setOverride(http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+				if child, ok := route.Handlers[req.Method]; ok {
+					// If the parent is an outlet provider, and the router provider is
+					// overriding the root, perform the same outlet wrapping logic
+					// but with a vanilla http.Handler.
+					if parent.HasOutlet() {
+						var (
+							childReq   = req
+							childResp  = httptest.NewRecorder()
+							parentReq  = req.Clone(req.Context())
+							parentResp = httptest.NewRecorder()
+						)
 
-	for _, child := range h.GetChildren() {
-		var childPath = filepath.Join(path + child.GetPath())
-		r.Handle(childPath, child)
+						// child before parent, because it can set additional context
+						// while handling the request
+						child.ServeHTTP(childResp, childReq)
+						parent.serveInternal(parentResp, parentReq.WithContext(childReq.Context()))
 
-		if len(child.GetChildren()) != 0 {
-			mountRouterProvider(r, childPath, child)
+						t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
+
+						err := t.Execute(wr, template.HTML(childResp.Body.String()))
+						if err != nil {
+							panic(err)
+						}
+					} else {
+						child.ServeHTTP(wr, req)
+					}
+				} else {
+					wr.WriteHeader(http.StatusMethodNotAllowed)
+				}
+			}))
 		}
 	}
+
+	for _, child := range parent.GetChildren() {
+		var childPath = filepath.Join(path + child.GetPath())
+		if childPath == "/" {
+			// If the parent is an outlet provider, and the router provider is overriding
+			// the root route with a Controller, then serve the child's outlet directly
+			//
+			// This enables Controllers that are RouterProviders to infinitely wrap each
+			// other without needing to add a new path to the route.
+			if parent.HasOutlet() {
+				parent.setOverride(http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+					child.serveOutlet(wr, req)
+				}))
+			} else {
+				parent.setOverride(child)
+			}
+		} else {
+			r.Handle(childPath, child)
+		}
+
+		// recursively mount any child routes
+		if len(child.GetChildren()) != 0 {
+			mountRouterSubtrees(r, childPath, child)
+		}
+	}
+
+	return r
 }
 
 // createRouterProvider takes the given HandlerModule and builds
@@ -56,20 +113,22 @@ func createRouterProvider[T ViewModel](h *handlerImpl[T], module Controller) chi
 		Handler: h,
 	}
 
+	// calling this will recursively construct a tree of routers,
+	// each with their set of routes as http.Handlers or Controllers.
 	if rp, ok := module.(RouterProvider); ok {
 		rp.Router(rr)
 	}
 
-	mountRouterProvider(rr.Router, "/", h)
-
-	return rr.Router
+	// now recursively 'flatten' the tree of routers into the parent router.
+	// the end result is a router with all the routes of its children
+	return mountRouterSubtrees(rr.Router, "/", h)
 }
 
 func (r *routerImpl) Handle(pattern string, h http.Handler) {
 	var parent = r.Handler
 
 	if child, ok := h.(Handler); ok {
-		// the tree will be resolved during steps in mountRouterProvider
+		// the tree will be resolved during steps in mountRouterSubtrees
 		child.setPath(pattern)
 		parent.addChild(child)
 	} else {

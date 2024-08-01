@@ -26,6 +26,7 @@ type handlerImpl[T ViewModel] struct {
 	path     string
 	parent   Handler
 	children []Handler
+	override http.Handler
 
 	subscribers int
 	eventSource EventSource
@@ -52,6 +53,7 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 		path:     "/",
 		parent:   nil,
 		children: make([]Handler, 0),
+		override: nil,
 
 		action:        nil,
 		loader:        nil,
@@ -72,27 +74,51 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 
 // ServeHTTP implements the http.Handler interface
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
-	if len(h.children) != 0 { // if controller is a RouterProvider
+	if req.URL.Path == "/" && h.override != nil {
+		h.override.ServeHTTP(wr, req)
+	} else if req.URL.Path != "/" && h.router != nil && len(h.router.Routes()) != 0 {
 		h.router.ServeHTTP(wr, req)
 	} else {
 		h.serveInternal(wr, req)
 	}
 }
 
-// serveInternal is the main entrypoint for handling HTTP requests made to a route ctl
-// and is designed as a layer of indirection to be called recursively
+// serveInternal is the main entrypoint for handling HTTP requests made to a route's
+// Controller and is used as a layer of indirection to be called recursively
 func (h *handlerImpl[T]) serveInternal(wr http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet && h.parent != nil && h.parent.HasOutlet() {
-		h.handleOutlet(wr, req)
+		h.serveOutlet(wr, req)
 		return
 	} else {
-		h.handleRequest(wr, req)
+		h.serveRequest(wr, req)
 	}
 }
 
-// handleRequest is the core handler logic for torque. It is responsible for handling incoming
-// HTTP requests and applying the appropriate API methods.
-func (h *handlerImpl[T]) handleRequest(wr http.ResponseWriter, req *http.Request) {
+// serveOutlet is a special handler that is used to render a child route within a parent route
+// when the parent route's template contains the {{ outlet }} directive.
+func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) {
+	var (
+		childReq   = req
+		childResp  = httptest.NewRecorder()
+		parentReq  = req.Clone(req.Context())
+		parentResp = httptest.NewRecorder()
+	)
+
+	// child before parent, because it can set additional context with hooks
+	h.serveRequest(childResp, childReq)
+	h.parent.serveInternal(parentResp, parentReq.WithContext(childReq.Context()))
+
+	t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
+
+	err := t.Execute(wr, template.HTML(childResp.Body.String()))
+	if err != nil {
+		panic(err)
+	}
+}
+
+// serveRequest is the core handler logic for torque. It is responsible for handling incoming
+// HTTP requests and applying the appropriate API methods from the Controller API.
+func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request) {
 	var err error
 	// attach the decoder to the request context so it can be used
 	// by handlers in the request stack
@@ -241,26 +267,6 @@ func (h *handlerImpl[T]) handleLoader(_ http.ResponseWriter, req *http.Request) 
 		}
 	} else {
 		return vm, fmt.Errorf("failed to handle loader: %w", errNotImplemented)
-	}
-}
-
-func (h *handlerImpl[T]) handleOutlet(wr http.ResponseWriter, req *http.Request) {
-	var (
-		childReq   = req
-		childResp  = httptest.NewRecorder()
-		parentReq  = req.Clone(req.Context())
-		parentResp = httptest.NewRecorder()
-	)
-
-	// child before parent, because it can set additional context with hooks
-	h.handleRequest(childResp, childReq)
-	h.parent.serveInternal(parentResp, parentReq.WithContext(childReq.Context()))
-
-	t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
-
-	err := t.Execute(wr, template.HTML(childResp.Body.String()))
-	if err != nil {
-		panic(err)
 	}
 }
 

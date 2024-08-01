@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"runtime/debug"
 	"time"
 )
@@ -72,23 +73,32 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 	return h
 }
 
+func getFullPath(h Handler, path string) string {
+	if h.GetParent() != nil {
+		return getFullPath(h.GetParent(), filepath.Join(h.GetParent().GetPath(), path))
+	}
+	return path
+}
+
 // ServeHTTP implements the http.Handler interface
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
-	if req.URL.Path == "/" && h.override != nil {
+	var fullPath = getFullPath(h, h.path)
+	if req.URL.Path == fullPath && h.override != nil {
 		h.override.ServeHTTP(wr, req)
+	} else if req.URL.Path == fullPath {
+		h.serveInternal(wr, req)
 	} else if req.URL.Path != "/" && h.router != nil && len(h.router.Routes()) != 0 {
 		h.router.ServeHTTP(wr, req)
 	} else {
-		h.serveInternal(wr, req)
+		// If this happens there's a bug, and we need a new test case.
+		log.Printf("[Request] (%s) %s -> 404\n", req.Method, req.URL)
+		wr.WriteHeader(http.StatusNotFound)
 	}
 }
 
-// serveInternal is the main entrypoint for handling HTTP requests made to a route's
-// Controller and is used as a layer of indirection to be called recursively
 func (h *handlerImpl[T]) serveInternal(wr http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet && h.parent != nil && h.parent.HasOutlet() {
 		h.serveOutlet(wr, req)
-		return
 	} else {
 		h.serveRequest(wr, req)
 	}

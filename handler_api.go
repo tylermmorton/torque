@@ -1,6 +1,8 @@
 package torque
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type Handler interface {
 	http.Handler
@@ -40,6 +42,7 @@ func (h *handlerImpl[T]) setPath(pattern string) {
 }
 
 func (h *handlerImpl[T]) GetPath() string {
+
 	return h.path
 }
 

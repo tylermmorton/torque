@@ -1,12 +1,15 @@
 package torque
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gorilla/schema"
+	"html/template"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"runtime/debug"
 	"time"
 )
@@ -50,7 +53,6 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 		router:   nil,
 		path:     "/",
 		parent:   nil,
-		children: make([]Handler, 0),
 		override: nil,
 
 		action:        nil,
@@ -73,14 +75,39 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 
 // ServeHTTP implements the http.Handler interface
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
-	renderAsOutlet, ok := req.Context().Value(outletKey).(bool)
+	renderAsOutlet, ok := req.Context().Value(outletFlowKey).(bool)
 	renderAsOutlet = renderAsOutlet && ok
 
 	if h.router != nil && !renderAsOutlet {
 		log.Printf("[Router] (%s) %s -> %T\n", req.Method, req.URL, h.ctl)
-		h.router.ServeHTTP(wr, req)
+		// Indicate to any handlers they should not attempt to handle the request using
+		// their internal router, and instead just serve the request using the controller
+		h.router.ServeHTTP(wr, req.WithContext(context.WithValue(req.Context(), outletFlowKey, true)))
+	} else if h.GetParent() != nil && renderAsOutlet {
+		h.serveOutlet(wr, req)
 	} else {
 		h.serveRequest(wr, req)
+	}
+}
+
+func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) {
+	var (
+		childReq   = req
+		childResp  = httptest.NewRecorder()
+		parentReq  = req.Clone(req.Context())
+		parentResp = httptest.NewRecorder()
+	)
+
+	// child before parent, because it can set additional context
+	// while handling the request
+	h.serveRequest(childResp, childReq)
+	h.GetParent().ServeHTTP(parentResp, parentReq.WithContext(childReq.Context()))
+
+	t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
+
+	err := t.Execute(wr, template.HTML(childResp.Body.String()))
+	if err != nil {
+		panic(err)
 	}
 }
 

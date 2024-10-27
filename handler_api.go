@@ -9,6 +9,7 @@ type Handler interface {
 
 	setOverride(http.Handler)
 
+	getController() Controller
 	getRouter() *router
 
 	setPath(string)
@@ -16,9 +17,6 @@ type Handler interface {
 
 	setParent(Handler)
 	GetParent() Handler
-
-	addChild(Handler)
-	GetChildren() []Handler
 
 	GetMode() Mode
 	HasOutlet() bool
@@ -46,6 +44,10 @@ func (h *handlerImpl[T]) GetPath() string {
 	return h.path
 }
 
+func (h *handlerImpl[T]) getController() Controller {
+	return h.ctl
+}
+
 func (h *handlerImpl[T]) getRouter() *router {
 	return h.router
 }
@@ -56,15 +58,6 @@ func (h *handlerImpl[T]) setParent(parent Handler) {
 
 func (h *handlerImpl[T]) GetParent() Handler {
 	return h.parent
-}
-
-func (h *handlerImpl[T]) addChild(child Handler) {
-	h.children = append(h.children, child)
-	child.setParent(h)
-}
-
-func (h *handlerImpl[T]) GetChildren() []Handler {
-	return h.children
 }
 
 func (h *handlerImpl[T]) GetMode() Mode {

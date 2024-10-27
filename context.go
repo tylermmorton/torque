@@ -9,12 +9,12 @@ import (
 type key string
 
 const (
-	titleKey   key = "title"
-	errorKey   key = "error"
-	decoderKey key = "decoder"
-	modeKey    key = "mode"
-	scriptsKey key = "scripts"
-	outletKey  key = "wrapper"
+	titleKey      key = "title"
+	errorKey      key = "error"
+	decoderKey    key = "decoder"
+	modeKey       key = "mode"
+	scriptsKey    key = "scripts"
+	outletFlowKey key = "wrapper"
 )
 
 type Mode string

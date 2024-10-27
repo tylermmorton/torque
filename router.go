@@ -2,10 +2,8 @@ package torque
 
 import (
 	"context"
-	"html/template"
 	"io/fs"
 	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"strings"
 )
@@ -27,28 +25,29 @@ type Router interface {
 type Middleware func(http.Handler) http.Handler
 
 type trieNode struct {
+	segment   string
 	parent    *trieNode
 	children  map[string]*trieNode
 	handlers  map[string]http.Handler
 	isParam   bool
 	paramName string
-	isOutlet  bool
 }
 
 type router struct {
+	h      Handler
 	root   *trieNode
 	prefix string
 }
 
-func createRouter[T ViewModel](h *handlerImpl[T], ctl Controller, isOutlet bool) *router {
+func createRouter[T ViewModel](h *handlerImpl[T], ctl Controller) *router {
 	r := &router{
+		h:      h,
 		prefix: h.path,
 		root: &trieNode{
 			children: make(map[string]*trieNode),
 			handlers: map[string]http.Handler{
 				"*": h,
 			},
-			isOutlet: isOutlet,
 		},
 	}
 
@@ -81,26 +80,13 @@ func (r *router) Handle(path string, h http.Handler) {
 
 // handleMethod registers a handler or merges a router if passed.
 func (r *router) handleMethod(method, path string, h http.Handler) {
-	fullPath := filepath.Join(r.prefix + path)
-
-	// If another router is passed, create a parent/child relationship between them
-	if handler, ok := h.(Handler); ok && handler.getRouter() != nil {
-		child := handler.getRouter().root
-		segment := strings.TrimPrefix(path, "/")
-
-		r.root.children[segment] = child
-		child.parent = r.root
-
-		return
-	}
+	fullPath := filepath.Join(r.prefix, path)
+	segments := strings.Split(fullPath, "/")
 
 	handler, ok := h.(http.Handler)
 	if !ok {
 		panic("invalid handler or router passed to Handle")
 	}
-
-	// Split the full path into segments
-	segments := strings.Split(fullPath, "/")
 
 	// Special case for root path "/"
 	if fullPath == rootKey || (len(segments) == 2 && segments[1] == "") {
@@ -109,9 +95,9 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 		return
 	}
 
-	// Traverse through the segments
+	var seg string
 	node := r.root
-	for _, seg := range segments {
+	for _, seg = range segments {
 		if seg == "" {
 			continue
 		}
@@ -126,6 +112,7 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 
 		if _, exists := node.children[key]; !exists {
 			node.children[key] = &trieNode{
+				segment:  seg,
 				parent:   node,
 				children: make(map[string]*trieNode),
 				handlers: make(map[string]http.Handler),
@@ -144,6 +131,23 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 
 	// Store the handler at the final node for the given method (e.g., GET)
 	node.handlers[method] = handler
+
+	// If another Handler was passed, create a relationship between the parent and child
+	if h, ok := h.(Handler); ok {
+		// Set the parent so the child can wrap itself with the parent's outlet
+		h.setParent(r.h)
+
+		// "merge-up" the radix sub-trie from the child router. when this handler's internal
+		// router is ever executed it will need to know about its children during Router.Match.
+		if h.getRouter() != nil {
+			var childRouter = h.getRouter().root
+			for key, child := range childRouter.children {
+				node.children[key] = child
+			}
+			// TODO: This could be where overrides are applied when childRouter has
+			//  any handlers registered for the same method and path as the parent router
+		}
+	}
 }
 
 // Match finds a handler based on the method and path
@@ -169,51 +173,17 @@ func (r *router) Match(method, path string) (http.Handler, map[string]string, bo
 	}
 
 	// Return the handler if it exists for the given method or wildcard.
-	// Before returning, recursively wrap it with any parent outlets
-	if handler, ok := node.handlers[method]; ok {
-		return wrapWithParentOutlet(handler, node, method), params, true
-	} else if handler, ok := node.handlers["*"]; ok {
-		return wrapWithParentOutlet(handler, node, method), params, true
+	var handler http.Handler
+	if h, ok := node.handlers[method]; ok {
+		handler = h
+	} else if h, ok := node.handlers["*"]; ok {
+		handler = h
 	}
-	return nil, nil, false
-}
 
-func wrapWithParentOutlet(childHandler http.Handler, node *trieNode, method string) http.Handler {
-	if node.parent != nil && node.parent.isOutlet {
-		var parentHandler http.Handler
-		if h, exists := node.parent.handlers[method]; exists {
-			parentHandler = h
-		} else if h, exists = node.parent.handlers["*"]; exists {
-			parentHandler = h
-		} else {
-			panic("this should not happen")
-		}
-		return wrapWithParentOutlet(http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
-			// Indicate to any handlers they should not attempt to route the request
-			// using their internal router, and instead just serve the request
-			req = req.WithContext(context.WithValue(req.Context(), outletKey, true))
-
-			var (
-				childReq   = req
-				childResp  = httptest.NewRecorder()
-				parentReq  = req.Clone(req.Context())
-				parentResp = httptest.NewRecorder()
-			)
-
-			// child before parent, because it can set additional context
-			// while handling the request
-			childHandler.ServeHTTP(childResp, childReq)
-			parentHandler.ServeHTTP(parentResp, parentReq.WithContext(childReq.Context()))
-
-			t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
-
-			err := t.Execute(wr, template.HTML(childResp.Body.String()))
-			if err != nil {
-				panic(err)
-			}
-		}), node.parent, method)
+	if handler != nil {
+		return handler, params, true
 	} else {
-		return childHandler
+		return nil, nil, false
 	}
 }
 

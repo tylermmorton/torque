@@ -178,7 +178,7 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 	}
 
 	if _, ok := ctl.(RouterProvider); ok {
-		h.router = createRouter[T](h, ctl, hasOutlet)
+		h.router = createRouter[T](h, ctl)
 	} else if hasOutlet {
 		return fmt.Errorf("controller type %T must implement RouterProvider to use template outlets", ctl)
 	}

@@ -59,11 +59,12 @@ func TestRouter_Outlets_NestedVanillaHandler(t *testing.T) {
 	byt, err := io.ReadAll(res.Body)
 	Expect(err).NotTo(HaveOccurred())
 
+	// Nested vanilla handlers cannot take advantage of template outlets
 	Expect(res.StatusCode).To(Equal(http.StatusOK))
-	Expect(string(byt)).To(Equal("<div><div>Hello world!</div></div>"))
+	Expect(string(byt)).To(Equal("Hello world!"))
 }
 
-func TestRouter_Outlets_MultiLevelNesting(t *testing.T) {
+func TestRouter_Outlets_MultiLevelNesting_AdjacentControllers(t *testing.T) {
 	h := torque.MustNew[MockOutletTemplateProvider](&struct {
 		Name string
 		MockLoader[MockOutletTemplateProvider]
@@ -127,6 +128,81 @@ func TestRouter_Outlets_MultiLevelNesting(t *testing.T) {
 	RegisterTestingT(t)
 	wr := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/one/two/three", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("<div><div><div>Hello world!</div></div></div>"))
+}
+
+func TestRouter_Outlets_MultiLevelNesting_NonAdjacentControllers(t *testing.T) {
+	h := torque.MustNew[MockOutletTemplateProvider](&struct {
+		Name string
+		MockLoader[MockOutletTemplateProvider]
+		MockRouterProvider
+	}{
+		Name: "A",
+		MockLoader: MockLoader[MockOutletTemplateProvider]{
+			LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+				return MockOutletTemplateProvider{}, nil
+			},
+		},
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.Handle("/one", torque.MustNew[MockOutletTemplateProvider](&struct {
+					Name string
+					MockLoader[MockOutletTemplateProvider]
+					MockRouterProvider
+				}{
+					Name: "B",
+					MockLoader: MockLoader[MockOutletTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+							return MockOutletTemplateProvider{}, nil
+						},
+					},
+					MockRouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/two/three", torque.MustNew[MockOutletTemplateProvider](&struct {
+								Name string
+								MockLoader[MockOutletTemplateProvider]
+								MockRouterProvider
+							}{
+								Name: "C",
+								MockLoader: MockLoader[MockOutletTemplateProvider]{
+									LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+										return MockOutletTemplateProvider{}, nil
+									},
+								},
+								MockRouterProvider: MockRouterProvider{
+									RouterFunc: func(r torque.Router) {
+										r.Handle("/four/five", torque.MustNew[MockTemplateProvider](&struct {
+											Name string
+											MockLoader[MockTemplateProvider]
+										}{
+											Name: "D",
+											MockLoader: MockLoader[MockTemplateProvider]{
+												LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+													return MockTemplateProvider{Message: "Hello world!"}, nil
+												},
+											},
+										}))
+									},
+								},
+							}))
+						},
+					},
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/one/two/three/four/five", nil)
 	h.ServeHTTP(wr, req)
 
 	res := wr.Result()

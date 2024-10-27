@@ -9,7 +9,7 @@ import (
 )
 
 type templateRenderer[T ViewModel] struct {
-	HasOutlet bool
+	hasOutlet bool
 	template  tmpl.Template[tmpl.TemplateProvider]
 }
 
@@ -17,7 +17,7 @@ func (t templateRenderer[T]) Render(wr http.ResponseWriter, _ *http.Request, vm 
 	return t.template.Render(wr, any(vm).(tmpl.TemplateProvider))
 }
 
-func createTemplateRenderer[T ViewModel](tp tmpl.TemplateProvider) (*templateRenderer[T], error) {
+func createTemplateRenderer[T ViewModel](tp tmpl.TemplateProvider) (*templateRenderer[T], bool, error) {
 	var (
 		r   = &templateRenderer[T]{}
 		err error
@@ -28,10 +28,10 @@ func createTemplateRenderer[T ViewModel](tp tmpl.TemplateProvider) (*templateRen
 		tmpl.UseAnalyzers(outletAnalyzer(r)),
 	)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	return r, nil
+	return r, r.hasOutlet, nil
 }
 
 const outletIdent = "outlet"
@@ -41,10 +41,10 @@ func outletAnalyzer[T ViewModel](t *templateRenderer[T]) tmpl.Analyzer {
 		return func(val reflect.Value, node parse.Node) {
 			switch node := node.(type) {
 			case *parse.IdentifierNode:
-				if node.Ident == outletIdent && t.HasOutlet == true {
+				if node.Ident == outletIdent && t.hasOutlet == true {
 					h.AddError(node, "outlet can only be defined once per template")
 				} else if node.Ident == outletIdent {
-					t.HasOutlet = true
+					t.hasOutlet = true
 					h.AddFunc(outletIdent, func() string { return "{{ . }}" })
 				}
 			}

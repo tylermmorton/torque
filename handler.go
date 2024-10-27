@@ -4,13 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
-	"html/template"
 	"log"
 	"net/http"
-	"net/http/httptest"
-	"path/filepath"
 	"runtime/debug"
 	"time"
 )
@@ -23,7 +19,7 @@ type handlerImpl[T ViewModel] struct {
 	encoder *schema.Encoder
 	decoder *schema.Decoder
 
-	router   chi.Router
+	router   *router
 	path     string
 	parent   Handler
 	children []Handler
@@ -33,6 +29,7 @@ type handlerImpl[T ViewModel] struct {
 	eventSource EventSource
 
 	action        Action
+	delete        Delete
 	loader        Loader[T]
 	rendererT     Renderer[T]
 	rendererVM    DynamicRenderer
@@ -57,6 +54,7 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 		override: nil,
 
 		action:        nil,
+		delete:        nil,
 		loader:        nil,
 		rendererT:     nil,
 		rendererVM:    nil,
@@ -73,56 +71,16 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 	return h
 }
 
-func getFullPath(h Handler, path string) string {
-	if h.GetParent() != nil {
-		return getFullPath(h.GetParent(), filepath.Join(h.GetParent().GetPath(), path))
-	}
-	return path
-}
-
 // ServeHTTP implements the http.Handler interface
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
-	var fullPath = getFullPath(h, h.path)
-	if req.URL.Path == fullPath && h.override != nil {
-		h.override.ServeHTTP(wr, req)
-	} else if req.URL.Path == fullPath {
-		h.serveInternal(wr, req)
-	} else if req.URL.Path != "/" && h.router != nil && len(h.router.Routes()) != 0 {
+	renderAsOutlet, ok := req.Context().Value(outletKey).(bool)
+	renderAsOutlet = renderAsOutlet && ok
+
+	if h.router != nil && !renderAsOutlet {
+		log.Printf("[Router] (%s) %s -> %T\n", req.Method, req.URL, h.ctl)
 		h.router.ServeHTTP(wr, req)
 	} else {
-		// If this happens there's a bug, and we need a new test case.
-		log.Printf("[Request] (%s) %s -> 404\n", req.Method, req.URL)
-		wr.WriteHeader(http.StatusNotFound)
-	}
-}
-
-func (h *handlerImpl[T]) serveInternal(wr http.ResponseWriter, req *http.Request) {
-	if req.Method == http.MethodGet && h.parent != nil && h.parent.HasOutlet() {
-		h.serveOutlet(wr, req)
-	} else {
 		h.serveRequest(wr, req)
-	}
-}
-
-// serveOutlet is a special handler that is used to render a child route within a parent route
-// when the parent route's template contains the {{ outlet }} directive.
-func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) {
-	var (
-		childReq   = req
-		childResp  = httptest.NewRecorder()
-		parentReq  = req.Clone(req.Context())
-		parentResp = httptest.NewRecorder()
-	)
-
-	// child before parent, because it can set additional context with hooks
-	h.serveRequest(childResp, childReq)
-	h.parent.serveInternal(parentResp, parentReq.WithContext(childReq.Context()))
-
-	t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
-
-	err := t.Execute(wr, template.HTML(childResp.Body.String()))
-	if err != nil {
-		panic(err)
 	}
 }
 
@@ -190,6 +148,13 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 			return
 		}
 
+	case http.MethodDelete:
+		err = h.handleDelete(wr, req)
+		if err != nil {
+			h.handleError(wr, req, err)
+			return
+		}
+
 	default:
 		http.Error(wr, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -209,6 +174,22 @@ func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request)
 		}
 	} else {
 		return fmt.Errorf("failed to handle action: %w", errNotImplemented)
+	}
+}
+
+func (h *handlerImpl[T]) handleDelete(wr http.ResponseWriter, req *http.Request) error {
+	var start = time.Now()
+	if h.delete != nil {
+		err := h.delete.Delete(wr, req)
+		if err != nil {
+			log.Printf("[Delete] %s -> error: %s\n", req.URL, err.Error())
+			return err
+		} else {
+			log.Printf("[Delete] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
+			return nil
+		}
+	} else {
+		return fmt.Errorf("failed to handle delete: %w", errNotImplemented)
 	}
 }
 
@@ -345,7 +326,7 @@ func (h *handlerImpl[T]) handleReloadError(wr http.ResponseWriter, req *http.Req
 	log.Printf("[ReloadWithError] %s -> %s\n", req.URL, err.Error())
 
 	req.Method = http.MethodGet
-	h.serveInternal(wr, req)
+	h.serveRequest(wr, req)
 
 	return true
 }

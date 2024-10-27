@@ -14,6 +14,7 @@ const (
 	decoderKey key = "decoder"
 	modeKey    key = "mode"
 	scriptsKey key = "scripts"
+	outletKey  key = "wrapper"
 )
 
 type Mode string

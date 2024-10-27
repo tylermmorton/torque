@@ -6,10 +6,10 @@ import (
 
 type Handler interface {
 	http.Handler
-	serveInternal(wr http.ResponseWriter, req *http.Request)
-	serveOutlet(wr http.ResponseWriter, req *http.Request)
 
 	setOverride(http.Handler)
+
+	getRouter() *router
 
 	setPath(string)
 	GetPath() string
@@ -46,6 +46,10 @@ func (h *handlerImpl[T]) GetPath() string {
 	return h.path
 }
 
+func (h *handlerImpl[T]) getRouter() *router {
+	return h.router
+}
+
 func (h *handlerImpl[T]) setParent(parent Handler) {
 	h.parent = parent
 }
@@ -69,7 +73,7 @@ func (h *handlerImpl[T]) GetMode() Mode {
 
 func (h *handlerImpl[T]) HasOutlet() bool {
 	if t, ok := h.rendererT.(*templateRenderer[T]); ok {
-		return t.HasOutlet
+		return t.hasOutlet
 	}
 	return false
 }

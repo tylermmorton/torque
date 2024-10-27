@@ -2,7 +2,6 @@ package torque
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"reflect"
 
@@ -33,6 +32,10 @@ type Controller interface{}
 // in the Loader to provide additional error state in the resulting ViewModel.
 type Action interface {
 	Action(wr http.ResponseWriter, req *http.Request) error
+}
+
+type Delete interface {
+	Delete(wr http.ResponseWriter, req *http.Request) error
 }
 
 // Loader is executed during an HTTP GET request and provides
@@ -130,7 +133,10 @@ type PluginProvider interface {
 }
 
 func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm ViewModel) error {
-	var err error
+	var (
+		err       error
+		hasOutlet bool
+	)
 
 	// check if the controller is a pointer before asserting any types.
 	if reflect.ValueOf(ctl).Kind() != reflect.Ptr {
@@ -145,7 +151,7 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 	if renderer, ok := ctl.(Renderer[T]); ok {
 		h.rendererT = renderer
 	} else if tp, ok := vm.(tmpl.TemplateProvider); ok {
-		h.rendererT, err = createTemplateRenderer[T](tp)
+		h.rendererT, hasOutlet, err = createTemplateRenderer[T](tp)
 		if err != nil {
 			return err
 		}
@@ -153,6 +159,10 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 
 	if action, ok := ctl.(Action); ok {
 		h.action = action
+	}
+
+	if delete, ok := ctl.(Delete); ok {
+		h.delete = delete
 	}
 
 	if eventSource, ok := ctl.(EventSource); ok {
@@ -168,11 +178,9 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 	}
 
 	if _, ok := ctl.(RouterProvider); ok {
-		h.router = createRouterProvider[T](h, ctl)
-		if h.router != nil && h.mode == ModeDevelopment {
-			log.Printf("-- RouterProvider(%s) --", h.path)
-			logRoutes("/", h.router.Routes())
-		}
+		h.router = createRouter[T](h, ctl, hasOutlet)
+	} else if hasOutlet {
+		return fmt.Errorf("controller type %T must implement RouterProvider to use template outlets", ctl)
 	}
 
 	if guardProvider, ok := ctl.(GuardProvider); ok {

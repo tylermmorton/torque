@@ -1,170 +1,284 @@
 package torque
 
 import (
-	"github.com/go-chi/chi/v5"
+	"context"
 	"html/template"
 	"io/fs"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 )
 
-// RouteParam returns the named route parameter from the request url
-func RouteParam(req *http.Request, name string) string {
-	return chi.URLParam(req, name)
-}
+const (
+	rootKey      = "/"
+	parameterKey = "{}"
+)
 
 type Router interface {
-	chi.Router
+	http.Handler
 
+	Handle(pattern string, handler http.Handler)
 	HandleFileSystem(pattern string, fs fs.FS)
+
+	Match(method, path string) (http.Handler, map[string]string, bool)
 }
 
-type routerImpl struct {
-	chi.Router
-	Handler Handler
+type Middleware func(http.Handler) http.Handler
+
+type trieNode struct {
+	parent    *trieNode
+	children  map[string]*trieNode
+	handlers  map[string]http.Handler
+	isParam   bool
+	paramName string
+	isOutlet  bool
 }
 
-func logRoutes(prefix string, r []chi.Route) {
-	for _, route := range r {
-		pattern := filepath.Join(prefix, route.Pattern)
-		log.Printf("Route: %s\n", pattern)
-		if route.SubRoutes != nil {
-			logRoutes(pattern, route.SubRoutes.Routes())
-		}
-	}
+type router struct {
+	root   *trieNode
+	prefix string
 }
 
-// mountRouterSubtrees is a recursive function that takes a handler and attaches
-// to its router the tree of Handlers provided by the RouterProvider API.
-func mountRouterSubtrees(r chi.Router, path string, parent Handler) chi.Router {
-	for _, route := range r.Routes() {
-		// The RouterProvider has registered an http.Handler at the 'root' level.
-		// This "overrides" the default behavior of the Controller and serves the
-		// given handler instead.
-		if route.Pattern == "/" {
-			parent.setOverride(http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
-				if child, ok := route.Handlers[req.Method]; ok {
-					// If the parent is an outlet provider, and the router provider is
-					// overriding the root, perform the same outlet wrapping logic
-					// but with a vanilla http.Handler.
-					if parent.HasOutlet() {
-						var (
-							childReq   = req
-							childResp  = httptest.NewRecorder()
-							parentReq  = req.Clone(req.Context())
-							parentResp = httptest.NewRecorder()
-						)
-
-						// child before parent, because it can set additional context
-						// while handling the request
-						child.ServeHTTP(childResp, childReq)
-						parent.serveInternal(parentResp, parentReq.WithContext(childReq.Context()))
-
-						t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
-
-						err := t.Execute(wr, template.HTML(childResp.Body.String()))
-						if err != nil {
-							panic(err)
-						}
-					} else {
-						child.ServeHTTP(wr, req)
-					}
-				} else {
-					wr.WriteHeader(http.StatusMethodNotAllowed)
-				}
-			}))
-		}
+func createRouter[T ViewModel](h *handlerImpl[T], ctl Controller, isOutlet bool) *router {
+	r := &router{
+		prefix: h.path,
+		root: &trieNode{
+			children: make(map[string]*trieNode),
+			handlers: map[string]http.Handler{
+				"*": h,
+			},
+			isOutlet: isOutlet,
+		},
 	}
 
-	for _, child := range parent.GetChildren() {
-		var childPath = filepath.Join(path + child.GetPath())
-		if childPath == "/" {
-			// If the parent is an outlet provider, and the router provider is overriding
-			// the root route with a Controller, then serve the child's outlet directly
-			//
-			// This enables Controllers that are RouterProviders to infinitely wrap each
-			// other without needing to add a new path to the route.
-			if parent.HasOutlet() {
-				parent.setOverride(http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
-					child.serveOutlet(wr, req)
-				}))
-			} else {
-				parent.setOverride(child)
-			}
-		} else {
-			r.Handle(childPath, child)
-		}
-
-		// recursively mount any child routes
-		if len(child.GetChildren()) != 0 {
-			mountRouterSubtrees(r, childPath, child)
-		}
+	if rp, ok := ctl.(RouterProvider); ok {
+		rp.Router(r)
 	}
 
 	return r
 }
 
-// createRouterProvider takes the given HandlerModule and builds
-func createRouterProvider[T ViewModel](h *handlerImpl[T], module Controller) chi.Router {
-	rr := &routerImpl{
-		Router:  chi.NewRouter(),
-		Handler: h,
+func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	handler, params, ok := r.Match(req.Method, req.URL.Path)
+	if !ok {
+		http.NotFound(w, req)
+		return
 	}
 
-	// calling this will recursively construct a tree of routers,
-	// each with their set of routes as http.Handlers or Controllers.
-	if rp, ok := module.(RouterProvider); ok {
-		rp.Router(rr)
+	// Add route parameters to the request context
+	ctx := req.Context()
+	for key, value := range params {
+		ctx = context.WithValue(ctx, key, value)
 	}
 
-	// now recursively 'flatten' the tree of routers into the parent router.
-	// the end result is a router with all the routes of its children
-	return mountRouterSubtrees(rr.Router, "/", h)
+	handler.ServeHTTP(w, req.WithContext(ctx))
 }
 
-func (r *routerImpl) Handle(pattern string, h http.Handler) {
-	var parent = r.Handler
-
-	if child, ok := h.(Handler); ok {
-		// the tree will be resolved during steps in mountRouterSubtrees
-		child.setPath(pattern)
-		parent.addChild(child)
-	} else {
-		r.Router.Handle(pattern, h)
-	}
+func (r *router) Handle(path string, h http.Handler) {
+	r.handleMethod("*", path, h)
 }
 
-func (r *routerImpl) HandleFileSystem(pattern string, fs fs.FS) {
-	r.Router.Route(pattern, func(r chi.Router) {
-		r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
-			log.Printf("[FileSystem] %s", req.URL.Path)
-			http.StripPrefix(pattern, http.FileServer(http.FS(fs))).ServeHTTP(wr, req)
-		})
-	})
-	if r.Handler.GetMode() == ModeDevelopment {
-		log.Printf("-- HandleFileSystem(%s) --", pattern)
-		logFileSystem(fs)
+// handleMethod registers a handler or merges a router if passed.
+func (r *router) handleMethod(method, path string, h http.Handler) {
+	fullPath := filepath.Join(r.prefix + path)
+
+	// If another router is passed, create a parent/child relationship between them
+	if handler, ok := h.(Handler); ok && handler.getRouter() != nil {
+		child := handler.getRouter().root
+		segment := strings.TrimPrefix(path, "/")
+
+		r.root.children[segment] = child
+		child.parent = r.root
+
+		return
 	}
-}
 
-func logFileSystem(fsys fs.FS) {
-	var walkFn func(path string, d fs.DirEntry, err error) error
+	handler, ok := h.(http.Handler)
+	if !ok {
+		panic("invalid handler or router passed to Handle")
+	}
 
-	walkFn = func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		} else if d.IsDir() {
-			log.Printf("Dir: %s", path)
-		} else {
-			log.Printf("File: %s", path)
+	// Split the full path into segments
+	segments := strings.Split(fullPath, "/")
+
+	// Special case for root path "/"
+	if fullPath == rootKey || (len(segments) == 2 && segments[1] == "") {
+		r.root.handlers = make(map[string]http.Handler)
+		r.root.handlers[method] = handler
+		return
+	}
+
+	// Traverse through the segments
+	node := r.root
+	for _, seg := range segments {
+		if seg == "" {
+			continue
 		}
-		return nil
+
+		isParam := strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}")
+		var key string
+		if isParam {
+			key = parameterKey
+		} else {
+			key = seg
+		}
+
+		if _, exists := node.children[key]; !exists {
+			node.children[key] = &trieNode{
+				parent:   node,
+				children: make(map[string]*trieNode),
+				handlers: make(map[string]http.Handler),
+				isParam:  isParam,
+				paramName: func() string {
+					if isParam {
+						return seg[1 : len(seg)-1] // Extract param name (e.g., userId from {userId})
+					}
+					return ""
+				}(),
+			}
+		}
+
+		node = node.children[key]
 	}
 
-	err := fs.WalkDir(fsys, ".", walkFn)
-	if err != nil {
-		panic(err)
+	// Store the handler at the final node for the given method (e.g., GET)
+	node.handlers[method] = handler
+}
+
+// Match finds a handler based on the method and path
+func (r *router) Match(method, path string) (http.Handler, map[string]string, bool) {
+	params := make(map[string]string)
+	segments := strings.Split(path, "/")
+
+	// Traverse the radix trie to find the matching handler
+	node := r.root
+	for _, seg := range segments {
+		if seg == "" {
+			continue
+		}
+
+		if child, exists := node.children[seg]; exists {
+			node = child
+		} else if paramChild, exists := node.children["{}"]; exists {
+			node = paramChild
+			params[node.paramName] = seg
+		} else {
+			return nil, nil, false
+		}
+	}
+
+	// Return the handler if it exists for the given method or wildcard.
+	// Before returning, recursively wrap it with any parent outlets
+	if handler, ok := node.handlers[method]; ok {
+		return wrapWithParentOutlet(handler, node, method), params, true
+	} else if handler, ok := node.handlers["*"]; ok {
+		return wrapWithParentOutlet(handler, node, method), params, true
+	}
+	return nil, nil, false
+}
+
+func wrapWithParentOutlet(childHandler http.Handler, node *trieNode, method string) http.Handler {
+	if node.parent != nil && node.parent.isOutlet {
+		var parentHandler http.Handler
+		if h, exists := node.parent.handlers[method]; exists {
+			parentHandler = h
+		} else if h, exists = node.parent.handlers["*"]; exists {
+			parentHandler = h
+		} else {
+			panic("this should not happen")
+		}
+		return wrapWithParentOutlet(http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+			// Indicate to any handlers they should not attempt to route the request
+			// using their internal router, and instead just serve the request
+			req = req.WithContext(context.WithValue(req.Context(), outletKey, true))
+
+			var (
+				childReq   = req
+				childResp  = httptest.NewRecorder()
+				parentReq  = req.Clone(req.Context())
+				parentResp = httptest.NewRecorder()
+			)
+
+			// child before parent, because it can set additional context
+			// while handling the request
+			childHandler.ServeHTTP(childResp, childReq)
+			parentHandler.ServeHTTP(parentResp, parentReq.WithContext(childReq.Context()))
+
+			t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
+
+			err := t.Execute(wr, template.HTML(childResp.Body.String()))
+			if err != nil {
+				panic(err)
+			}
+		}), node.parent, method)
+	} else {
+		return childHandler
 	}
 }
+
+//func (r *router) Use(middleware ...Middleware) {
+//	r.middleware = append(r.middleware, middleware...)
+//}
+
+// // RouteParam returns the named route parameter from the request url
+//
+//	func RouteParam(req *http.Request, name string) string {
+//		return chi.URLParam(req, name)
+//	}
+//
+//	type Router interface {
+//		chi.Router
+//
+//		HandleFileSystem(pattern string, fs fs.FS)
+//	}
+//
+//	type routerImpl struct {
+//		chi.Router
+//		Handler Handler
+//	}
+//
+//	func logRoutes(prefix string, r []chi.Route) {
+//		for _, route := range r {
+//			pattern := filepath.Join(prefix, route.Pattern)
+//			log.Printf("Route: %s\n", pattern)
+//			if route.SubRoutes != nil {
+//				logRoutes(pattern, route.SubRoutes.Routes())
+//			}
+//		}
+//	}
+//
+
+func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
+	//r.Router.Route(pattern, func(r chi.Router) {
+	//	r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
+	//		log.Printf("[FileSystem] %s", req.URL.Path)
+	//		http.StripPrefix(pattern, http.FileServer(http.FS(fs))).ServeHTTP(wr, req)
+	//	})
+	//})
+	//if r.Handler.GetMode() == ModeDevelopment {
+	//	log.Printf("-- HandleFileSystem(%s) --", pattern)
+	//	logFileSystem(fs)
+	//}
+}
+
+//
+//func logFileSystem(fsys fs.FS) {
+//	var walkFn func(path string, d fs.DirEntry, err error) error
+//
+//	walkFn = func(path string, d fs.DirEntry, err error) error {
+//		if err != nil {
+//			return err
+//		} else if d.IsDir() {
+//			log.Printf("Dir: %s", path)
+//		} else {
+//			log.Printf("File: %s", path)
+//		}
+//		return nil
+//	}
+//
+//	err := fs.WalkDir(fsys, ".", walkFn)
+//	if err != nil {
+//		panic(err)
+//	}
+//}

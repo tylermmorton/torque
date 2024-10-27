@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/schema"
-	"html/template"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -64,9 +63,7 @@ func (m MockTemplateProvider) TemplateText() string {
 	return "{{ .Message }}"
 }
 
-type MockOutletTemplateProvider struct {
-	Tag template.HTML
-}
+type MockOutletTemplateProvider struct{}
 
 func (MockOutletTemplateProvider) TemplateText() string {
 	return "<div>{{ outlet }}</div>"

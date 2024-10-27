@@ -11,7 +11,7 @@ import (
 	"github.com/tylermmorton/torque"
 )
 
-func TestRouter_Outlets_MultiLevelNesting(t *testing.T) {
+func TestRouter_Outlets_NestedVanillaHandler(t *testing.T) {
 	h := torque.MustNew[MockOutletTemplateProvider](&struct {
 		Name string
 		MockLoader[MockOutletTemplateProvider]
@@ -20,7 +20,7 @@ func TestRouter_Outlets_MultiLevelNesting(t *testing.T) {
 		Name: "A",
 		MockLoader: MockLoader[MockOutletTemplateProvider]{
 			LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
-				return MockOutletTemplateProvider{Tag: "a"}, nil
+				return MockOutletTemplateProvider{}, nil
 			},
 		},
 		MockRouterProvider: MockRouterProvider{
@@ -33,7 +33,59 @@ func TestRouter_Outlets_MultiLevelNesting(t *testing.T) {
 					Name: "B",
 					MockLoader: MockLoader[MockOutletTemplateProvider]{
 						LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
-							return MockOutletTemplateProvider{Tag: "b"}, nil
+							return MockOutletTemplateProvider{}, nil
+						},
+					},
+					MockRouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							r.Handle("/two", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+								_, err := wr.Write([]byte("Hello world!"))
+								Expect(err).NotTo(HaveOccurred())
+							}))
+						},
+					},
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/one/two", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("<div><div>Hello world!</div></div>"))
+}
+
+func TestRouter_Outlets_MultiLevelNesting(t *testing.T) {
+	h := torque.MustNew[MockOutletTemplateProvider](&struct {
+		Name string
+		MockLoader[MockOutletTemplateProvider]
+		MockRouterProvider
+	}{
+		Name: "A",
+		MockLoader: MockLoader[MockOutletTemplateProvider]{
+			LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+				return MockOutletTemplateProvider{}, nil
+			},
+		},
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.Handle("/one", torque.MustNew[MockOutletTemplateProvider](&struct {
+					Name string
+					MockLoader[MockOutletTemplateProvider]
+					MockRouterProvider
+				}{
+					Name: "B",
+					MockLoader: MockLoader[MockOutletTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
+							return MockOutletTemplateProvider{}, nil
 						},
 					},
 					MockRouterProvider: MockRouterProvider{
@@ -46,7 +98,7 @@ func TestRouter_Outlets_MultiLevelNesting(t *testing.T) {
 								Name: "C",
 								MockLoader: MockLoader[MockOutletTemplateProvider]{
 									LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
-										return MockOutletTemplateProvider{Tag: "c"}, nil
+										return MockOutletTemplateProvider{}, nil
 									},
 								},
 								MockRouterProvider: MockRouterProvider{

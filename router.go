@@ -45,9 +45,7 @@ func createRouter[T ViewModel](h *handlerImpl[T], ctl Controller) *router {
 		prefix: h.path,
 		root: &trieNode{
 			children: make(map[string]*trieNode),
-			handlers: map[string]http.Handler{
-				"*": h,
-			},
+			handlers: map[string]http.Handler{"*": h},
 		},
 	}
 
@@ -86,13 +84,6 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 	handler, ok := h.(http.Handler)
 	if !ok {
 		panic("invalid handler or router passed to Handle")
-	}
-
-	// Special case for root path "/"
-	if fullPath == rootKey || (len(segments) == 2 && segments[1] == "") {
-		r.root.handlers = make(map[string]http.Handler)
-		r.root.handlers[method] = handler
-		return
 	}
 
 	var seg string
@@ -144,8 +135,6 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 			for key, child := range childRouter.children {
 				node.children[key] = child
 			}
-			// TODO: This could be where overrides are applied when childRouter has
-			//  any handlers registered for the same method and path as the parent router
 		}
 	}
 }

@@ -63,9 +63,15 @@ func (m MockTemplateProvider) TemplateText() string {
 	return "{{ .Message }}"
 }
 
-type MockOutletTemplateProvider struct{}
+type MockSpanOutletTemplateProvider struct{}
 
-func (MockOutletTemplateProvider) TemplateText() string {
+func (MockSpanOutletTemplateProvider) TemplateText() string {
+	return "<span>{{ outlet }}</span>"
+}
+
+type MockDivOutletTemplateProvider struct{}
+
+func (MockDivOutletTemplateProvider) TemplateText() string {
 	return "<div>{{ outlet }}</div>"
 }
 
@@ -500,11 +506,11 @@ var _ = Describe("Handler API", func() {
 				}
 
 				It("should render the nested TemplateProvider within the outlet", func() {
-					h, err := torque.New[MockOutletTemplateProvider](
-						&MockController[MockOutletTemplateProvider]{
-							MockLoader[MockOutletTemplateProvider]{
-								LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
-									return MockOutletTemplateProvider{}, nil
+					h, err := torque.New[MockDivOutletTemplateProvider](
+						&MockController[MockDivOutletTemplateProvider]{
+							MockLoader[MockDivOutletTemplateProvider]{
+								LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+									return MockDivOutletTemplateProvider{}, nil
 								},
 							},
 							MockRouterProvider{
@@ -551,11 +557,11 @@ var _ = Describe("Handler API", func() {
 					// TODO(v2)
 					Skip("")
 
-					h, err := torque.New[MockOutletTemplateProvider](
-						&MockController[MockOutletTemplateProvider]{
-							MockLoader[MockOutletTemplateProvider]{
-								LoadFunc: func(req *http.Request) (MockOutletTemplateProvider, error) {
-									return MockOutletTemplateProvider{}, nil
+					h, err := torque.New[MockDivOutletTemplateProvider](
+						&MockController[MockDivOutletTemplateProvider]{
+							MockLoader[MockDivOutletTemplateProvider]{
+								LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+									return MockDivOutletTemplateProvider{}, nil
 								},
 							},
 						},

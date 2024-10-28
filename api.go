@@ -22,6 +22,8 @@ type ViewModel interface{}
 // struct.
 type Controller interface{}
 
+type ActionFunc func(wr http.ResponseWriter, req *http.Request) error
+
 // Action is executed during an HTTP POST request. It is responsible for
 // processing data mutations. Typically, an Action is triggered by a form
 // submission or POST request.
@@ -34,9 +36,13 @@ type Action interface {
 	Action(wr http.ResponseWriter, req *http.Request) error
 }
 
+type DeleteFunc func(wr http.ResponseWriter, req *http.Request) error
+
 type Delete interface {
 	Delete(wr http.ResponseWriter, req *http.Request) error
 }
+
+type LoadFunc[T ViewModel] func(req *http.Request) (T, error)
 
 // Loader is executed during an HTTP GET request and provides
 // data to the Renderer. It is responsible for loading the ViewModel
@@ -45,6 +51,8 @@ type Delete interface {
 type Loader[T ViewModel] interface {
 	Load(req *http.Request) (T, error)
 }
+
+type RenderFunc[T ViewModel] func(wr http.ResponseWriter, req *http.Request, vm T) error
 
 // Renderer is executed during an HTTP GET request after the Loader
 // has been executed. It is responsible for rendering the ViewModel

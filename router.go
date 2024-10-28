@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	rootKey      = "/"
 	parameterKey = "{}"
 )
 
@@ -20,7 +19,7 @@ type Router interface {
 	Handle(pattern string, handler http.Handler)
 	HandleFileSystem(pattern string, fs fs.FS)
 
-	Match(method, path string) (http.Handler, map[string]string, bool)
+	Match(method, path string) (http.Handler, PathParams, bool)
 }
 
 type Middleware func(http.Handler) http.Handler
@@ -139,7 +138,7 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 }
 
 // Match finds a handler based on the method and path
-func (r *router) Match(method, path string) (http.Handler, map[string]string, bool) {
+func (r *router) Match(method, path string) (http.Handler, PathParams, bool) {
 	params := make(map[string]string)
 	segments := strings.Split(path, "/")
 
@@ -206,13 +205,4 @@ func logFileSystem(fsys fs.FS) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func RouteParam(req *http.Request, key string) string {
-	if params, ok := req.Context().Value(paramsContextKey).(map[string]string); ok {
-		if val, exists := params[key]; exists {
-			return val
-		}
-	}
-	return ""
 }

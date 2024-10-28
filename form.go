@@ -14,10 +14,12 @@ type SelfValidator interface {
 }
 
 var (
-	ErrDecoderUndefined      = errors.New("failed to retrieve decoder from context")
-	ErrFormParseFailure      = errors.New("failed to parse form data")
-	ErrFormDecodeFailure     = errors.New("failed to decode form data")
-	ErrFormValidationFailure = errors.New("failed to validate form data")
+	ErrDecoderUndefined           = errors.New("failed to retrieve decoder from context")
+	ErrFormParseFailure           = errors.New("failed to parse form data")
+	ErrFormDecodeFailure          = errors.New("failed to decode form data")
+	ErrFormValidationFailure      = errors.New("failed to validate form data")
+	ErrQueryValidationFailure     = errors.New("failed to validate query data")
+	ErrPathParamValidationFailure = errors.New("failed to validate path parameters")
 )
 
 // IsMultipartForm checks the Content-Type header to see if the request is a

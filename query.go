@@ -1,8 +1,9 @@
 package torque
 
 import (
-	"errors"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -22,4 +23,17 @@ func DecodeQuery[T any](req *http.Request) (*T, error) {
 	}
 
 	return &res, nil
+}
+
+func DecodeAndValidateQuery[T SelfValidator](req *http.Request) (*T, error) {
+	res, err := DecodeQuery[T](req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := (*res).Validate(req.Context()); err != nil {
+		return nil, errors.Wrap(ErrQueryValidationFailure, err.Error())
+	}
+
+	return res, nil
 }

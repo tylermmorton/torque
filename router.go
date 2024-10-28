@@ -1,13 +1,10 @@
 package torque
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"io/fs"
 	"log"
 	"net/http"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -192,35 +189,7 @@ func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
 		logFileSystem(fs)
 	}
 
-	r.handleMethod("GET", pattern+"/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		// Get the file path relative to the file system's root
-		relPath := strings.TrimPrefix(req.URL.Path, pattern)
-		relPath = path.Clean(relPath)
-		if strings.HasPrefix(relPath, "/") {
-			relPath = relPath[1:]
-		}
-
-		file, err := fs.Open(relPath)
-		if err != nil {
-			http.NotFound(w, req)
-			return
-		}
-		defer file.Close()
-
-		stat, err := file.Stat()
-		if err != nil || stat.IsDir() {
-			http.NotFound(w, req)
-			return
-		}
-
-		byt, err := io.ReadAll(file)
-		if err != nil {
-			http.Error(w, "failed to read file", http.StatusInternalServerError)
-			return
-		}
-
-		http.ServeContent(w, req, stat.Name(), stat.ModTime(), bytes.NewReader(byt))
-	}))
+	r.handleMethod("GET", pattern+"/*", http.StripPrefix(pattern, http.FileServer(http.FS(fs))))
 }
 
 func logFileSystem(fsys fs.FS) {

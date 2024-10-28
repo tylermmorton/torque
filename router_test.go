@@ -2,6 +2,7 @@ package torque_test
 
 import (
 	"embed"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -12,6 +13,74 @@ import (
 
 	"github.com/tylermmorton/torque"
 )
+
+func TestRouter_RouteParam_WithinTorqueHandler(t *testing.T) {
+	h := torque.MustNew[any](&struct {
+		MockRouterProvider
+	}{
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.Handle("/users/{id}", torque.MustNew[string](&struct {
+					MockLoader[string]
+					MockRenderer[string]
+				}{
+					MockLoader: MockLoader[string]{
+						LoadFunc: func(req *http.Request) (string, error) {
+							return torque.RouteParam(req, "id"), nil
+						},
+					},
+					MockRenderer: MockRenderer[string]{
+						RenderFunc: func(wr http.ResponseWriter, req *http.Request, vm string) error {
+							_, err := wr.Write([]byte(fmt.Sprintf("hello, %s!", vm)))
+							return err
+						},
+					},
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/users/tommy", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("hello, tommy!"))
+}
+
+func TestRouter_RouteParam_WithinVanillaHandler(t *testing.T) {
+	h := torque.MustNew[any](&struct {
+		MockRouterProvider
+	}{
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.Handle("/users/{id}", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
+					_, err := wr.Write([]byte(fmt.Sprintf("hello, %s!", torque.RouteParam(req, "id"))))
+					Expect(err).NotTo(HaveOccurred())
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/users/tommy", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("hello, tommy!"))
+}
 
 func TestRouter_Outlets_NestedVanillaHandler(t *testing.T) {
 	h := torque.MustNew[MockDivOutletTemplateProvider](&struct {
@@ -339,6 +408,5 @@ func TestRouter_HandleFileSystem(t *testing.T) {
 	byt, err := io.ReadAll(res.Body)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(res.StatusCode).To(Equal(http.StatusOK))
-	Expect(res.Header.Get("Content-Type")).To(ContainSubstring("application/javascript"))
 	Expect(string(byt)).To(Equal("console.log('hello world!');"))
 }

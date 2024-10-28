@@ -6,15 +6,18 @@ import (
 	"net/http"
 )
 
-type key string
+type contextKey string
 
 const (
-	titleKey      key = "title"
-	errorKey      key = "error"
-	decoderKey    key = "decoder"
-	modeKey       key = "mode"
-	scriptsKey    key = "scripts"
-	outletFlowKey key = "wrapper"
+	titleKey   contextKey = "title"
+	errorKey   contextKey = "error"
+	decoderKey contextKey = "decoder"
+	modeKey    contextKey = "mode"
+	scriptsKey contextKey = "scripts"
+
+	// internal keys
+	paramsContextKey contextKey = "params"
+	outletContextKey contextKey = "outlet-flow"
 )
 
 type Mode string

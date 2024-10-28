@@ -75,14 +75,14 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 
 // ServeHTTP implements the http.Handler interface
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
-	renderAsOutlet, ok := req.Context().Value(outletFlowKey).(bool)
+	renderAsOutlet, ok := req.Context().Value(outletContextKey).(bool)
 	renderAsOutlet = renderAsOutlet && ok
 
 	if h.router != nil && !renderAsOutlet {
 		log.Printf("[Router] (%s) %s -> %T\n", req.Method, req.URL, h.ctl)
 		// Indicate to any handlers they should not attempt to handle the request using
 		// their internal router, and instead just serve the request using the controller
-		h.router.ServeHTTP(wr, req.WithContext(context.WithValue(req.Context(), outletFlowKey, true)))
+		h.router.ServeHTTP(wr, req.WithContext(context.WithValue(req.Context(), outletContextKey, true)))
 	} else if h.GetParent() != nil && renderAsOutlet {
 		h.serveOutlet(wr, req)
 	} else {

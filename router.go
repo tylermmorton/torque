@@ -58,19 +58,16 @@ func createRouter[T ViewModel](h *handlerImpl[T], ctl Controller) *router {
 }
 
 func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	handler, params, ok := r.Match(req.Method, req.URL.Path)
+	h, params, ok := r.Match(req.Method, req.URL.Path)
 	if !ok {
 		http.NotFound(w, req)
 		return
 	}
 
-	// Add route parameters to the request context
 	ctx := req.Context()
-	for key, value := range params {
-		ctx = context.WithValue(ctx, key, value)
-	}
+	ctx = context.WithValue(ctx, paramsContextKey, params)
 
-	handler.ServeHTTP(w, req.WithContext(ctx))
+	h.ServeHTTP(w, req.WithContext(ctx))
 }
 
 func (r *router) Handle(path string, h http.Handler) {
@@ -126,8 +123,9 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 
 	// If another Handler was passed, create a relationship between the parent and child
 	if h, ok := h.(Handler); ok {
-		// Set the parent so the child can wrap itself with the parent's outlet
-		h.setParent(r.h)
+		if r.h.HasOutlet() {
+			h.setParent(r.h)
+		}
 
 		// "merge-up" the radix sub-trie from the child router. when this handler's internal
 		// router is ever executed it will need to know about its children during Router.Match.
@@ -147,7 +145,7 @@ func (r *router) Match(method, path string) (http.Handler, map[string]string, bo
 
 	// Traverse the radix trie to find the matching handler
 	node := r.root
-	for i, seg := range segments {
+	for _, seg := range segments {
 		if seg == "" {
 			continue
 		}
@@ -159,8 +157,6 @@ func (r *router) Match(method, path string) (http.Handler, map[string]string, bo
 			params[node.paramName] = seg
 		} else if wildcardChild, exists := node.children["*"]; exists {
 			node = wildcardChild
-			// Capture remaining segments as a single path in params["*"]
-			params["*"] = strings.Join(segments[i:], "/")
 			break
 		} else {
 			return nil, nil, false
@@ -213,5 +209,10 @@ func logFileSystem(fsys fs.FS) {
 }
 
 func RouteParam(req *http.Request, key string) string {
+	if params, ok := req.Context().Value(paramsContextKey).(map[string]string); ok {
+		if val, exists := params[key]; exists {
+			return val
+		}
+	}
 	return ""
 }

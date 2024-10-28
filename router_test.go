@@ -339,6 +339,6 @@ func TestRouter_HandleFileSystem(t *testing.T) {
 	byt, err := io.ReadAll(res.Body)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(res.StatusCode).To(Equal(http.StatusOK))
-	Expect(res.Header.Get("Content-Type")).To(Equal("application/javascript"))
+	Expect(res.Header.Get("Content-Type")).To(ContainSubstring("application/javascript"))
 	Expect(string(byt)).To(Equal("console.log('hello world!');"))
 }

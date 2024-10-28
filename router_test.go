@@ -1,7 +1,9 @@
 package torque_test
 
 import (
+	"embed"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -303,4 +305,40 @@ func TestRouter_Outlets_InfiniteNesting(t *testing.T) {
 
 	Expect(res.StatusCode).To(Equal(http.StatusOK))
 	Expect(string(byt)).To(Equal("<div><span><div><span>Hello world!</span></div></span></div>"))
+}
+
+//go:embed testdata/router_test
+var testFilesystem embed.FS
+
+func TestRouter_HandleFileSystem(t *testing.T) {
+	fs, err := fs.Sub(testFilesystem, "testdata/router_test")
+	if err != nil {
+		panic(err)
+	}
+
+	h := torque.MustNew[MockDivOutletTemplateProvider](&struct {
+		Name string
+		MockRouterProvider
+	}{
+		Name: "A",
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.HandleFileSystem("/s", fs)
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/s/file.js", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(res.Header.Get("Content-Type")).To(Equal("application/javascript"))
+	Expect(string(byt)).To(Equal("console.log('hello world!');"))
 }

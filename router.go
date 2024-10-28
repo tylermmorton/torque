@@ -1,9 +1,13 @@
 package torque
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"io/fs"
+	"log"
 	"net/http"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -146,7 +150,7 @@ func (r *router) Match(method, path string) (http.Handler, map[string]string, bo
 
 	// Traverse the radix trie to find the matching handler
 	node := r.root
-	for _, seg := range segments {
+	for i, seg := range segments {
 		if seg == "" {
 			continue
 		}
@@ -156,6 +160,11 @@ func (r *router) Match(method, path string) (http.Handler, map[string]string, bo
 		} else if paramChild, exists := node.children["{}"]; exists {
 			node = paramChild
 			params[node.paramName] = seg
+		} else if wildcardChild, exists := node.children["*"]; exists {
+			node = wildcardChild
+			// Capture remaining segments as a single path in params["*"]
+			params["*"] = strings.Join(segments[i:], "/")
+			break
 		} else {
 			return nil, nil, false
 		}
@@ -176,68 +185,64 @@ func (r *router) Match(method, path string) (http.Handler, map[string]string, bo
 	}
 }
 
-//func (r *router) Use(middleware ...Middleware) {
-//	r.middleware = append(r.middleware, middleware...)
-//}
-
-// // RouteParam returns the named route parameter from the request url
-//
-//	func RouteParam(req *http.Request, name string) string {
-//		return chi.URLParam(req, name)
-//	}
-//
-//	type Router interface {
-//		chi.Router
-//
-//		HandleFileSystem(pattern string, fs fs.FS)
-//	}
-//
-//	type routerImpl struct {
-//		chi.Router
-//		Handler Handler
-//	}
-//
-//	func logRoutes(prefix string, r []chi.Route) {
-//		for _, route := range r {
-//			pattern := filepath.Join(prefix, route.Pattern)
-//			log.Printf("Route: %s\n", pattern)
-//			if route.SubRoutes != nil {
-//				logRoutes(pattern, route.SubRoutes.Routes())
-//			}
-//		}
-//	}
-//
-
 func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
-	//r.Router.Route(pattern, func(r chi.Router) {
-	//	r.Get("/*", func(wr http.ResponseWriter, req *http.Request) {
-	//		log.Printf("[FileSystem] %s", req.URL.Path)
-	//		http.StripPrefix(pattern, http.FileServer(http.FS(fs))).ServeHTTP(wr, req)
-	//	})
-	//})
-	//if r.Handler.GetMode() == ModeDevelopment {
-	//	log.Printf("-- HandleFileSystem(%s) --", pattern)
-	//	logFileSystem(fs)
-	//}
+	pattern = strings.TrimSuffix(pattern, "/*")
+
+	if r.h.GetMode() == ModeDevelopment {
+		logFileSystem(fs)
+	}
+
+	r.handleMethod("GET", pattern+"/*", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		// Get the file path relative to the file system's root
+		relPath := strings.TrimPrefix(req.URL.Path, pattern)
+		relPath = path.Clean(relPath)
+		if strings.HasPrefix(relPath, "/") {
+			relPath = relPath[1:]
+		}
+
+		file, err := fs.Open(relPath)
+		if err != nil {
+			http.NotFound(w, req)
+			return
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil || stat.IsDir() {
+			http.NotFound(w, req)
+			return
+		}
+
+		byt, err := io.ReadAll(file)
+		if err != nil {
+			http.Error(w, "failed to read file", http.StatusInternalServerError)
+			return
+		}
+
+		http.ServeContent(w, req, stat.Name(), stat.ModTime(), bytes.NewReader(byt))
+	}))
 }
 
-//
-//func logFileSystem(fsys fs.FS) {
-//	var walkFn func(path string, d fs.DirEntry, err error) error
-//
-//	walkFn = func(path string, d fs.DirEntry, err error) error {
-//		if err != nil {
-//			return err
-//		} else if d.IsDir() {
-//			log.Printf("Dir: %s", path)
-//		} else {
-//			log.Printf("File: %s", path)
-//		}
-//		return nil
-//	}
-//
-//	err := fs.WalkDir(fsys, ".", walkFn)
-//	if err != nil {
-//		panic(err)
-//	}
-//}
+func logFileSystem(fsys fs.FS) {
+	var walkFn func(path string, d fs.DirEntry, err error) error
+
+	walkFn = func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		} else if d.IsDir() {
+			log.Printf("Dir: %s", path)
+		} else {
+			log.Printf("File: %s", path)
+		}
+		return nil
+	}
+
+	err := fs.WalkDir(fsys, ".", walkFn)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func RouteParam(req *http.Request, key string) string {
+	return ""
+}

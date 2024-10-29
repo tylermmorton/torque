@@ -75,13 +75,14 @@ func (r *router) Handle(path string, h http.Handler) {
 
 // handleMethod registers a handler or merges a router if passed.
 func (r *router) handleMethod(method, path string, h http.Handler) {
-	var (
-		ok      bool
-		handler Handler
-	)
-	if _, ok = h.(Handler); ok {
-		handler = h.(Handler)
-	} else if _, ok := h.(http.Handler); ok {
+	var handler http.Handler
+	switch h.(type) {
+	case Handler:
+		handler = h
+	case noWrapHandler:
+		// prevent wrapping by using torque.NoWrap
+		handler = h
+	case http.Handler:
 		// promote any vanilla handlers by wrapping
 		handler = MustNewV(h.(http.Handler))
 	}
@@ -126,17 +127,19 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 	// Store the handler at the final node for the given method (e.g., GET)
 	node.handlers[method] = handler
 
-	// create a relationship between the parent and child
-	if r.h.HasOutlet() {
-		handler.setParent(r.h)
-	}
+	if handler, ok := handler.(Handler); ok {
+		// create a relationship between the parent and child
+		if r.h.HasOutlet() {
+			handler.setParent(r.h)
+		}
 
-	// "merge-up" the radix sub-trie from the child router. when this handler's internal
-	// router is ever executed it will need to know about its children during Router.Match.
-	if handler.getRouter() != nil {
-		var childRouter = handler.getRouter().root
-		for key, child := range childRouter.children {
-			node.children[key] = child
+		// "merge-up" the radix sub-trie from the child router. when this handler's internal
+		// router is ever executed it will need to know about its children during Router.Match.
+		if handler.getRouter() != nil {
+			var childRouter = handler.getRouter().root
+			for key, child := range childRouter.children {
+				node.children[key] = child
+			}
 		}
 	}
 }
@@ -188,7 +191,7 @@ func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
 		logFileSystem(fs)
 	}
 
-	r.handleMethod("GET", pattern+"/*", http.StripPrefix(pattern, http.FileServer(http.FS(fs))))
+	r.handleMethod("GET", pattern+"/*", NoWrap(http.StripPrefix(pattern, http.FileServer(http.FS(fs)))))
 }
 
 func logFileSystem(fsys fs.FS) {
@@ -209,4 +212,19 @@ func logFileSystem(fsys fs.FS) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+type noWrapHandler func(http.ResponseWriter, *http.Request)
+
+func (h noWrapHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	h(w, req)
+}
+
+// NoWrap indicates to the Router that the given http.Handler should not be wrapped when
+// adding it via Handle. This is useful when you want to pass a vanilla http.Handler to
+// a Router that shouldn't be wrapped by its parent's output.
+func NoWrap(h http.Handler) http.Handler {
+	return noWrapHandler(func(w http.ResponseWriter, req *http.Request) {
+		h.ServeHTTP(w, req)
+	})
 }

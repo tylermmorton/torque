@@ -15,7 +15,6 @@ import (
 )
 
 type handlerImpl[T ViewModel] struct {
-	// the interface this handler is derived from
 	ctl Controller
 
 	mode    Mode
@@ -31,8 +30,8 @@ type handlerImpl[T ViewModel] struct {
 	subscribers int
 	eventSource EventSource
 
+	handler       http.Handler
 	action        Action
-	delete        Delete
 	loader        Loader[T]
 	rendererT     Renderer[T]
 	rendererVM    DynamicRenderer
@@ -42,9 +41,9 @@ type handlerImpl[T ViewModel] struct {
 	panicBoundary PanicBoundary
 }
 
-func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
+func createHandlerImpl[T ViewModel]() *handlerImpl[T] {
 	h := &handlerImpl[T]{
-		ctl: ctl,
+		ctl: nil,
 
 		mode:    ModeDevelopment,
 		encoder: schema.NewEncoder(),
@@ -55,8 +54,8 @@ func createHandlerImpl[T ViewModel](ctl Controller) *handlerImpl[T] {
 		parent:   nil,
 		override: nil,
 
+		handler:       nil,
 		action:        nil,
-		delete:        nil,
 		loader:        nil,
 		rendererT:     nil,
 		rendererVM:    nil,
@@ -146,6 +145,13 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 		}
 	}
 
+	// If this is a wrapped vanilla http.Handler passed from a call to torque.MustNewV,
+	// it short-circuits a majority of the controller flow. Just serve the request.
+	if h.handler != nil {
+		h.handler.ServeHTTP(wr, req)
+		return
+	}
+
 	switch req.Method {
 	case http.MethodGet:
 		if req.Header.Get("Accept") == "text/event-stream" {
@@ -168,15 +174,8 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 			return
 		}
 
-	case http.MethodPost:
+	case http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete:
 		err = h.handleAction(wr, req)
-		if err != nil {
-			h.handleError(wr, req, err)
-			return
-		}
-
-	case http.MethodDelete:
-		err = h.handleDelete(wr, req)
 		if err != nil {
 			h.handleError(wr, req, err)
 			return
@@ -201,22 +200,6 @@ func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request)
 		}
 	} else {
 		return fmt.Errorf("failed to handle action: %w", errNotImplemented)
-	}
-}
-
-func (h *handlerImpl[T]) handleDelete(wr http.ResponseWriter, req *http.Request) error {
-	var start = time.Now()
-	if h.delete != nil {
-		err := h.delete.Delete(wr, req)
-		if err != nil {
-			log.Printf("[Delete] %s -> error: %s\n", req.URL, err.Error())
-			return err
-		} else {
-			log.Printf("[Delete] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
-			return nil
-		}
-	} else {
-		return fmt.Errorf("failed to handle delete: %w", errNotImplemented)
 	}
 }
 

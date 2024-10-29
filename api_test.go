@@ -3,7 +3,6 @@ package torque_test
 import (
 	"encoding/json"
 	"errors"
-	"github.com/gorilla/schema"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,8 +12,18 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/gorilla/schema"
 	"github.com/tylermmorton/torque"
 )
+
+type MockVanillaHandler struct {
+	HandleFunc func(wr http.ResponseWriter, req *http.Request)
+}
+
+func (h *MockVanillaHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+	h.HandleFunc(wr, req)
+}
 
 type MockLoader[T torque.ViewModel] struct {
 	LoadFunc func(req *http.Request) (T, error)

@@ -40,6 +40,60 @@ func TestRouter_Outlets_NestedVanillaHandler(t *testing.T) {
 					},
 					MockRouterProvider: MockRouterProvider{
 						RouterFunc: func(r torque.Router) {
+							r.Handle("/two", &MockVanillaHandler{
+								HandleFunc: func(wr http.ResponseWriter, req *http.Request) {
+									_, err := wr.Write([]byte("Hello world!"))
+									Expect(err).NotTo(HaveOccurred())
+								},
+							})
+						},
+					},
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/one/two", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("<div><div>Hello world!</div></div>"))
+}
+
+func TestRouter_Outlets_NestedVanillaHandlerFunc(t *testing.T) {
+	h := torque.MustNew[MockDivOutletTemplateProvider](&struct {
+		Name string
+		MockLoader[MockDivOutletTemplateProvider]
+		MockRouterProvider
+	}{
+		Name: "A",
+		MockLoader: MockLoader[MockDivOutletTemplateProvider]{
+			LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+				return MockDivOutletTemplateProvider{}, nil
+			},
+		},
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.Handle("/one", torque.MustNew[MockDivOutletTemplateProvider](&struct {
+					Name string
+					MockLoader[MockDivOutletTemplateProvider]
+					MockRouterProvider
+				}{
+					Name: "B",
+					MockLoader: MockLoader[MockDivOutletTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+							return MockDivOutletTemplateProvider{}, nil
+						},
+					},
+					MockRouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
 							r.Handle("/two", http.HandlerFunc(func(wr http.ResponseWriter, req *http.Request) {
 								_, err := wr.Write([]byte("Hello world!"))
 								Expect(err).NotTo(HaveOccurred())
@@ -61,9 +115,8 @@ func TestRouter_Outlets_NestedVanillaHandler(t *testing.T) {
 	byt, err := io.ReadAll(res.Body)
 	Expect(err).NotTo(HaveOccurred())
 
-	// Nested vanilla handlers cannot take advantage of template outlets
 	Expect(res.StatusCode).To(Equal(http.StatusOK))
-	Expect(string(byt)).To(Equal("Hello world!"))
+	Expect(string(byt)).To(Equal("<div><div>Hello world!</div></div>"))
 }
 
 func TestRouter_Outlets_MultiLevelNesting_AdjacentControllers(t *testing.T) {

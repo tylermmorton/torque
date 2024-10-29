@@ -75,39 +75,45 @@ func (r *router) Handle(path string, h http.Handler) {
 
 // handleMethod registers a handler or merges a router if passed.
 func (r *router) handleMethod(method, path string, h http.Handler) {
-	fullPath := filepath.Join(r.prefix, path)
-	segments := strings.Split(fullPath, "/")
-
-	handler, ok := h.(http.Handler)
-	if !ok {
-		panic("invalid handler or router passed to Handle")
+	var (
+		ok      bool
+		handler Handler
+	)
+	if _, ok = h.(Handler); ok {
+		handler = h.(Handler)
+	} else if _, ok := h.(http.Handler); ok {
+		// promote any vanilla handlers by wrapping
+		handler = MustNewV(h.(http.Handler))
 	}
 
-	var seg string
-	node := r.root
-	for _, seg = range segments {
-		if seg == "" {
+	var (
+		fullPath = filepath.Join(r.prefix, path)
+		segments = strings.Split(fullPath, "/")
+		node     = r.root
+	)
+	for _, segment := range segments {
+		if segment == "" {
 			continue
 		}
 
-		isParam := strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}")
+		isParam := strings.HasPrefix(segment, "{") && strings.HasSuffix(segment, "}")
 		var key string
 		if isParam {
 			key = parameterKey
 		} else {
-			key = seg
+			key = segment
 		}
 
 		if _, exists := node.children[key]; !exists {
 			node.children[key] = &trieNode{
-				segment:  seg,
+				segment:  segment,
 				parent:   node,
 				children: make(map[string]*trieNode),
 				handlers: make(map[string]http.Handler),
 				isParam:  isParam,
 				paramName: func() string {
 					if isParam {
-						return seg[1 : len(seg)-1] // Extract param name (e.g., userId from {userId})
+						return segment[1 : len(segment)-1] // Extract param name (e.g., userId from {userId})
 					}
 					return ""
 				}(),
@@ -120,19 +126,17 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 	// Store the handler at the final node for the given method (e.g., GET)
 	node.handlers[method] = handler
 
-	// If another Handler was passed, create a relationship between the parent and child
-	if h, ok := h.(Handler); ok {
-		if r.h.HasOutlet() {
-			h.setParent(r.h)
-		}
+	// create a relationship between the parent and child
+	if r.h.HasOutlet() {
+		handler.setParent(r.h)
+	}
 
-		// "merge-up" the radix sub-trie from the child router. when this handler's internal
-		// router is ever executed it will need to know about its children during Router.Match.
-		if h.getRouter() != nil {
-			var childRouter = h.getRouter().root
-			for key, child := range childRouter.children {
-				node.children[key] = child
-			}
+	// "merge-up" the radix sub-trie from the child router. when this handler's internal
+	// router is ever executed it will need to know about its children during Router.Match.
+	if handler.getRouter() != nil {
+		var childRouter = handler.getRouter().root
+		for key, child := range childRouter.children {
+			node.children[key] = child
 		}
 	}
 }
@@ -144,16 +148,16 @@ func (r *router) Match(method, path string) (http.Handler, PathParams, bool) {
 
 	// Traverse the radix trie to find the matching handler
 	node := r.root
-	for _, seg := range segments {
-		if seg == "" {
+	for _, segment := range segments {
+		if segment == "" {
 			continue
 		}
 
-		if child, exists := node.children[seg]; exists {
+		if child, exists := node.children[segment]; exists {
 			node = child
 		} else if paramChild, exists := node.children["{}"]; exists {
 			node = paramChild
-			params[node.paramName] = seg
+			params[node.paramName] = segment
 		} else if wildcardChild, exists := node.children["*"]; exists {
 			node = wildcardChild
 			break

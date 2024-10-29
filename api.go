@@ -36,12 +36,6 @@ type Action interface {
 	Action(wr http.ResponseWriter, req *http.Request) error
 }
 
-type DeleteFunc func(wr http.ResponseWriter, req *http.Request) error
-
-type Delete interface {
-	Delete(wr http.ResponseWriter, req *http.Request) error
-}
-
 type LoadFunc[T ViewModel] func(req *http.Request) (T, error)
 
 // Loader is executed during an HTTP GET request and provides
@@ -168,10 +162,6 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 
 	if action, ok := ctl.(Action); ok {
 		h.action = action
-	}
-
-	if delete, ok := ctl.(Delete); ok {
-		h.delete = delete
 	}
 
 	if eventSource, ok := ctl.(EventSource); ok {

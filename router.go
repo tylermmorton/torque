@@ -80,7 +80,7 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 	case Handler:
 		handler = h
 	case noWrapHandler:
-		// prevent wrapping by using torque.NoWrap
+		// prevent wrapping by using torque.NoOutlet
 		handler = h
 	case http.Handler:
 		// promote any vanilla handlers by wrapping
@@ -191,7 +191,7 @@ func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
 		logFileSystem(fs)
 	}
 
-	r.handleMethod("GET", pattern+"/*", NoWrap(http.StripPrefix(pattern, http.FileServer(http.FS(fs)))))
+	r.handleMethod("GET", pattern+"/*", NoOutlet(http.StripPrefix(pattern, http.FileServer(http.FS(fs)))))
 }
 
 func logFileSystem(fsys fs.FS) {
@@ -220,10 +220,10 @@ func (h noWrapHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h(w, req)
 }
 
-// NoWrap indicates to the Router that the given http.Handler should not be wrapped when
+// NoOutlet indicates to the Router that the given http.Handler should not be wrapped when
 // adding it via Handle. This is useful when you want to pass a vanilla http.Handler to
 // a Router that shouldn't be wrapped by its parent's output.
-func NoWrap(h http.Handler) http.Handler {
+func NoOutlet(h http.Handler) http.Handler {
 	return noWrapHandler(func(w http.ResponseWriter, req *http.Request) {
 		h.ServeHTTP(w, req)
 	})

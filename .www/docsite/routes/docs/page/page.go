@@ -39,7 +39,7 @@ var _ interface {
 func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 	var noop ViewModel
 
-	doc, err := ctl.ContentService.GetByID(req.Context(), torque.RouteParam(req, "pageName"))
+	doc, err := ctl.ContentService.GetByID(req.Context(), torque.GetPathParam(req, "pageName"))
 	if err != nil {
 		return noop, ErrPageNotFound
 	}
@@ -56,10 +56,6 @@ func (ctl *Controller) ErrorBoundary(wr http.ResponseWriter, req *http.Request, 
 	if errors.Is(err, ErrPageNotFound) {
 		return func(wr http.ResponseWriter, req *http.Request) {
 			http.Error(wr, "That page does not exist", http.StatusNotFound)
-		}
-	} else if errors.Is(err, torque.ErrRenderFnNotDefined) {
-		return func(wr http.ResponseWriter, req *http.Request) {
-			http.Error(wr, "Internal error", http.StatusInternalServerError)
 		}
 	} else {
 		panic(err) // Send the error to the PanicBoundary

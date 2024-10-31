@@ -17,13 +17,37 @@
     {{ range .Scripts -}}
     <script src="{{ . }}"></script>
     {{ end -}}
+    <script type="module" src="/s/x-code-editor.js"></script>
 
     <!-- FullStory Snippet -->
     {{ template "fs" . }}
   </head>
 
-  <body class="flex h-full flex-col antialiased">
-    {{ template "nav" .Navigator }}
-    <div class="mx-auto max-w-[90rem] px-4 sm:px-6 md:px-8">{{ outlet }}</div>
+  <body class="flex h-full flex-col bg-black text-white antialiased">
+    <div class="flex h-[60px] items-center px-3 py-1">
+      <div
+        class="inline-flex items-center gap-2.5 font-fira-code text-xl font-bold"
+        aria-label="logo"
+      >
+        <a class="mr-3 w-auto flex-none" href="/"
+          ><span class="sr-only">lbft.dev home</span>
+
+          <div
+            class="inline-flex w-[188px] items-center gap-2.5 text-xl font-bold text-white lg:text-3xl"
+            aria-label="logo"
+          >
+            lbft.dev
+          </div>
+        </a>
+      </div>
+    </div>
+    <div class="mx-3 mb-3 h-full">
+      <div
+        id="app"
+        class="flex h-full w-full flex-col rounded-md border border-raisin-border bg-raisin"
+      >
+        {{ outlet }}
+      </div>
+    </div>
   </body>
 </html>

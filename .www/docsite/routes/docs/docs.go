@@ -1,19 +1,20 @@
 package docs
 
 import (
+	"net/http"
+
 	_ "embed"
+
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/routes/docs/page"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
-	"github.com/tylermmorton/torque/.www/docsite/templates/sidebar"
-	"net/http"
 )
 
 //go:embed docs.tmpl.html
 var docsTemplateText string
 
 type ViewModel struct {
-	Sidebar sidebar.Sidebar `tmpl:"sidebar"`
+	navigator `tmpl:"navigator"`
 }
 
 func (ViewModel) TemplateText() string {
@@ -35,12 +36,11 @@ func (ctl *Controller) Router(r torque.Router) {
 
 func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 	return ViewModel{
-		Sidebar: sidebar.Sidebar{
-			EnableSearch: true,
-			LeftNavGroups: []sidebar.LeftNavGroup{
+		navigator: navigator{
+			NavGroups: []navGroup{
 				{
 					Text: "Getting Started",
-					NavItems: []sidebar.NavItem{
+					NavItems: []navItem{
 						{Text: "About", Href: "/docs/about"},
 						{Text: "Quick Start", Href: "/docs/getting-started"},
 						{Text: "Examples", Href: "/docs/examples"},
@@ -57,7 +57,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 				//},
 				{
 					Text: "Controller API",
-					NavItems: []sidebar.NavItem{
+					NavItems: []navItem{
 						{Text: "Controller", Href: "/docs/controller"},
 						{Text: "ViewModel", Href: "/docs/view-model"},
 						{Text: "Loader", Href: "/docs/loader"},
@@ -73,7 +73,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 				},
 				{
 					Text: "Patterns",
-					NavItems: []sidebar.NavItem{
+					NavItems: []navItem{
 						{Text: "Assets", Href: "/docs/queries"},
 						{Text: "Hooks", Href: "/docs/queries"},
 						{Text: "Forms", Href: "/docs/forms"},
@@ -84,7 +84,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 				},
 				{
 					Text: "Integrations",
-					NavItems: []sidebar.NavItem{
+					NavItems: []navItem{
 						{Text: "HTMX", Href: "/docs/integrations/htmx"},
 						{Text: "Tailwind CSS", Href: "/docs/integrations/tailwindcss"},
 						{Text: "eslint", Href: "/docs/integrations/eslint"},

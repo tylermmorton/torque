@@ -4,14 +4,15 @@ import (
 	_ "embed"
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/routes/docs"
-	"github.com/tylermmorton/torque/.www/docsite/routes/landing"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
 	"github.com/tylermmorton/torque/.www/docsite/templates/fullstory"
-	"github.com/tylermmorton/torque/.www/docsite/templates/navigator"
 	"io/fs"
 	"net/http"
 	"os"
 )
+
+//go:embed import-map.json
+var importMap string
 
 //go:embed index.tmpl.html
 var indexTemplateText string
@@ -25,11 +26,10 @@ type Link struct {
 type ViewModel struct {
 	fullstory.Snippet `tmpl:"fs"`
 
-	Navigator navigator.Navigator `tmpl:"nav"`
-
-	Title   string
-	Links   []Link
-	Scripts []string
+	Title     string
+	Links     []Link
+	Scripts   []string
+	ImportMap string
 }
 
 func (ViewModel) TemplateText() string {
@@ -46,9 +46,8 @@ var _ interface {
 } = &Controller{}
 
 func (m *Controller) Router(r torque.Router) {
-	r.Handle("/about", torque.MustNew[landing.ViewModel](&landing.Controller{}))
-	r.Handle("/docs", torque.MustNew[docs.ViewModel](&docs.Controller{ContentService: m.ContentService}))
 	r.HandleFileSystem("/s", m.StaticAssets)
+	r.Handle("/docs", torque.MustNew[docs.ViewModel](&docs.Controller{ContentService: m.ContentService}))
 }
 
 func (m *Controller) Load(req *http.Request) (ViewModel, error) {
@@ -65,11 +64,6 @@ func (m *Controller) Load(req *http.Request) (ViewModel, error) {
 			"https://unpkg.com/htmx.org@1.9.2",
 			"https://unpkg.com/hyperscript.org@0.9.9",
 		},
-		Navigator: navigator.Navigator{
-			EnableBreadcrumbs: false,
-			EnableSearch:      false,
-			EnableTheme:       false,
-			TopNavItems:       []navigator.NavItem{},
-		},
+		ImportMap: importMap,
 	}, nil
 }

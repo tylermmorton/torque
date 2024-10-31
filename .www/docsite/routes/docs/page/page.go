@@ -1,11 +1,12 @@
 package page
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+
+	_ "embed"
 
 	"github.com/tylermmorton/torque"
 	"github.com/tylermmorton/torque/.www/docsite/model"

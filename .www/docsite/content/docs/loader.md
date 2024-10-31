@@ -34,7 +34,6 @@ import (
 
 type ViewModel struct{
 	Title string
-	
 }
 
 type Controller struct{}

@@ -2,12 +2,9 @@ package content
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"github.com/adrg/frontmatter"
-	"github.com/alecthomas/chroma"
-	"github.com/alecthomas/chroma/formatters/html"
-	"github.com/alecthomas/chroma/lexers"
-	"github.com/alecthomas/chroma/styles"
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
 	mdhtml "github.com/gomarkdown/markdown/html"
@@ -16,6 +13,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"strings"
 )
 
 const (
@@ -87,6 +85,12 @@ func renderToHtml(node ast.Node) template.HTML {
 		RenderNodeHook: func(w io.Writer, node ast.Node, entering bool) (ast.WalkStatus, bool) {
 			var err error
 			switch typ := node.(type) {
+			case *ast.Code:
+				err = renderCode(w, typ)
+				if err != nil {
+					panic(fmt.Errorf("failed to render code: %+v", err))
+				}
+				return ast.GoToNext, true
 			case *ast.CodeBlock:
 				err = renderCodeBlock(w, typ, entering)
 				if err != nil {
@@ -100,6 +104,11 @@ func renderToHtml(node ast.Node) template.HTML {
 	return template.HTML(markdown.Render(node, renderer))
 }
 
+func renderCode(w io.Writer, code *ast.Code) error {
+	_, err := w.Write([]byte(fmt.Sprintf("%s", string(code.Literal))))
+	return err
+}
+
 // renderCodeBlock overrides the default renderer for ```code``` tags with a custom
 // chroma based code block renderer
 func renderCodeBlock(w io.Writer, codeBlock *ast.CodeBlock, entering bool) error {
@@ -108,22 +117,11 @@ func renderCodeBlock(w io.Writer, codeBlock *ast.CodeBlock, entering bool) error
 	if len(lang) == 0 {
 		lang = CodeBlockDefaultLanguage
 	}
+	src = strings.Trim(src, " \t\n")
 
-	htmlFormatter := html.New(html.TabWidth(2))
+	buf := make([]byte, base64.StdEncoding.EncodedLen(len(src)))
+	base64.StdEncoding.Encode(buf, []byte(src))
 
-	l := lexers.Get(lang)
-	if l == nil {
-		l = lexers.Analyse(src)
-	}
-	if l == nil {
-		l = lexers.Fallback
-	}
-	l = chroma.Coalesce(l)
-
-	it, err := l.Tokenise(nil, src)
-	if err != nil {
-		return err
-	}
-
-	return htmlFormatter.Format(w, styles.Get(CodeBlockSyntaxHighlighting), it)
+	_, err := w.Write([]byte(fmt.Sprintf(`<x-code-editor code="%s" base64="true"></x-code-editor>`, string(buf))))
+	return err
 }

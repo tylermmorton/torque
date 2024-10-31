@@ -1,4 +1,28 @@
-{{ template "sidebar" .Sidebar }}
-<main id="hx-swappable-outlet" class="mt-[60px] xl:pl-[19.5rem]">
-  {{ outlet }}
-</main>
+<div class="flex w-full flex-grow flex-row">
+  {{ template "navigator" . }}
+  <main class="flex h-full w-full flex-col">
+    <div
+      class="flex h-12 items-center rounded-t-md border-b border-raisin-border px-5"
+    >
+      <h1 class="text-xl font-bold">API Keys</h1>
+    </div>
+    <div class="scrollbar flex w-full flex-grow overflow-y-scroll">
+      <div class="ml-auto max-h-72 max-w-[800px]">{{ outlet }}</div>
+
+      <div
+        class="sticky inset-0 ml-auto h-full w-96 rounded-r-md border-l border-raisin-border/20 bg-raisin px-5 py-10"
+      >
+        <a
+          class="text-nowrap flex w-full items-center gap-2 bg-raisin-light px-3 py-3 hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+          href="#"
+        >
+          Search
+        </a>
+        <div id="hx-swappable-context-menu"></div>
+      </div>
+    </div>
+  </main>
+</div>
+<div
+  class="flex h-6 w-full rounded-b-md border-t border-raisin-border/20 bg-raisin-dark"
+></div>

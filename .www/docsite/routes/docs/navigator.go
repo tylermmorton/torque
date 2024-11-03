@@ -2,6 +2,8 @@ package docs
 
 import (
 	_ "embed"
+
+	"github.com/tylermmorton/torque/.www/docsite/templates/icons"
 )
 
 type navItem struct {
@@ -11,6 +13,7 @@ type navItem struct {
 
 type navGroup struct {
 	Text     string
+	Icon     icons.Icon
 	NavItems []navItem
 }
 

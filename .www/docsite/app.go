@@ -14,6 +14,12 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
 )
 
+//go:generate rm -rf .bleve
+//go:generate bash -c "(git rev-parse --short HEAD) > .gitrevision"
+
+//go:embed .gitrevision
+var revision string
+
 //go:embed .build/static/*
 var staticAssets embed.FS
 

@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"github.com/tylermmorton/torque/.www/docsite/templates/icons"
 	"net/http"
 
 	_ "embed"
@@ -10,11 +11,18 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
 )
 
+type Query struct {
+	SearchQuery string `json:"q"`
+}
+
 //go:embed docs.tmpl.html
 var docsTemplateText string
 
 type ViewModel struct {
-	navigator `tmpl:"navigator"`
+	icons.Icon `tmpl:"icon"`
+	navigator  `tmpl:"navigator"`
+
+	Title string
 }
 
 func (ViewModel) TemplateText() string {
@@ -40,6 +48,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 			NavGroups: []navGroup{
 				{
 					Text: "Getting Started",
+					Icon: icons.StarIcon.Size(16, 16),
 					NavItems: []navItem{
 						{Text: "About", Href: "/docs/about"},
 						{Text: "Quick Start", Href: "/docs/getting-started"},
@@ -57,6 +66,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 				//},
 				{
 					Text: "Controller API",
+					Icon: icons.LayersIcon.Size(16, 16),
 					NavItems: []navItem{
 						{Text: "Controller", Href: "/docs/controller"},
 						{Text: "ViewModel", Href: "/docs/view-model"},
@@ -73,6 +83,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 				},
 				{
 					Text: "Patterns",
+					Icon: icons.ZapIcon.Size(16, 16),
 					NavItems: []navItem{
 						{Text: "Assets", Href: "/docs/queries"},
 						{Text: "Hooks", Href: "/docs/queries"},
@@ -84,6 +95,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 				},
 				{
 					Text: "Integrations",
+					Icon: icons.PackageIcon.Size(16, 16),
 					NavItems: []navItem{
 						{Text: "HTMX", Href: "/docs/integrations/htmx"},
 						{Text: "Tailwind CSS", Href: "/docs/integrations/tailwindcss"},
@@ -94,5 +106,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 				},
 			},
 		},
+
+		Title: torque.UseTitle(req),
 	}, nil
 }

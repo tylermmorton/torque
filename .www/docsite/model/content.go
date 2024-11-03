@@ -3,9 +3,10 @@ package model
 import "html/template"
 
 type Heading struct {
-	ID    string `yaml:"id"`
-	Level int    `yaml:"level"`
-	Text  string `yaml:"text"`
+	ObjectID string `yaml:"objectID"`
+	ID       string `yaml:"id"`
+	Level    int    `yaml:"level"`
+	Text     string `yaml:"text"`
 }
 
 // Article is a common structure for representing content on the docsite. It is used

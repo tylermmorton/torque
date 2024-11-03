@@ -1,0 +1,14 @@
+<!-- prettier-ignore -->
+{{- /*gotype:github.com/tylermmorton/torque/.www/docsite/routes/docs/page.contextMenu*/ -}}
+<input
+  class="text-nowrap flex w-full items-center gap-2 bg-raisin-light px-3 py-3 hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+  href="#"
+  type="text"
+  value="{{.SearchQuery}}"
+/>
+
+<ol class="flex flex-col gap-2">
+  {{ range .SearchResults }}
+  <li>{{ .Title}}</li>
+  {{ end }}
+</ol>

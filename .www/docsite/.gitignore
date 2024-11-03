@@ -1,6 +1,8 @@
 .env
 .idea
+.bleve
 .build/
 node_modules/
 vendor/
 *.gen.go
+.gitrevision

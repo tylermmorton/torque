@@ -13,8 +13,12 @@ type templateRenderer[T ViewModel] struct {
 	template  tmpl.Template[tmpl.TemplateProvider]
 }
 
-func (t templateRenderer[T]) Render(wr http.ResponseWriter, _ *http.Request, vm T) error {
-	return t.template.Render(wr, any(vm).(tmpl.TemplateProvider))
+func (t templateRenderer[T]) Render(wr http.ResponseWriter, req *http.Request, vm T) error {
+	opts := make([]tmpl.RenderOption, 0)
+	if target := UseTarget(req); len(target) != 0 {
+		opts = append(opts, tmpl.WithTarget(target))
+	}
+	return t.template.Render(wr, any(vm).(tmpl.TemplateProvider), opts...)
 }
 
 func createTemplateRenderer[T ViewModel](tp tmpl.TemplateProvider) (*templateRenderer[T], bool, error) {

@@ -25,10 +25,6 @@ export class XCodeEditor extends LitElement {
       border-top-left-radius: 0.375rem;
       border-top-right-radius: 0.375rem;
       font-family: Fira Code, monospace;
-      /*width: 110%;*/
-      /*position: relative;*/
-      /*left: 50%;*/
-      /*transform: translateX(-50%);*/
     }
 
     .header {

@@ -30,4 +30,18 @@
         background: #44445f;
         cursor: grabbing;
     }
+
+    code {
+        font-family: Fira Code, monospace;
+        font-style: normal;
+        letter-spacing: 0.5px;
+        background-color: #44445F;
+        padding: 1px 3px 1px 3px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    code::before, code::after {
+        display: none;
+    }
 }

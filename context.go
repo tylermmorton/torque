@@ -101,3 +101,7 @@ func UseScripts(req *http.Request) []string {
 	}
 	return nil
 }
+
+func UseTarget(req *http.Request) string {
+	return req.Header.Get("X-Torque-Target")
+}

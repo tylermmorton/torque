@@ -55,6 +55,16 @@ func compileMarkdownFile(byt []byte) (*model.Article, error) {
 }
 
 func extractHeadings(node ast.Node) (headings []model.Heading) {
+	for _, child := range node.GetChildren() {
+		switch child := child.(type) {
+		case *ast.Heading:
+			if child.IsTitleblock {
+				continue
+			}
+
+		}
+	}
+
 	ast.WalkFunc(node, func(node ast.Node, entering bool) ast.WalkStatus {
 		if heading, ok := node.(*ast.Heading); ok && entering && !heading.IsTitleblock {
 			for _, child := range heading.Container.Children {
@@ -105,7 +115,7 @@ func renderToHtml(node ast.Node) template.HTML {
 }
 
 func renderCode(w io.Writer, code *ast.Code) error {
-	_, err := w.Write([]byte(fmt.Sprintf("%s", string(code.Literal))))
+	_, err := w.Write([]byte(fmt.Sprintf(`<code class="not-prose">%s</code>`, string(code.Literal))))
 	return err
 }
 

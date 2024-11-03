@@ -1,7 +1,6 @@
 package page
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,11 +20,17 @@ var (
 var pageTemplateText string
 
 type ViewModel struct {
-	Article model.Article `tmpl:"article"`
+	contextMenu `tmpl:"context-menu"`
+
+	Article model.Article
 }
 
 func (ViewModel) TemplateText() string {
 	return pageTemplateText
+}
+
+type Query struct {
+	SearchQuery string `json:"q"`
 }
 
 type Controller struct {
@@ -34,31 +39,36 @@ type Controller struct {
 
 var _ interface {
 	torque.Loader[ViewModel]
-	torque.ErrorBoundary
 } = &Controller{}
 
 func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 	var noop ViewModel
+
+	query, err := torque.DecodeQuery[Query](req)
+	if err != nil {
+		return noop, err
+	}
 
 	doc, err := ctl.ContentService.GetByID(req.Context(), torque.GetPathParam(req, "pageName"))
 	if err != nil {
 		return noop, ErrPageNotFound
 	}
 
+	searchResults, err := ctl.ContentService.Search(req.Context(), content.SearchQuery{Text: query.SearchQuery})
+	if err != nil {
+		return noop, err
+	}
+
 	log.Printf("doc: %+v", doc.Title)
+	log.Printf("search: %+v", searchResults)
 
 	torque.WithTitle(req, doc.Title)
 	return ViewModel{
 		Article: *doc,
+		contextMenu: contextMenu{
+			Article:       doc,
+			SearchQuery:   query.SearchQuery,
+			SearchResults: searchResults,
+		},
 	}, nil
-}
-
-func (ctl *Controller) ErrorBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc {
-	if errors.Is(err, ErrPageNotFound) {
-		return func(wr http.ResponseWriter, req *http.Request) {
-			http.Error(wr, "That page does not exist", http.StatusNotFound)
-		}
-	} else {
-		panic(err) // Send the error to the PanicBoundary
-	}
 }

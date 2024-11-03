@@ -1,44 +1,31 @@
 <nav
-  class="flex w-64 flex-grow flex-col justify-start rounded-tl-md border-r border-raisin-border bg-raisin-dark"
+  class="flex w-80 flex-grow flex-col justify-start rounded-tl-md border-r border-raisin-border bg-raisin-dark"
 >
   <div
     id="header"
     class="sticky z-50 mb-auto flex h-12 items-center rounded-t border-b border-raisin-border bg-transparent px-3 backdrop-blur"
   >
-    <h2 class="text-xl font-bold">Documentation</h2>
+    <h2 class="text-xl font-bold tracking-wide">Documentation</h2>
   </div>
   <div class="scrollbar flex-grow overflow-y-scroll">
-    <ol class="mx-3 flex h-full max-h-0 flex-1 flex-col pt-3 text-sm">
+    <div class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm">
       {{ range .NavGroups }}
-      <h3 class="px-2 py-2 text-lg font-light">{{.Text}}</h3>
-      {{ range .NavItems }}
-      <li class="pb-2 pt-1">
-        <a
-          class="text-nowrap flex h-full w-full items-center gap-2 rounded-md px-3 py-1.5 hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
-          href="{{ .Href }}"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="h-5 w-5"
+      <h3 class="flex flex-row items-center gap-2 px-2 py-2 font-light">
+        {{template "icon" .Icon }} {{.Text}}
+      </h3>
+      <ol class="flex flex-col gap-1 pb-2">
+        {{ range .NavItems }}
+        <li>
+          <a
+            class="text-nowrap flex h-full w-full items-center gap-2 rounded-md px-3 py-1.5 tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+            href="{{ .Href }}"
           >
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path
-              d="M16.555 3.843l3.602 3.602a2.877 2.877 0 0 1 0 4.069l-2.643 2.643a2.877 2.877 0 0 1 -4.069 0l-.301 -.301l-6.558 6.558a2 2 0 0 1 -1.239 .578l-.175 .008h-1.172a1 1 0 0 1 -.993 -.883l-.007 -.117v-1.172a2 2 0 0 1 .467 -1.284l.119 -.13l.414 -.414h2v-2h2v-2l2.144 -2.144l-.301 -.301a2.877 2.877 0 0 1 0 -4.069l2.643 -2.643a2.877 2.877 0 0 1 4.069 0z"
-            />
-            <path d="M15 9h.01" />
-          </svg>
-          <span>{{ .Text }}</span>
-        </a>
-      </li>
-      {{end}} {{ end }}
-    </ol>
+            <span>{{ .Text }}</span>
+          </a>
+        </li>
+        {{end}}
+      </ol>
+      {{ end }}
+    </div>
   </div>
 </nav>

@@ -9,10 +9,13 @@ import (
 	"github.com/gomarkdown/markdown/ast"
 	mdhtml "github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
+	"github.com/tylermmorton/tmpl"
+	"github.com/tylermmorton/torque/.www/docsite/elements"
 	"github.com/tylermmorton/torque/.www/docsite/model"
 	"html/template"
 	"io"
 	"log"
+	"slices"
 	"strings"
 )
 
@@ -90,6 +93,24 @@ func extractHeadings(node ast.Node) (headings []model.Heading) {
 }
 
 func renderToHtml(node ast.Node) template.HTML {
+	// determine which code blocks have neighbors and merge them into
+	// a single, multi-tabbed code block element in the final html
+	var curCodeBlock *ast.CodeBlock
+	var relatedCodeBlocks = make(map[*ast.CodeBlock][]*ast.CodeBlock)
+	for _, child := range node.GetChildren() {
+		if child, ok := child.(*ast.CodeBlock); ok {
+			if curCodeBlock == nil {
+				curCodeBlock = child
+			} else if related, ok := relatedCodeBlocks[curCodeBlock]; ok {
+				relatedCodeBlocks[curCodeBlock] = append(related, child)
+			} else {
+				relatedCodeBlocks[curCodeBlock] = []*ast.CodeBlock{child}
+			}
+		} else {
+			curCodeBlock = nil
+		}
+	}
+
 	renderer := mdhtml.NewRenderer(mdhtml.RendererOptions{
 		Flags: mdhtml.HrefTargetBlank,
 		RenderNodeHook: func(w io.Writer, node ast.Node, entering bool) (ast.WalkStatus, bool) {
@@ -102,7 +123,7 @@ func renderToHtml(node ast.Node) template.HTML {
 				}
 				return ast.GoToNext, true
 			case *ast.CodeBlock:
-				err = renderCodeBlock(w, typ, entering)
+				err = renderCodeBlock(w, typ, entering, relatedCodeBlocks)
 				if err != nil {
 					panic(fmt.Errorf("failed to render code block: %+v", err))
 				}
@@ -119,19 +140,82 @@ func renderCode(w io.Writer, code *ast.Code) error {
 	return err
 }
 
-// renderCodeBlock overrides the default renderer for ```code``` tags with a custom
-// chroma based code block renderer
-func renderCodeBlock(w io.Writer, codeBlock *ast.CodeBlock, entering bool) error {
-	src := string(codeBlock.Literal)
-	lang := string(codeBlock.Info)
-	if len(lang) == 0 {
-		lang = CodeBlockDefaultLanguage
+var CodeBlockTemplate = tmpl.MustCompile(&CodeBlockViewModel{})
+
+type CodeBlockViewModel struct {
+	Editors []elements.XCodeEditor `tmpl:"editor"`
+}
+
+func (CodeBlockViewModel) TemplateText() string {
+	return `
+	{{ if (gt (len .Editors) 1) }}
+	<x-tabbed-view>
+	{{ end }}
+
+	{{ range .Editors }}
+		{{ template "editor" . }}
+	{{ end }}
+
+	{{ if (gt (len .Editors) 1) }}
+	</x-tabbed-view>
+	{{ end }}
+`
+}
+
+func renderCodeBlock(w io.Writer, codeBlock *ast.CodeBlock, entering bool, relatedCodeBlocks map[*ast.CodeBlock][]*ast.CodeBlock) error {
+	for _, relatives := range relatedCodeBlocks {
+		if slices.Contains(relatives, codeBlock) {
+			// skip rendering any code documents related to another
+			return nil
+		}
 	}
-	src = strings.Trim(src, " \t\n")
 
-	buf := make([]byte, base64.StdEncoding.EncodedLen(len(src)))
-	base64.StdEncoding.Encode(buf, []byte(src))
+	var targets = []*ast.CodeBlock{codeBlock}
+	if relatives, ok := relatedCodeBlocks[codeBlock]; ok {
+		targets = append(targets, relatives...)
+	}
 
-	_, err := w.Write([]byte(fmt.Sprintf(`<x-code-editor code="%s" base64="true"></x-code-editor>`, string(buf))))
-	return err
+	var editors = make([]elements.XCodeEditor, 0, len(targets))
+	for idx, target := range targets {
+		src := strings.Trim(string(target.Literal), " \t\n")
+		info := strings.SplitN(string(target.Info), " ", 2)
+		var (
+			lang string
+			meta string
+		)
+		if len(info) == 0 {
+			lang = CodeBlockDefaultLanguage
+		} else if len(info) == 1 {
+			lang = info[0]
+		} else {
+			lang = info[0]
+			meta = info[1]
+		}
+
+		buf := make([]byte, base64.StdEncoding.EncodedLen(len(src)))
+		base64.StdEncoding.Encode(buf, []byte(src))
+
+		var class string
+		if idx == 0 {
+			class = "tab active"
+		} else {
+			class = "tab"
+		}
+
+		editors = append(editors, elements.XCodeEditor{
+			Name:   meta,
+			Class:  class,
+			Code:   string(buf),
+			Lang:   lang,
+			Base64: true,
+		})
+	}
+
+	err := CodeBlockTemplate.Render(w, &CodeBlockViewModel{Editors: editors})
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }

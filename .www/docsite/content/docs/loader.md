@@ -8,12 +8,17 @@ prev: ./controller
 
 The `Loader` interface in `torque` is a ubiquitous interface in the Controller API that enables your route controller to handle incoming HTTP GET requests. Its responsibility is to load a `ViewModel` that will then be _rendered_ to the response. 
 
-```go
+```go loader.go
 package torque
 
 type Loader[T ViewModel] interface {
     Load(req *http.Request) (ViewModel, error)
 }
+```
+```html example.html
+<html>
+
+</html>
 ```
 
 The generic constraint `T` is the `ViewModel` type that the `Loader` is expected to return. Providing this enable torque to do some pretty cool things, like static type checking and code generation.

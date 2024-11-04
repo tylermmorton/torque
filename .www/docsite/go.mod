@@ -6,7 +6,7 @@ require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/algolia/algoliasearch-client-go/v3 v3.31.3
 	github.com/blevesearch/bleve/v2 v2.4.2
-	github.com/gomarkdown/markdown v0.0.0-20240930133441-72d49d9543d8
+	github.com/gomarkdown/markdown v0.0.0-20241102151059-6bc1ffdc6e8c
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tylermmorton/torque v1.1.1-0.20241029030358-5c4ddcf9b776

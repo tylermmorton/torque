@@ -12,11 +12,16 @@
       body {
         height: 100%;
       }
+
+      x-tabbed-view:not(:defined) {
+        display: none;
+      }
     </style>
 
     {{ range .Scripts -}}
     <script src="{{ . }}"></script>
     {{ end -}}
+    <script type="module" src="/s/x-tabbed-view.js"></script>
     <script type="module" src="/s/x-code-editor.js"></script>
 
     <!-- FullStory Snippet -->

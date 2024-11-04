@@ -1,8 +1,9 @@
-import { LitElement, html, PropertyValues, css, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { LitElement, html, css } from "lit";
+import { customElement, property } from "lit/decorators.js";
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState, Compartment } from "@codemirror/state";
-import { go } from "@codemirror/lang-go";
+import { go as langGo } from "@codemirror/lang-go";
+import { html as langHtml } from "@codemirror/lang-html";
 import { tags } from "@lezer/highlight";
 import { HighlightStyle } from "@codemirror/language";
 import { syntaxHighlighting } from "@codemirror/language";
@@ -27,16 +28,34 @@ export class XCodeEditor extends LitElement {
       font-family: Fira Code, monospace;
     }
 
-    .header {
-      height: 30px;
+    .footer {
+      height: 15px;
       background-color: #13121c;
-      border-top-left-radius: 0.375rem;
-      border-top-right-radius: 0.375rem;
       display: flex;
       flex-direction: row;
       justify-content: end;
-      align-items: center;
       padding: 2px 8px 2px 8px;
+    }
+
+    .footer > button {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 4px;
+      background-color: transparent;
+      border: none;
+      padding-right: 8px;
+      padding-left: 8px;
+      color: white;
+      height: 15px;
+      font-family: Fira Code, monospace;
+      font-size: 10px;
+      font-weight: lighter;
+    }
+
+    .footer > button:hover {
+      background-color: #3b3b54;
+      cursor: pointer;
     }
 
     .editor {
@@ -44,23 +63,6 @@ export class XCodeEditor extends LitElement {
       height: fit-content; /* Set a height for the editor */
       max-height: 700px;
       border-top: 1px solid rgb(76 76 107 / 0.2);
-    }
-
-    .copyButton {
-      margin-left: auto;
-      background-color: transparent;
-      color: white;
-      border: none;
-      padding: 3px 3px 3px 3px;
-      border-radius: 0.375rem;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .copyButton:hover {
-      background-color: #3b3b54;
-      cursor: pointer;
     }
 
     .cm-gutter {
@@ -105,12 +107,14 @@ export class XCodeEditor extends LitElement {
     }
   `;
 
-  private language = new Compartment();
+  private languageCompartment = new Compartment();
 
   @property()
   private name?: string;
   @property()
   private code?: string;
+  @property()
+  private language?: string;
   @property()
   private base64?: boolean;
 
@@ -129,11 +133,21 @@ export class XCodeEditor extends LitElement {
       sourceDoc = this.code;
     }
 
+    let languageSupport;
+    switch (this.language) {
+      case "go":
+        languageSupport = langGo();
+        break;
+      default:
+        languageSupport = langHtml();
+        break;
+    }
+
     let state = EditorState.create({
       doc: sourceDoc,
       extensions: [
         basicSetup,
-        this.language.of(go()),
+        this.languageCompartment.of(languageSupport),
         syntaxHighlighting(raisinHighlightStyle),
       ],
     });
@@ -148,6 +162,32 @@ export class XCodeEditor extends LitElement {
     return html`
       <div class="container">
         <div class="editor"></div>
+        <div class="footer">
+          <button
+            @click="${() =>
+              navigator.clipboard.writeText(
+                this.editor?.state.doc.toString() || ""
+              )}"
+          >
+            copy
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              ></path>
+            </svg>
+          </button>
+        </div>
       </div>
     `;
   }

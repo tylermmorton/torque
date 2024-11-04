@@ -54,7 +54,7 @@ export class XTabbedView extends LitElement {
       padding-left: 16px;
       color: white;
       height: 100%;
-      font-weight: bold;
+      font-weight: normal;
       font-family: Fira Code, monospace;
       font-size: 12px;
     }

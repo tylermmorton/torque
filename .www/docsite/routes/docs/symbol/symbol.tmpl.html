@@ -1,0 +1,13 @@
+<div class="max-h-72 max-w-[800px] pl-20 pr-10">
+  <div id="symbol" class="flex flex-col gap-4 py-10">
+    <div class="prose prose-invert z-20 [&>blockquote]:border-raisin-border">
+      <h3>{{ .Symbol.Name }}</h3>
+    </div>
+    {{ template "editor" .Editor }}
+    <div
+      class="prose prose-invert z-20 text-sm [&>blockquote]:border-raisin-border"
+    >
+      <p>{{ .Symbol.Comments }}</p>
+    </div>
+  </div>
+</div>

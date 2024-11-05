@@ -9,9 +9,9 @@ type Heading struct {
 	Text     string `yaml:"text"`
 }
 
-// Article is a common structure for representing content on the docsite. It is used
+// Document is a common structure for representing content on the docsite. It is used
 // to represent indexed data and render HTML to the user.
-type Article struct {
+type Document struct {
 	ObjectID string `json:"objectID"` // ObjectID is the unique identifier for the article. Usually the document name
 
 	Headings []Heading     `json:"headings"`

@@ -27,8 +27,8 @@ const (
 )
 
 // compileMarkdownFile takes a byte representation of a Raw file and attempts to convert it
-// into a Article struct. It does this by parsing the frontmatter and then parsing the Raw
-func compileMarkdownFile(byt []byte) (*model.Article, error) {
+// into a Document struct. It does this by parsing the frontmatter and then parsing the Raw
+func compileMarkdownFile(byt []byte) (*model.Document, error) {
 	var fm struct {
 		Icon  string   `yaml:"icon"`
 		Title string   `yaml:"title"`
@@ -45,7 +45,7 @@ func compileMarkdownFile(byt []byte) (*model.Article, error) {
 	var p = parser.NewWithExtensions(parser.CommonExtensions)
 	var node = p.Parse(md)
 
-	return &model.Article{
+	return &model.Document{
 		Headings: extractHeadings(node),
 		HTML:     renderToHtml(node),
 		Icon:     fm.Icon,
@@ -136,7 +136,14 @@ func renderToHtml(node ast.Node) template.HTML {
 }
 
 func renderCode(w io.Writer, code *ast.Code) error {
-	_, err := w.Write([]byte(fmt.Sprintf(`<code class="not-prose">%s</code>`, string(code.Literal))))
+	_, err := w.Write([]byte(fmt.Sprintf(`<code 
+			class="not-prose"
+			hx-get="/docs/symbol/%s"
+			hx-trigger="click"
+			hx-select="#symbol"
+			hx-target="#hx-swappable-context-menu"
+			hx-swap="innerHTML"
+		>%s</code>`, string(code.Literal), string(code.Literal))))
 	return err
 }
 

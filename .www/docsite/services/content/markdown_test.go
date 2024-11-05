@@ -11,7 +11,7 @@ var (
 	testCodeBlocks []byte
 )
 
-// Test_compile simply tests that all markdown content can be
+// Test_compile simply tests that all markdown documents can be
 // parsed and compiled without errors.
 func Test_compile(t *testing.T) {
 

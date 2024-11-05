@@ -9,9 +9,9 @@ import (
 var contextMenuTemplateText string
 
 type contextMenu struct {
-	Article       *model.Article
+	Article       *model.Document
 	SearchQuery   string
-	SearchResults []*model.Article
+	SearchResults []*model.Document
 }
 
 func (contextMenu) TemplateText() string {

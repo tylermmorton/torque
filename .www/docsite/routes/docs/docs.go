@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"github.com/tylermmorton/torque/.www/docsite/routes/docs/symbol"
 	"github.com/tylermmorton/torque/.www/docsite/templates/icons"
 	"net/http"
 
@@ -40,6 +41,8 @@ var _ interface {
 
 func (ctl *Controller) Router(r torque.Router) {
 	r.Handle("/{pageName}", torque.MustNew[page.ViewModel](&page.Controller{ContentService: ctl.ContentService}))
+	r.Handle("/symbol/{symbolName}", torque.MustNew[symbol.ViewModel](&symbol.Controller{ContentService: ctl.ContentService}))
+
 }
 
 func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {

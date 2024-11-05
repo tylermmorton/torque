@@ -23,7 +23,7 @@ var revision string
 //go:embed .build/static/*
 var staticAssets embed.FS
 
-//go:embed content/docs/*
+//go:embed content/**
 var embeddedContent embed.FS
 
 func main() {
@@ -37,7 +37,12 @@ func main() {
 		log.Fatalf("failed to create static assets filesystem: %+v", err)
 	}
 
-	contentSvc, err := content.New(embeddedContent, nil)
+	contentFs, err := fs.Sub(embeddedContent, "content")
+	if err != nil {
+		log.Fatalf("failed to create content filesystem: %+v", err)
+	}
+
+	contentSvc, err := content.New(contentFs)
 	if err != nil {
 		log.Fatalf("failed to create content service: %+v", err)
 	}

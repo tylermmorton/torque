@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, html, css, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState, Compartment } from "@codemirror/state";
@@ -6,7 +6,34 @@ import { go as langGo } from "@codemirror/lang-go";
 import { html as langHtml } from "@codemirror/lang-html";
 import { tags } from "@lezer/highlight";
 import { HighlightStyle } from "@codemirror/language";
-import { syntaxHighlighting } from "@codemirror/language";
+import {
+  keymap,
+  highlightSpecialChars,
+  drawSelection,
+  highlightActiveLine,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  lineNumbers,
+  highlightActiveLineGutter,
+} from "@codemirror/view";
+import {
+  defaultHighlightStyle,
+  indentOnInput,
+  bracketMatching,
+  foldGutter,
+  foldKeymap,
+  syntaxHighlighting,
+} from "@codemirror/language";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import {
+  autocompletion,
+  completionKeymap,
+  closeBrackets,
+  closeBracketsKeymap,
+} from "@codemirror/autocomplete";
+import { lintKeymap } from "@codemirror/lint";
 
 const raisinHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: "#fc6" },
@@ -34,7 +61,7 @@ export class XCodeEditor extends LitElement {
       display: flex;
       flex-direction: row;
       justify-content: end;
-      padding: 2px 8px 2px 8px;
+      padding: 4px 10px 4px 10px;
     }
 
     .footer > button {
@@ -46,7 +73,7 @@ export class XCodeEditor extends LitElement {
       border: none;
       padding-right: 8px;
       padding-left: 8px;
-      color: white;
+      color: #9494b3;
       height: 15px;
       font-family: Fira Code, monospace;
       font-size: 10px;
@@ -55,6 +82,7 @@ export class XCodeEditor extends LitElement {
 
     .footer > button:hover {
       background-color: #3b3b54;
+      color: white;
       cursor: pointer;
     }
 
@@ -115,8 +143,12 @@ export class XCodeEditor extends LitElement {
   private code?: string;
   @property()
   private language?: string;
-  @property()
+  @property({ type: Boolean })
   private base64?: boolean;
+  @property({ type: Boolean })
+  private hideFooter?: boolean;
+  @property({ type: Boolean })
+  private hideGutters?: boolean;
 
   private editor: EditorView | null;
 
@@ -126,12 +158,16 @@ export class XCodeEditor extends LitElement {
   }
 
   firstUpdated() {
-    let sourceDoc: string = "";
+    let doc: string = "";
     if (this.code && this.base64) {
-      sourceDoc = atob(this.code);
+      doc = atob(this.code);
     } else if (this.code) {
-      sourceDoc = this.code;
+      doc = this.code;
     }
+
+    console.log(this.base64);
+    console.log(this.hideGutters);
+    console.log(this.hideFooter);
 
     let languageSupport;
     switch (this.language) {
@@ -143,13 +179,40 @@ export class XCodeEditor extends LitElement {
         break;
     }
 
+    let extensions = [
+      highlightActiveLineGutter(),
+      highlightSpecialChars(),
+      history(),
+      drawSelection(),
+      dropCursor(),
+      EditorState.allowMultipleSelections.of(true),
+      indentOnInput(),
+      bracketMatching(),
+      closeBrackets(),
+      rectangularSelection(),
+      crosshairCursor(),
+      highlightActiveLine(),
+      // highlightSelectionMatches(),
+      keymap.of([
+        ...closeBracketsKeymap,
+        ...defaultKeymap,
+        ...searchKeymap,
+        ...historyKeymap,
+        ...foldKeymap,
+        ...completionKeymap,
+        ...lintKeymap,
+      ]),
+      this.languageCompartment.of(languageSupport),
+      syntaxHighlighting(raisinHighlightStyle),
+    ];
+
+    if (!this.hideGutters) {
+      extensions.push([lineNumbers(), foldGutter()]);
+    }
+
     let state = EditorState.create({
-      doc: sourceDoc,
-      extensions: [
-        basicSetup,
-        this.languageCompartment.of(languageSupport),
-        syntaxHighlighting(raisinHighlightStyle),
-      ],
+      doc,
+      extensions,
     });
 
     this.editor = new EditorView({
@@ -162,32 +225,34 @@ export class XCodeEditor extends LitElement {
     return html`
       <div class="container">
         <div class="editor"></div>
-        <div class="footer">
-          <button
-            @click="${() =>
-              navigator.clipboard.writeText(
-                this.editor?.state.doc.toString() || ""
-              )}"
-          >
-            copy
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path
-                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-              ></path>
-            </svg>
-          </button>
-        </div>
+        ${this.hideFooter === true
+          ? nothing
+          : html` <div class="footer">
+              <button
+                @click="${() =>
+                  navigator.clipboard.writeText(
+                    this.editor?.state.doc.toString() || ""
+                  )}"
+              >
+                copy
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path
+                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                  ></path>
+                </svg>
+              </button>
+            </div>`}
       </div>
     `;
   }

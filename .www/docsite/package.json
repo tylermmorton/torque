@@ -12,6 +12,7 @@
     "dev": "air",
     "dev:reset": "kill-port 8080 && npm run clean",
     "dev:css": "tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css --watch",
+    "gen:symbols": "go run ./cmd/symbols/main.go -i ../../ -o content/symbols/torque.json",
     "build:go": "go generate ./... && go build -o ./.build/app app.go",
     "build:js": "vite build",
     "build:css": "tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css",

@@ -6,7 +6,9 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/elements"
 	"github.com/tylermmorton/torque/.www/docsite/model"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
+	"github.com/tylermmorton/torque/pkg/htmx"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -20,6 +22,9 @@ type ViewModel struct {
 	Editor elements.XCodeEditor `tmpl:"editor"`
 
 	Symbol *model.Symbol
+
+	ShowBigScreenIcon bool
+	ShowGitHubIcon    bool
 }
 
 func (ViewModel) TemplateText() string {
@@ -32,6 +37,7 @@ type Controller struct {
 
 var _ interface {
 	torque.Loader[ViewModel]
+	torque.ResponseHeaders[ViewModel]
 } = &Controller{}
 
 func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
@@ -54,6 +60,24 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 			HideGutters: true,
 			HideFooter:  true,
 		},
-		Symbol: sym,
+		Symbol:            sym,
+		ShowBigScreenIcon: true,
+		ShowGitHubIcon:    true,
 	}, nil
+}
+
+func (ctl *Controller) Headers(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {
+	if htmx.IsHtmxRequest(req) {
+		u, err := url.Parse(req.Header.Get(htmx.HxCurrentURL))
+		if err != nil {
+			return err
+		}
+
+		q := u.Query()
+		q.Set("s", vm.Symbol.Name)
+		u.RawQuery = q.Encode()
+
+		wr.Header().Set(htmx.HxPushURL, u.String())
+	}
+	return nil
 }

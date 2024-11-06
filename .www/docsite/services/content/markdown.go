@@ -143,6 +143,7 @@ func renderCode(w io.Writer, code *ast.Code) error {
 			hx-select="#symbol"
 			hx-target="#hx-swappable-context-menu"
 			hx-swap="innerHTML"
+			hx-params="*"
 		>%s</code>`, string(code.Literal), string(code.Literal))))
 	return err
 }

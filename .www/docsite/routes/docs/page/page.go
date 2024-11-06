@@ -31,6 +31,7 @@ func (ViewModel) TemplateText() string {
 
 type Query struct {
 	SearchQuery string `json:"q"`
+	SymbolName  string `json:"s"`
 }
 
 type Controller struct {

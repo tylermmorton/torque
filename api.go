@@ -46,6 +46,11 @@ type Loader[T ViewModel] interface {
 	Load(req *http.Request) (T, error)
 }
 
+// Headers can be used to render response headers to the client
+type ResponseHeaders[T ViewModel] interface {
+	Headers(wr http.ResponseWriter, req *http.Request, vm T) error
+}
+
 type RenderFunc[T ViewModel] func(wr http.ResponseWriter, req *http.Request, vm T) error
 
 // Renderer is executed during an HTTP GET request after the Loader
@@ -148,6 +153,10 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 
 	if loader, ok := ctl.(Loader[T]); ok {
 		h.loader = loader
+	}
+
+	if headers, ok := ctl.(ResponseHeaders[T]); ok {
+		h.headers = headers
 	}
 
 	// explicit Renderer implementations take precedence

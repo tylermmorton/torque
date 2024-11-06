@@ -5,6 +5,7 @@ import "net/http"
 const (
 	HxRequestHeader string = "HX-Request"
 	HxCurrentURL    string = "HX-Current-URL"
+	HxPushURL       string = "HX-Push-Url"
 	HxTarget        string = "HX-Target"
 	HxTrigger       string = "HX-Trigger"
 	HxTriggerName   string = "HX-Trigger-Name"

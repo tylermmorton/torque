@@ -33,6 +33,7 @@ type handlerImpl[T ViewModel] struct {
 	handler       http.Handler
 	action        Action
 	loader        Loader[T]
+	headers       ResponseHeaders[T]
 	rendererT     Renderer[T]
 	rendererVM    DynamicRenderer
 	guards        []Guard
@@ -104,6 +105,13 @@ func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) 
 
 	t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
 
+	for key := range childResp.Header() {
+		wr.Header().Set(key, childResp.Header().Get(key))
+	}
+	for key := range parentResp.Header() {
+		wr.Header().Set(key, parentResp.Header().Get(key))
+	}
+
 	err := t.Execute(wr, template.HTML(childResp.Body.String()))
 	if err != nil {
 		panic(err)
@@ -164,6 +172,12 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 
 		vm, err := h.handleLoader(wr, req)
 		if err != nil && !errors.Is(err, errNotImplemented) {
+			h.handleError(wr, req, err)
+			return
+		}
+
+		err = h.handleResponseHeaders(wr, req, vm)
+		if err != nil {
 			h.handleError(wr, req, err)
 			return
 		}
@@ -289,6 +303,19 @@ func (h *handlerImpl[T]) handlePanic(wr http.ResponseWriter, req *http.Request, 
 			log.Printf("[UncaughtPanic] %s -> failed to write error response: %v\n", req.URL, err)
 		}
 	}
+}
+
+func (h *handlerImpl[T]) handleResponseHeaders(wr http.ResponseWriter, req *http.Request, vm T) error {
+	if h.headers != nil {
+		err := h.headers.Headers(wr, req, vm)
+		if err != nil {
+			log.Printf("[Headers] %s -> error: %s\n", req.URL, err.Error())
+			return err
+		} else {
+			log.Printf("[Headers] %s -> success\n", req.URL)
+		}
+	}
+	return nil
 }
 
 func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request, vm T) error {

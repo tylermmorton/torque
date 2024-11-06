@@ -1,0 +1,1619 @@
+[
+  {
+    "package": "",
+    "name": "InstallFn",
+    "kind": "FuncType",
+    "is_exported": true,
+    "source": "type InstallFn func(ctl Controller, vm ViewModel) error",
+    "comments": "",
+    "file_name": "plugin.go",
+    "line_number": 7,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Plugin",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type Plugin interface {\n\tInstall(h Handler) InstallFn\n\tSetup(req *http.Request) error\n}",
+    "comments": "",
+    "file_name": "plugin.go",
+    "line_number": 9,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "DecodeQuery",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func DecodeQuery[T any](req *http.Request) (*T, error) {\n\td := UseDecoder(req.Context())\n\tif d == nil {\n\t\treturn nil, ErrDecoderUndefined\n\t}\n\n\tvar res T\n\terr := d.Decode(\u0026res, req.URL.Query())\n\tif err != nil {\n\t\treturn nil, ErrQueryDecodeFailure\n\t}\n\n\treturn \u0026res, nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "*T",
+      "error"
+    ],
+    "file_name": "query.go",
+    "line_number": 13,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "DecodeAndValidateQuery",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func DecodeAndValidateQuery[T SelfValidator](req *http.Request) (*T, error) {\n\tres, err := DecodeQuery[T](req)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tif err := (*res).Validate(req.Context()); err != nil {\n\t\treturn nil, errors.Wrap(ErrQueryValidationFailure, err.Error())\n\t}\n\n\treturn res, nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "*T",
+      "error"
+    ],
+    "file_name": "query.go",
+    "line_number": 28,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "Router",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type Router interface {\n\thttp.Handler\n\n\tHandle(pattern string, handler http.Handler)\n\tHandleFileSystem(pattern string, fs fs.FS)\n\n\tMatch(method, path string) (http.Handler, PathParams, bool)\n}",
+    "comments": "",
+    "file_name": "router.go",
+    "line_number": 16,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Middleware",
+    "kind": "FuncType",
+    "is_exported": true,
+    "source": "type Middleware func(http.Handler) http.Handler",
+    "comments": "",
+    "file_name": "router.go",
+    "line_number": 25,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "trieNode",
+    "kind": "StructType",
+    "is_exported": false,
+    "source": "type trieNode struct {\n\tsegment   string\n\tparent    *trieNode\n\tchildren  map[string]*trieNode\n\thandlers  map[string]http.Handler\n\tisParam   bool\n\tparamName string\n}",
+    "comments": "",
+    "file_name": "router.go",
+    "line_number": 27,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "router",
+    "kind": "StructType",
+    "is_exported": false,
+    "source": "type router struct {\n\th      Handler\n\troot   *trieNode\n\tprefix string\n}",
+    "comments": "",
+    "file_name": "router.go",
+    "line_number": 36,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "createRouter",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func createRouter[T ViewModel](h *handlerImpl[T], ctl Controller) *router {\n\tr := \u0026router{\n\t\th:      h,\n\t\tprefix: h.path,\n\t\troot: \u0026trieNode{\n\t\t\tchildren: make(map[string]*trieNode),\n\t\t\thandlers: map[string]http.Handler{\"*\": h},\n\t\t},\n\t}\n\n\tif rp, ok := ctl.(RouterProvider); ok {\n\t\trp.Router(r)\n\t}\n\n\treturn r\n}",
+    "comments": "",
+    "parameters": [
+      "*handlerImpl[T]",
+      "Controller"
+    ],
+    "returns": [
+      "*router"
+    ],
+    "file_name": "router.go",
+    "line_number": 42,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "ServeHTTP",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {\n\th, params, ok := r.Match(req.Method, req.URL.Path)\n\tif !ok {\n\t\thttp.NotFound(w, req)\n\t\treturn\n\t}\n\n\tctx := req.Context()\n\tctx = context.WithValue(ctx, paramsContextKey, params)\n\n\th.ServeHTTP(w, req.WithContext(ctx))\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "receiver": "router",
+    "file_name": "router.go",
+    "line_number": 59,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "Handle",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (r *router) Handle(path string, h http.Handler) {\n\tr.handleMethod(\"*\", path, h)\n}",
+    "comments": "",
+    "parameters": [
+      "string",
+      "http.Handler"
+    ],
+    "receiver": "router",
+    "file_name": "router.go",
+    "line_number": 72,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleMethod",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (r *router) handleMethod(method, path string, h http.Handler) {\n\tvar handler http.Handler\n\tswitch h.(type) {\n\tcase Handler:\n\t\thandler = h\n\tcase noWrapHandler:\n\t\t// prevent wrapping by using torque.NoOutlet\n\t\thandler = h\n\tcase http.Handler:\n\t\t// promote any vanilla handlers by wrapping\n\t\thandler = MustNewV(h.(http.Handler))\n\t}\n\n\tvar (\n\t\tfullPath = filepath.Join(r.prefix, path)\n\t\tsegments = strings.Split(fullPath, \"/\")\n\t\tnode     = r.root\n\t)\n\tfor _, segment := range segments {\n\t\tif segment == \"\" {\n\t\t\tcontinue\n\t\t}\n\n\t\tisParam := strings.HasPrefix(segment, \"{\") \u0026\u0026 strings.HasSuffix(segment, \"}\")\n\t\tvar key string\n\t\tif isParam {\n\t\t\tkey = parameterKey\n\t\t} else {\n\t\t\tkey = segment\n\t\t}\n\n\t\tif _, exists := node.children[key]; !exists {\n\t\t\tnode.children[key] = \u0026trieNode{\n\t\t\t\tsegment:  segment,\n\t\t\t\tparent:   node,\n\t\t\t\tchildren: make(map[string]*trieNode),\n\t\t\t\thandlers: make(map[string]http.Handler),\n\t\t\t\tisParam:  isParam,\n\t\t\t\tparamName: func() string {\n\t\t\t\t\tif isParam {\n\t\t\t\t\t\treturn segment[1 : len(segment)-1] // Extract param name (e.g., userId from {userId})\n\t\t\t\t\t}\n\t\t\t\t\treturn \"\"\n\t\t\t\t}(),\n\t\t\t}\n\t\t}\n\n\t\tnode = node.children[key]\n\t}\n\n\t// Store the handler at the final node for the given method (e.g., GET)\n\tnode.handlers[method] = handler\n\n\tif handler, ok := handler.(Handler); ok {\n\t\t// create a relationship between the parent and child\n\t\tif r.h.HasOutlet() {\n\t\t\thandler.setParent(r.h)\n\t\t}\n\n\t\t// \"merge-up\" the radix sub-trie from the child router. when this handler's internal\n\t\t// router is ever executed it will need to know about its children during Router.Match.\n\t\tif handler.getRouter() != nil {\n\t\t\tvar childRouter = handler.getRouter().root\n\t\t\tfor key, child := range childRouter.children {\n\t\t\t\tnode.children[key] = child\n\t\t\t}\n\t\t}\n\t}\n}",
+    "comments": "handleMethod registers a handler or merges a router if passed.\n",
+    "parameters": [
+      "string",
+      "http.Handler"
+    ],
+    "receiver": "router",
+    "file_name": "router.go",
+    "line_number": 77,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "Match",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (r *router) Match(method, path string) (http.Handler, PathParams, bool) {\n\tparams := make(map[string]string)\n\tsegments := strings.Split(path, \"/\")\n\n\t// Traverse the radix trie to find the matching handler\n\tnode := r.root\n\tfor _, segment := range segments {\n\t\tif segment == \"\" {\n\t\t\tcontinue\n\t\t}\n\n\t\tif child, exists := node.children[segment]; exists {\n\t\t\tnode = child\n\t\t} else if paramChild, exists := node.children[\"{}\"]; exists {\n\t\t\tnode = paramChild\n\t\t\tparams[node.paramName] = segment\n\t\t} else if wildcardChild, exists := node.children[\"*\"]; exists {\n\t\t\tnode = wildcardChild\n\t\t\tbreak\n\t\t} else {\n\t\t\treturn nil, nil, false\n\t\t}\n\t}\n\n\t\n\tvar handler http.Handler\n\tif h, ok := node.handlers[method]; ok {\n\t\thandler = h\n\t} else if h, ok := node.handlers[\"*\"]; ok {\n\t\thandler = h\n\t}\n\n\tif handler != nil {\n\t\treturn handler, params, true\n\t} else {\n\t\treturn nil, nil, false\n\t}\n}",
+    "comments": "Match finds a handler based on the method and path\n",
+    "parameters": [
+      "string"
+    ],
+    "returns": [
+      "http.Handler",
+      "PathParams",
+      "bool"
+    ],
+    "receiver": "router",
+    "file_name": "router.go",
+    "line_number": 148,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "HandleFileSystem",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (r *router) HandleFileSystem(pattern string, fs fs.FS) {\n\tpattern = strings.TrimSuffix(pattern, \"/*\")\n\n\tif r.h.GetMode() == ModeDevelopment {\n\t\tlogFileSystem(fs)\n\t}\n\n\tr.handleMethod(\"GET\", pattern+\"/*\", NoOutlet(http.StripPrefix(pattern, http.FileServer(http.FS(fs)))))\n}",
+    "comments": "",
+    "parameters": [
+      "string",
+      "fs.FS"
+    ],
+    "receiver": "router",
+    "file_name": "router.go",
+    "line_number": 187,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "logFileSystem",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func logFileSystem(fsys fs.FS) {\n\tvar walkFn func(path string, d fs.DirEntry, err error) error\n\n\twalkFn = func(path string, d fs.DirEntry, err error) error {\n\t\tif err != nil {\n\t\t\treturn err\n\t\t} else if d.IsDir() {\n\t\t\tlog.Printf(\"Dir: %s\", path)\n\t\t} else {\n\t\t\tlog.Printf(\"File: %s\", path)\n\t\t}\n\t\treturn nil\n\t}\n\n\terr := fs.WalkDir(fsys, \".\", walkFn)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "fs.FS"
+    ],
+    "file_name": "router.go",
+    "line_number": 197,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "noWrapHandler",
+    "kind": "FuncType",
+    "is_exported": false,
+    "source": "type noWrapHandler func(http.ResponseWriter, *http.Request)",
+    "comments": "",
+    "file_name": "router.go",
+    "line_number": 217,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "ServeHTTP",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h noWrapHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {\n\th(w, req)\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "receiver": "noWrapHandler",
+    "file_name": "router.go",
+    "line_number": 219,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "NoOutlet",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func NoOutlet(h http.Handler) http.Handler {\n\treturn noWrapHandler(func(w http.ResponseWriter, req *http.Request) {\n\t\th.ServeHTTP(w, req)\n\t})\n}",
+    "comments": "NoOutlet indicates to the Router that the given http.Handler should not be wrapped when\nadding it via Handle. This is useful when you want to pass a vanilla http.Handler to\na Router that shouldn't be wrapped by its parent's output.\n",
+    "parameters": [
+      "http.Handler"
+    ],
+    "returns": [
+      "http.Handler"
+    ],
+    "file_name": "router.go",
+    "line_number": 226,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "ViewModel",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type ViewModel interface{}",
+    "comments": "ViewModel is an abstract type for a struct that represents the 'state' of\na view within a torque application. A view is a representation of the data\nthat is rendered to a client, typically in the form of HTML, JSON, or CSV.\nThe model is the shape of that data used to build the representation. So\ntogether a ViewModel is the data used to render HTML, JSON or any other\nformat in response to an HTTP request.\n",
+    "file_name": "api.go",
+    "line_number": 17,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Controller",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type Controller interface{}",
+    "comments": "Controller is an abstract type that represents a struct that implements\none or many of the Controller API interfaces. It is typically used as a\nparameter type to let you know when to pass an instance of your Controller\nstruct.\n",
+    "file_name": "api.go",
+    "line_number": 23,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "ActionFunc",
+    "kind": "FuncType",
+    "is_exported": true,
+    "source": "type ActionFunc func(wr http.ResponseWriter, req *http.Request) error",
+    "comments": "",
+    "file_name": "api.go",
+    "line_number": 25,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Action",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type Action interface {\n\tAction(wr http.ResponseWriter, req *http.Request) error\n}",
+    "comments": "Action is executed during an HTTP POST request. It is responsible for\nprocessing data mutations. Typically, an Action is triggered by a form\nsubmission or POST request.\n\nOne can also return a call to ReloadWithError in order to tell torque to\nre-execute the Loader/Renderer code path with the given error attached to\nthe request context. The UseError hook can be used to retrieve the error\nin the Loader to provide additional error state in the resulting ViewModel.\n",
+    "file_name": "api.go",
+    "line_number": 35,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "LoadFunc",
+    "kind": "FuncType",
+    "is_exported": true,
+    "source": "type LoadFunc[T ViewModel] func(req *http.Request) (T, error)",
+    "comments": "",
+    "file_name": "api.go",
+    "line_number": 39,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Loader",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type Loader[T ViewModel] interface {\n\tLoad(req *http.Request) (T, error)\n}",
+    "comments": "Loader is executed during an HTTP GET request and provides\ndata to the Renderer. It is responsible for loading the ViewModel\nbased on the given request. Typically, this involves fetching data\nfrom a database or external service.\n",
+    "file_name": "api.go",
+    "line_number": 45,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "ResponseHeaders",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type ResponseHeaders[T ViewModel] interface {\n\tHeaders(wr http.ResponseWriter, req *http.Request, vm T) error\n}",
+    "comments": "Headers can be used to render response headers to the client\n",
+    "file_name": "api.go",
+    "line_number": 50,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "RenderFunc",
+    "kind": "FuncType",
+    "is_exported": true,
+    "source": "type RenderFunc[T ViewModel] func(wr http.ResponseWriter, req *http.Request, vm T) error",
+    "comments": "",
+    "file_name": "api.go",
+    "line_number": 54,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Renderer",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type Renderer[T ViewModel] interface {\n\tRender(wr http.ResponseWriter, req *http.Request, vm T) error\n}",
+    "comments": "Renderer is executed during an HTTP GET request after the Loader\nhas been executed. It is responsible for rendering the ViewModel\ninto a response. This can be done via a template, JSON, CSV, etc.\n",
+    "file_name": "api.go",
+    "line_number": 59,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "LoaderRenderer",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type LoaderRenderer[T ViewModel] interface {\n\tLoader[T]\n\tRenderer[T]\n}",
+    "comments": "LoaderRenderer is an interface that combines Loader and Renderer,\nconstraining them to the same generic ViewModel type.\n",
+    "file_name": "api.go",
+    "line_number": 65,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "DynamicRenderer",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type DynamicRenderer interface {\n\tRender(wr http.ResponseWriter, req *http.Request, vm ViewModel) error\n}",
+    "comments": "DynamicRenderer is a Renderer that is not constrained by a generic type.\nThis is useful for rendering ViewModels that are not known at compile time.\n",
+    "file_name": "api.go",
+    "line_number": 72,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "EventSource",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type EventSource interface {\n\tSubscribe(wr http.ResponseWriter, req *http.Request) error\n}",
+    "comments": "EventSource is a server-sent event stream. It is used to stream data to the\nclient in real-time.\n",
+    "file_name": "api.go",
+    "line_number": 78,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "ErrorBoundary",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type ErrorBoundary interface {\n\tErrorBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc\n}",
+    "comments": "ErrorBoundary handles all errors returned by methods of the Controller API. Use\nthis to catch known errors and return http.HandlerFuncs to handle them. Typically,\nthis is used to redirect the user to an error page or display a message.\n\nIf a handler is not returned to redirect the request, the error is then passed\nto the PanicBoundary.\n",
+    "file_name": "api.go",
+    "line_number": 88,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "PanicBoundary",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type PanicBoundary interface {\n\tPanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc\n}",
+    "comments": "PanicBoundary is a panic recovery handler. It catches all panics thrown while handling\na request, as well as any unhandled errors from the ErrorBoundary. Use this to catch\nunknown errors and return http.HandlerFuncs to handle them.\n\nIf a handler is not returned to redirect the request, a stack trace is printed\nto the server logs.\n",
+    "file_name": "api.go",
+    "line_number": 98,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "RouterProvider",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type RouterProvider interface {\n\tRouter(r Router)\n}",
+    "comments": "RouterProvider is executed when the torque Controller is first initialized. Using\nthe given Router interface, one can register additional handlers, middleware, etc.\n\nNote that the RouterProvider is not a middleware, but a way to add sub-routes to your\nController implementation.\n\nPassing a Controller to r.Handle creates a parent-child relationship between the two\nControllers, enabling features such as outlet rendering. Controllers can be nested\ninfinitely at the cost of 1 closure.\n\nVanilla http.Handlers can be passed to r.Handle as well. Note that these are considered\n'leaf nodes' in the router tree and will not be able to render outlets, even if the handler\nwraps a Controller. Best practice is to pass the result of torque.MustNew directly to r.Handle.\n",
+    "file_name": "api.go",
+    "line_number": 131,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "GuardProvider",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type GuardProvider interface {\n\tGuards() []Guard\n}",
+    "comments": "",
+    "file_name": "api.go",
+    "line_number": 135,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "PluginProvider",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type PluginProvider interface {\n\tPlugins() []Plugin\n}",
+    "comments": "",
+    "file_name": "api.go",
+    "line_number": 139,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "assertImplementations",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm ViewModel) error {\n\tvar (\n\t\terr       error\n\t\thasOutlet bool\n\t)\n\n\t// check if the controller is a pointer before asserting any types.\n\tif reflect.ValueOf(ctl).Kind() != reflect.Ptr {\n\t\treturn fmt.Errorf(\"controller type %T is not a pointer\", ctl)\n\t}\n\n\tif loader, ok := ctl.(Loader[T]); ok {\n\t\th.loader = loader\n\t}\n\n\tif headers, ok := ctl.(ResponseHeaders[T]); ok {\n\t\th.headers = headers\n\t}\n\n\t// explicit Renderer implementations take precedence\n\tif renderer, ok := ctl.(Renderer[T]); ok {\n\t\th.rendererT = renderer\n\t} else if tp, ok := vm.(tmpl.TemplateProvider); ok {\n\t\th.rendererT, hasOutlet, err = createTemplateRenderer[T](tp)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t}\n\n\tif action, ok := ctl.(Action); ok {\n\t\th.action = action\n\t}\n\n\tif eventSource, ok := ctl.(EventSource); ok {\n\t\th.eventSource = eventSource\n\t}\n\n\tif errorBoundary, ok := ctl.(ErrorBoundary); ok {\n\t\th.errorBoundary = errorBoundary\n\t}\n\n\tif panicBoundary, ok := ctl.(PanicBoundary); ok {\n\t\th.panicBoundary = panicBoundary\n\t}\n\n\tif _, ok := ctl.(RouterProvider); ok {\n\t\th.router = createRouter[T](h, ctl)\n\t} else if hasOutlet {\n\t\treturn fmt.Errorf(\"controller type %T must implement RouterProvider to use template outlets\", ctl)\n\t}\n\n\tif guardProvider, ok := ctl.(GuardProvider); ok {\n\t\th.guards = append(h.guards, guardProvider.Guards()...)\n\t}\n\n\tif pluginProvider, ok := ctl.(PluginProvider); ok {\n\t\th.plugins = append(h.plugins, pluginProvider.Plugins()...)\n\t}\n\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "*handlerImpl[T]",
+      "Controller",
+      "ViewModel"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "api.go",
+    "line_number": 143,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "contextKey",
+    "kind": "Ident",
+    "is_exported": false,
+    "source": "type contextKey string",
+    "comments": "",
+    "file_name": "context.go",
+    "line_number": 9,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Mode",
+    "kind": "Ident",
+    "is_exported": true,
+    "source": "type Mode string",
+    "comments": "",
+    "file_name": "context.go",
+    "line_number": 23,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "With",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func With[T any](req *http.Request, key any, value *T) {\n\t*req = *req.WithContext(context.WithValue(req.Context(), key, value))\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request",
+      "any",
+      "*T"
+    ],
+    "file_name": "context.go",
+    "line_number": 30,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "Use",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func Use[T any](req *http.Request, key any) *T {\n\tif value, ok := req.Context().Value(key).(T); ok {\n\t\treturn \u0026value\n\t}\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request",
+      "any"
+    ],
+    "returns": [
+      "*T"
+    ],
+    "file_name": "context.go",
+    "line_number": 34,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "withError",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func withError(ctx context.Context, err error) context.Context {\n\treturn context.WithValue(ctx, errorKey, err)\n}",
+    "comments": "",
+    "parameters": [
+      "context.Context",
+      "error"
+    ],
+    "returns": [
+      "context.Context"
+    ],
+    "file_name": "context.go",
+    "line_number": 41,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "UseError",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func UseError(ctx context.Context) error {\n\tif err, ok := ctx.Value(errorKey).(error); ok {\n\t\treturn err\n\t}\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "context.Context"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "context.go",
+    "line_number": 45,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "withDecoder",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func withDecoder(ctx context.Context, d *schema.Decoder) context.Context {\n\treturn context.WithValue(ctx, decoderKey, d)\n}",
+    "comments": "",
+    "parameters": [
+      "context.Context",
+      "*schema.Decoder"
+    ],
+    "returns": [
+      "context.Context"
+    ],
+    "file_name": "context.go",
+    "line_number": 52,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "UseDecoder",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func UseDecoder(ctx context.Context) *schema.Decoder {\n\tif d, ok := ctx.Value(decoderKey).(*schema.Decoder); ok {\n\t\treturn d\n\t}\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "context.Context"
+    ],
+    "returns": [
+      "*schema.Decoder"
+    ],
+    "file_name": "context.go",
+    "line_number": 56,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "WithMode",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func WithMode(ctx context.Context, mode Mode) context.Context {\n\treturn context.WithValue(ctx, modeKey, mode)\n}",
+    "comments": "",
+    "parameters": [
+      "context.Context",
+      "Mode"
+    ],
+    "returns": [
+      "context.Context"
+    ],
+    "file_name": "context.go",
+    "line_number": 63,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "UseMode",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func UseMode(ctx context.Context) Mode {\n\tif mode, ok := ctx.Value(modeKey).(Mode); ok {\n\t\treturn mode\n\t}\n\treturn ModeProduction\n}",
+    "comments": "",
+    "parameters": [
+      "context.Context"
+    ],
+    "returns": [
+      "Mode"
+    ],
+    "file_name": "context.go",
+    "line_number": 67,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "WithTitle",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func WithTitle(req *http.Request, title string) {\n\t*req = *req.WithContext(context.WithValue(req.Context(), titleKey, title))\n}",
+    "comments": "WithTitle sets the page title in the request context.\n",
+    "parameters": [
+      "*http.Request",
+      "string"
+    ],
+    "file_name": "context.go",
+    "line_number": 75,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "UseTitle",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func UseTitle(req *http.Request) string {\n\tif title, ok := req.Context().Value(titleKey).(string); ok {\n\t\treturn title\n\t}\n\treturn \"\"\n}",
+    "comments": "UseTitle returns the page title set in the request context.\n",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "string"
+    ],
+    "file_name": "context.go",
+    "line_number": 80,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "WithScript",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func WithScript(req *http.Request, script string) {\n\tvar scripts, ok = req.Context().Value(scriptsKey).([]string)\n\tif !ok {\n\t\tscripts = []string{script}\n\t} else {\n\t\tscripts = append(scripts, script)\n\t}\n\n\t*req = *req.WithContext(context.WithValue(req.Context(), scriptsKey, scripts))\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request",
+      "string"
+    ],
+    "file_name": "context.go",
+    "line_number": 87,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "UseScripts",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func UseScripts(req *http.Request) []string {\n\tif scripts, ok := req.Context().Value(scriptsKey).([]string); ok {\n\t\treturn scripts\n\t}\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "[]string"
+    ],
+    "file_name": "context.go",
+    "line_number": 98,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "UseTarget",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func UseTarget(req *http.Request) string {\n\treturn req.Header.Get(\"X-Torque-Target\")\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "string"
+    ],
+    "file_name": "context.go",
+    "line_number": 105,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "errReload",
+    "kind": "StructType",
+    "is_exported": false,
+    "source": "type errReload struct{ err error }",
+    "comments": "",
+    "file_name": "error.go",
+    "line_number": 15,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Error",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (e errReload) Error() string {\n\tif e.err == nil {\n\t\treturn \"nil\"\n\t} else {\n\t\treturn e.err.Error()\n\t}\n}",
+    "comments": "",
+    "returns": [
+      "string"
+    ],
+    "receiver": "errReload",
+    "file_name": "error.go",
+    "line_number": 17,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "ReloadWithError",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func ReloadWithError(err error) error {\n\treturn \u0026errReload{err}\n}",
+    "comments": "ReloadWithError can be returned from an Action and tells torque to re-render\nthe page with the given error attached to the request context.\n\nHint: Get the error with the UseError hook in the Loader and add some error\nstate to the resulting ViewModel.\n",
+    "parameters": [
+      "error"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "error.go",
+    "line_number": 30,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "errResponse",
+    "kind": "StructType",
+    "is_exported": false,
+    "source": "type errResponse struct {\n\tError      error\n\tStackTrace string\n}",
+    "comments": "errResponse is the data structure used to render an error to the response body.\n",
+    "file_name": "error.go",
+    "line_number": 41,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "writeErrorResponse",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func writeErrorResponse(wr http.ResponseWriter, req *http.Request, err error, stack []byte) error {\n\tvar mode = UseMode(req.Context())\n\n\t// in development mode, write detailed error reports to the response\n\tif mode == ModeDevelopment {\n\t\tdefer wr.WriteHeader(http.StatusInternalServerError)\n\n\t\tvar res = errResponse{\n\t\t\tError:      err,\n\t\t\tStackTrace: string(stack),\n\t\t}\n\n\t\tswitch req.Header.Get(\"Accept\") {\n\t\tcase \"application/json\":\n\t\t\treturn json.NewEncoder(wr).Encode(\u0026res)\n\t\tcase \"text/html\":\n\t\t\treturn errorPageTemplate.Execute(wr, \u0026res)\n\t\t}\n\n\t\thttp.Error(wr, err.Error(), http.StatusInternalServerError)\n\t\treturn nil\n\t}\n\n\t// in production mode, write the Go error message to the response\n\t// and return a 500 status code -- perhaps this could be improved\n\thttp.Error(wr, err.Error(), http.StatusInternalServerError)\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request",
+      "error",
+      "[]byte"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "error.go",
+    "line_number": 46,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "SelfValidator",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type SelfValidator interface {\n\tValidate(context.Context) error\n}",
+    "comments": "",
+    "file_name": "form.go",
+    "line_number": 12,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "IsMultipartForm",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func IsMultipartForm(req *http.Request) bool {\n\treturn strings.HasPrefix(req.Header.Get(\"Content-Type\"), \"multipart/form-data\")\n}",
+    "comments": "IsMultipartForm checks the Content-Type header to see if the request is a\nmultipart form submission.\n",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "bool"
+    ],
+    "file_name": "form.go",
+    "line_number": 27,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "HasFormData",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func HasFormData(req *http.Request) bool {\n\treturn len(req.URL.Query()) != 0\n}",
+    "comments": "HasFormData checks to see if the request body has any form data.\n",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "bool"
+    ],
+    "file_name": "form.go",
+    "line_number": 32,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "DecodeFormAction",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func DecodeFormAction(req *http.Request) string {\n\tif req.Form == nil {\n\t\terr := req.ParseForm()\n\t\tif err != nil {\n\t\t\treturn \"\"\n\t\t}\n\t}\n\n\treturn req.Form.Get(\"action\")\n}",
+    "comments": "DecodeFormAction can be used to retrieve the action parameter from a form.\nThis is useful for determining which form was submitted when multiple forms\nare present on a TestRendererModule. Usually, the 'action' value is attached to the submit\nbutton.\n",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "string"
+    ],
+    "file_name": "form.go",
+    "line_number": 40,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "DecodeForm",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func DecodeForm[T any](req *http.Request) (*T, error) {\n\tif req.Form == nil {\n\t\terr := req.ParseForm()\n\t\tif err != nil {\n\t\t\treturn nil, errors.Wrap(ErrFormParseFailure, err.Error())\n\t\t}\n\t}\n\n\td := UseDecoder(req.Context())\n\tif d == nil {\n\t\treturn nil, ErrDecoderUndefined\n\t}\n\n\tvar res T\n\terr := d.Decode(\u0026res, req.PostForm)\n\tif err != nil {\n\t\treturn nil, errors.Wrap(ErrFormDecodeFailure, err.Error())\n\t}\n\n\treturn \u0026res, nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "*T",
+      "error"
+    ],
+    "file_name": "form.go",
+    "line_number": 51,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "DecodeAndValidateForm",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func DecodeAndValidateForm[T SelfValidator](req *http.Request) (*T, error) {\n\tif req.Form == nil {\n\t\terr := req.ParseForm()\n\t\tif err != nil {\n\t\t\treturn nil, errors.Wrap(ErrFormParseFailure, err.Error())\n\t\t}\n\t}\n\n\td := UseDecoder(req.Context())\n\tif d == nil {\n\t\treturn nil, ErrDecoderUndefined\n\t}\n\n\tvar res T\n\terr := d.Decode(\u0026res, req.PostForm)\n\tif err != nil {\n\t\treturn nil, errors.Wrap(ErrFormDecodeFailure, err.Error())\n\t}\n\n\tif err := res.Validate(req.Context()); err != nil {\n\t\treturn nil, errors.Wrap(ErrFormValidationFailure, err.Error())\n\t}\n\n\treturn \u0026res, nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "*T",
+      "error"
+    ],
+    "file_name": "form.go",
+    "line_number": 73,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "EncodeForm",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func EncodeForm[T any](req *http.Request, formData *T) error {\n\tencoder := schema.NewEncoder()\n\tencoder.SetAliasTag(\"json\")\n\n\tval := make(map[string][]string)\n\terr := encoder.Encode(formData, val)\n\tif err != nil {\n\t\treturn err\n\t}\n\n\treq.Form = val\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request",
+      "*T"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "form.go",
+    "line_number": 99,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "PathParams",
+    "kind": "MapType",
+    "is_exported": true,
+    "source": "type PathParams map[string]string",
+    "comments": "",
+    "file_name": "path.go",
+    "line_number": 9,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Values",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (m PathParams) Values() url.Values {\n\tres := url.Values{}\n\tfor key, value := range m {\n\t\tres.Set(key, value)\n\t}\n\treturn res\n}",
+    "comments": "Values converts the PathParams to a url.Values object.\n",
+    "returns": [
+      "url.Values"
+    ],
+    "receiver": "PathParams",
+    "file_name": "path.go",
+    "line_number": 12,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "GetPathParam",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func GetPathParam(req *http.Request, key string) string {\n\tif params, ok := req.Context().Value(paramsContextKey).(PathParams); ok {\n\t\tif val, exists := params[key]; exists {\n\t\t\treturn val\n\t\t}\n\t}\n\treturn \"\"\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request",
+      "string"
+    ],
+    "returns": [
+      "string"
+    ],
+    "file_name": "path.go",
+    "line_number": 20,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "DecodePathParams",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func DecodePathParams[T any](req *http.Request) (*T, error) {\n\td := UseDecoder(req.Context())\n\tif d == nil {\n\t\treturn nil, ErrDecoderUndefined\n\t}\n\n\tvar dst T\n\tif params, ok := req.Context().Value(paramsContextKey).(PathParams); ok {\n\t\terr := d.Decode(dst, params.Values())\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t}\n\treturn \u0026dst, nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "*T",
+      "error"
+    ],
+    "file_name": "path.go",
+    "line_number": 29,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "DecodeAndValidatePathParams",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func DecodeAndValidatePathParams[T SelfValidator](req *http.Request) (*T, error) {\n\tres, err := DecodePathParams[T](req)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n\tif err := (*res).Validate(req.Context()); err != nil {\n\t\treturn nil, errors.Wrap(ErrPathParamValidationFailure, err.Error())\n\t}\n\n\treturn res, nil\n}",
+    "comments": "",
+    "parameters": [
+      "*http.Request"
+    ],
+    "returns": [
+      "*T",
+      "error"
+    ],
+    "file_name": "path.go",
+    "line_number": 45,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "templateRenderer",
+    "kind": "StructType",
+    "is_exported": false,
+    "source": "type templateRenderer[T ViewModel] struct {\n\thasOutlet bool\n\ttemplate  tmpl.Template[tmpl.TemplateProvider]\n}",
+    "comments": "",
+    "file_name": "template.go",
+    "line_number": 11,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "Render",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (t templateRenderer[T]) Render(wr http.ResponseWriter, req *http.Request, vm T) error {\n\topts := make([]tmpl.RenderOption, 0)\n\tif target := UseTarget(req); len(target) != 0 {\n\t\topts = append(opts, tmpl.WithTarget(target))\n\t}\n\treturn t.template.Render(wr, any(vm).(tmpl.TemplateProvider), opts...)\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request",
+      "T"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "template.go",
+    "line_number": 16,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "createTemplateRenderer",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func createTemplateRenderer[T ViewModel](tp tmpl.TemplateProvider) (*templateRenderer[T], bool, error) {\n\tvar (\n\t\tr   = \u0026templateRenderer[T]{}\n\t\terr error\n\t)\n\n\tr.template, err = tmpl.Compile(\n\t\ttp,\n\t\ttmpl.UseAnalyzers(outletAnalyzer(r)),\n\t)\n\tif err != nil {\n\t\treturn nil, false, err\n\t}\n\n\treturn r, r.hasOutlet, nil\n}",
+    "comments": "",
+    "parameters": [
+      "tmpl.TemplateProvider"
+    ],
+    "returns": [
+      "*templateRenderer[T]",
+      "bool",
+      "error"
+    ],
+    "file_name": "template.go",
+    "line_number": 24,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "outletAnalyzer",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func outletAnalyzer[T ViewModel](t *templateRenderer[T]) tmpl.Analyzer {\n\treturn func(h *tmpl.AnalysisHelper) tmpl.AnalyzerFunc {\n\t\treturn func(val reflect.Value, node parse.Node) {\n\t\t\tswitch node := node.(type) {\n\t\t\tcase *parse.IdentifierNode:\n\t\t\t\tif node.Ident == outletIdent \u0026\u0026 t.hasOutlet == true {\n\t\t\t\t\th.AddError(node, \"outlet can only be defined once per template\")\n\t\t\t\t} else if node.Ident == outletIdent {\n\t\t\t\t\tt.hasOutlet = true\n\t\t\t\t\th.AddFunc(outletIdent, func() string { return \"{{ . }}\" })\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "*templateRenderer[T]"
+    ],
+    "returns": [
+      "tmpl.Analyzer"
+    ],
+    "file_name": "template.go",
+    "line_number": 43,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "Guard",
+    "kind": "FuncType",
+    "is_exported": true,
+    "source": "type Guard = func(req *http.Request) http.HandlerFunc",
+    "comments": "Guard is a way to prevent loaders and actions from executing. Many guards can be\nassigned to a route. Guards allow requests to pass by returning nil. If a Guard\ndetermines that a request should not be handled, it can return a http.HandlerFunc\nto divert the request.\n\nFor example, a guard could check if a user is logged in and return a redirect\nif they are not. Another way to think about Guards is like an \"incoming request boundary\"\n",
+    "file_name": "guard.go",
+    "line_number": 12,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "handlerImpl",
+    "kind": "StructType",
+    "is_exported": false,
+    "source": "type handlerImpl[T ViewModel] struct {\n\tctl Controller\n\n\tmode    Mode\n\tencoder *schema.Encoder\n\tdecoder *schema.Decoder\n\n\trouter   *router\n\tpath     string\n\tparent   Handler\n\tchildren []Handler\n\toverride http.Handler\n\n\tsubscribers int\n\teventSource EventSource\n\n\thandler       http.Handler\n\taction        Action\n\tloader        Loader[T]\n\theaders       ResponseHeaders[T]\n\trendererT     Renderer[T]\n\trendererVM    DynamicRenderer\n\tguards        []Guard\n\tplugins       []Plugin\n\terrorBoundary ErrorBoundary\n\tpanicBoundary PanicBoundary\n}",
+    "comments": "",
+    "file_name": "handler.go",
+    "line_number": 17,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "createHandlerImpl",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func createHandlerImpl[T ViewModel]() *handlerImpl[T] {\n\th := \u0026handlerImpl[T]{\n\t\tctl: nil,\n\n\t\tmode:    ModeDevelopment,\n\t\tencoder: schema.NewEncoder(),\n\t\tdecoder: schema.NewDecoder(),\n\n\t\trouter:   nil,\n\t\tpath:     \"/\",\n\t\tparent:   nil,\n\t\toverride: nil,\n\n\t\thandler:       nil,\n\t\taction:        nil,\n\t\tloader:        nil,\n\t\trendererT:     nil,\n\t\trendererVM:    nil,\n\t\teventSource:   nil,\n\t\terrorBoundary: nil,\n\t\tpanicBoundary: nil,\n\t\tguards:        []Guard{},\n\t\tplugins:       []Plugin{},\n\t}\n\n\th.encoder.SetAliasTag(\"json\")\n\th.decoder.SetAliasTag(\"json\")\n\n\treturn h\n}",
+    "comments": "",
+    "returns": [
+      "*handlerImpl[T]"
+    ],
+    "file_name": "handler.go",
+    "line_number": 45,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "ServeHTTP",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {\n\trenderAsOutlet, ok := req.Context().Value(outletContextKey).(bool)\n\trenderAsOutlet = renderAsOutlet \u0026\u0026 ok\n\n\tif h.router != nil \u0026\u0026 !renderAsOutlet {\n\t\tlog.Printf(\"[Router] (%s) %s -\u003e %T\\n\", req.Method, req.URL, h.ctl)\n\t\t// Indicate to any handlers they should not attempt to handle the request using\n\t\t// their internal router, and instead just serve the request using the controller\n\t\th.router.ServeHTTP(wr, req.WithContext(context.WithValue(req.Context(), outletContextKey, true)))\n\t} else if h.GetParent() != nil \u0026\u0026 renderAsOutlet {\n\t\th.serveOutlet(wr, req)\n\t} else {\n\t\th.serveRequest(wr, req)\n\t}\n}",
+    "comments": "ServeHTTP implements the http.Handler interface\n",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "file_name": "handler.go",
+    "line_number": 77,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "serveOutlet",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) {\n\tvar (\n\t\tchildReq   = req\n\t\tchildResp  = httptest.NewRecorder()\n\t\tparentReq  = req.Clone(req.Context())\n\t\tparentResp = httptest.NewRecorder()\n\t)\n\n\t// child before parent, because it can set additional context\n\t// while handling the request\n\th.serveRequest(childResp, childReq)\n\th.GetParent().ServeHTTP(parentResp, parentReq.WithContext(childReq.Context()))\n\n\tt := template.Must(template.New(\"outlet\").Parse(parentResp.Body.String()))\n\n\tfor key := range childResp.Header() {\n\t\twr.Header().Set(key, childResp.Header().Get(key))\n\t}\n\tfor key := range parentResp.Header() {\n\t\twr.Header().Set(key, parentResp.Header().Get(key))\n\t}\n\n\terr := t.Execute(wr, template.HTML(childResp.Body.String()))\n\tif err != nil {\n\t\tpanic(err)\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "file_name": "handler.go",
+    "line_number": 93,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "serveRequest",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request) {\n\tvar err error\n\t// attach the decoder to the request context so it can be used\n\t// by handlers in the request stack\n\t*req = *req.WithContext(withDecoder(req.Context(), h.decoder))\n\n\t// defer a panic recoverer and pass panics to the PanicBoundary\n\tdefer func() {\n\t\tif err, ok := recover().(error); ok \u0026\u0026 err != nil {\n\t\t\th.handlePanic(wr, req, err)\n\t\t\treturn\n\t\t}\n\t}()\n\n\tlog.Printf(\"[Request] (%s) %s -\u003e %T\\n\", req.Method, req.URL, h.ctl)\n\n\t// plugins can be used to set up the request context\n\terr = h.handlePluginSetup(wr, req)\n\tif err != nil {\n\t\th.handleError(wr, req, err)\n\t\treturn\n\t}\n\n\t// guards can prevent a request from going through by\n\t// returning an alternate http.HandlerFunc\n\tfor _, guard := range h.guards {\n\t\tif h := guard(req); h != nil {\n\t\t\tlog.Printf(\"[Guard] %s -\u003e handled by %T\\n\", req.URL, guard)\n\t\t\th(wr, req)\n\t\t\treturn\n\t\t}\n\t}\n\n\t// If this is a wrapped vanilla http.Handler passed from a call to torque.MustNewV,\n\t// it short-circuits a majority of the controller flow. Just serve the request.\n\tif h.handler != nil {\n\t\th.handler.ServeHTTP(wr, req)\n\t\treturn\n\t}\n\n\tswitch req.Method {\n\tcase http.MethodGet:\n\t\tif req.Header.Get(\"Accept\") == \"text/event-stream\" {\n\t\t\terr = h.handleEventSource(wr, req)\n\t\t\tif err != nil {\n\t\t\t\th.handleError(wr, req, err)\n\t\t\t}\n\t\t\treturn\n\t\t}\n\n\t\tvm, err := h.handleLoader(wr, req)\n\t\tif err != nil \u0026\u0026 !errors.Is(err, errNotImplemented) {\n\t\t\th.handleError(wr, req, err)\n\t\t\treturn\n\t\t}\n\n\t\terr = h.handleResponseHeaders(wr, req, vm)\n\t\tif err != nil {\n\t\t\th.handleError(wr, req, err)\n\t\t\treturn\n\t\t}\n\n\t\terr = h.handleRender(wr, req, vm)\n\t\tif err != nil {\n\t\t\th.handleError(wr, req, err)\n\t\t\treturn\n\t\t}\n\n\tcase http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete:\n\t\terr = h.handleAction(wr, req)\n\t\tif err != nil {\n\t\t\th.handleError(wr, req, err)\n\t\t\treturn\n\t\t}\n\n\tdefault:\n\t\thttp.Error(wr, \"method not allowed\", http.StatusMethodNotAllowed)\n\t\treturn\n\t}\n}",
+    "comments": "serveRequest is the core handler logic for torque. It is responsible for handling incoming\nHTTP requests and applying the appropriate API methods from the Controller API.\n",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "file_name": "handler.go",
+    "line_number": 123,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleAction",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request) error {\n\tvar start = time.Now()\n\tif h.action != nil {\n\t\terr := h.action.Action(wr, req)\n\t\tif err != nil {\n\t\t\tlog.Printf(\"[Action] %s -\u003e error: %s\\n\", req.URL, err.Error())\n\t\t\treturn err\n\t\t} else {\n\t\t\tlog.Printf(\"[Action] %s -\u003e success (%dms)\\n\", req.URL, time.Since(start).Milliseconds())\n\t\t\treturn nil\n\t\t}\n\t} else {\n\t\treturn fmt.Errorf(\"failed to handle action: %w\", errNotImplemented)\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "handler.go",
+    "line_number": 204,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleError",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handleError(wr http.ResponseWriter, req *http.Request, err error) {\n\tif ok := h.handleReloadError(wr, req, err); ok {\n\t\treturn\n\t} else if ok := h.handleInternalError(wr, req, err); ok {\n\t\tlog.Printf(\"[Error] %s\", err.Error())\n\t\treturn\n\t} else if h.errorBoundary != nil {\n\t\t// Calls to ErrorBoundary can return an http.HandlerFunc\n\t\t// that can be used to cleanly handle the error. Or not\n\t\th := h.errorBoundary.ErrorBoundary(wr, req, err)\n\t\tif h != nil {\n\t\t\tlog.Printf(\"[ErrorBoundary] %s -\u003e handled\\n\", req.URL)\n\t\t\th(wr, req)\n\t\t\treturn\n\t\t}\n\t} else {\n\t\t// No ErrorBoundary was implemented in the route Controller.\n\t\t// So your error goes to the PanicBoundary.\n\t\tlog.Printf(\"[ErrorBoundary] %s -\u003e not implemented\\n\", req.URL)\n\t\tpanic(err)\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request",
+      "error"
+    ],
+    "file_name": "handler.go",
+    "line_number": 220,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleEventSource",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handleEventSource(wr http.ResponseWriter, req *http.Request) error {\n\tif h.eventSource != nil {\n\t\th.subscribers++\n\t\tlog.Printf(\"[EventSource] %s -\u003e new subscriber (%d total)\\n\", req.URL, h.subscribers)\n\t\terr := h.eventSource.Subscribe(wr, req)\n\t\th.subscribers--\n\t\tif err != nil {\n\t\t\tlog.Printf(\"[EventSource] %s -\u003e closed error: %s\\n\", req.URL, err.Error())\n\t\t} else {\n\t\t\tlog.Printf(\"[EventSource] %s -\u003e closed ok (%d total)\\n\", req.URL, h.subscribers)\n\t\t}\n\t\treturn err\n\t} else {\n\t\treturn fmt.Errorf(\"failed to handle event source: %w\", errNotImplemented)\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "handler.go",
+    "line_number": 243,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleInternalError",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handleInternalError(wr http.ResponseWriter, req *http.Request, err error) bool {\n\tif errors.Is(err, errNotImplemented) {\n\t\thttp.Error(wr, \"method not allowed\", http.StatusMethodNotAllowed)\n\t\treturn true\n\t}\n\treturn false\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request",
+      "error"
+    ],
+    "returns": [
+      "bool"
+    ],
+    "file_name": "handler.go",
+    "line_number": 260,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleLoader",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handleLoader(_ http.ResponseWriter, req *http.Request) (T, error) {\n\tvar (\n\t\tvm    T\n\t\terr   error\n\t\tstart = time.Now()\n\t)\n\tif h.loader != nil {\n\t\tvm, err = h.loader.Load(req)\n\t\tif err != nil {\n\t\t\tlog.Printf(\"[Loader] %s -\u003e error: %s\\n\", req.URL, err.Error())\n\t\t\treturn vm, err\n\t\t} else {\n\t\t\tlog.Printf(\"[Loader] %s -\u003e success (%dms)\\n\", req.URL, time.Since(start).Milliseconds())\n\t\t\treturn vm, nil\n\t\t}\n\t} else {\n\t\treturn vm, fmt.Errorf(\"failed to handle loader: %w\", errNotImplemented)\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "returns": [
+      "T",
+      "error"
+    ],
+    "file_name": "handler.go",
+    "line_number": 268,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handlePanic",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handlePanic(wr http.ResponseWriter, req *http.Request, err error) {\n\tif h.panicBoundary != nil {\n\t\t// Calls to PanicBoundary can return an http.HandlerFunc\n\t\t// that can be used to cleanly handle the error.\n\t\th := h.panicBoundary.PanicBoundary(wr, req, err)\n\t\tif h != nil {\n\t\t\tlog.Printf(\"[PanicBoundary] %s -\u003e handled\\n\", req.URL)\n\t\t\th(wr, req)\n\t\t\treturn\n\t\t}\n\t} else {\n\t\tstack := debug.Stack()\n\t\tlog.Printf(\"[UncaughtPanic] %s\\n-- ERROR --\\nUncaught panic in route ctl %T: %+v\\n-- STACK TRACE --\\n%s\", req.URL, h.ctl, err, stack)\n\t\terr = writeErrorResponse(wr, req, err, stack)\n\t\tif err != nil {\n\t\t\tlog.Printf(\"[UncaughtPanic] %s -\u003e failed to write error response: %v\\n\", req.URL, err)\n\t\t}\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request",
+      "error"
+    ],
+    "file_name": "handler.go",
+    "line_number": 288,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleResponseHeaders",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handleResponseHeaders(wr http.ResponseWriter, req *http.Request, vm T) error {\n\tif h.headers != nil {\n\t\terr := h.headers.Headers(wr, req, vm)\n\t\tif err != nil {\n\t\t\tlog.Printf(\"[Headers] %s -\u003e error: %s\\n\", req.URL, err.Error())\n\t\t\treturn err\n\t\t} else {\n\t\t\tlog.Printf(\"[Headers] %s -\u003e success\\n\", req.URL)\n\t\t}\n\t}\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request",
+      "T"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "handler.go",
+    "line_number": 308,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleRender",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request, vm T) error {\n\t// If the requester set the content-type to json, we can just\n\t// render the result of the loader directly\n\tif req.Header.Get(\"Accept\") == \"application/json\" {\n\t\tlog.Printf(\"[JSON] %s\\n\", req.URL)\n\t\tencoder := json.NewEncoder(wr)\n\t\tif UseMode(req.Context()) == ModeDevelopment {\n\t\t\tencoder.SetIndent(\"\", \"  \")\n\t\t}\n\t\treturn encoder.Encode(vm)\n\t}\n\n\tvar (\n\t\terr   error\n\t\tstart = time.Now()\n\t)\n\tif h.rendererT != nil {\n\t\terr = h.rendererT.Render(wr, req, vm)\n\t} else if h.rendererVM != nil {\n\t\terr = h.rendererVM.Render(wr, req, vm)\n\t} else {\n\t\treturn errNotImplemented\n\t}\n\n\tif err != nil {\n\t\tlog.Printf(\"[Renderer] %s -\u003e error: %s\\n\", req.URL, err.Error())\n\t\treturn err\n\t} else {\n\t\tlog.Printf(\"[Renderer] %s -\u003e success (%dms)\\n\", req.URL, time.Since(start).Milliseconds())\n\t\treturn nil\n\t}\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request",
+      "T"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "handler.go",
+    "line_number": 321,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handleReloadError",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handleReloadError(wr http.ResponseWriter, req *http.Request, err error) bool {\n\tif err, ok := err.(*errReload); !ok {\n\t\treturn false\n\t} else if req.Method == http.MethodGet {\n\t\tpanic(errors.New(\"ReloadWithError can only be returned from an Action\"))\n\t} else if err.err != nil {\n\t\treq = req.WithContext(withError(req.Context(), err.err))\n\t}\n\n\tlog.Printf(\"[ReloadWithError] %s -\u003e %s\\n\", req.URL, err.Error())\n\n\treq.Method = http.MethodGet\n\th.serveRequest(wr, req)\n\n\treturn true\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request",
+      "error"
+    ],
+    "returns": [
+      "bool"
+    ],
+    "file_name": "handler.go",
+    "line_number": 354,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "handlePluginSetup",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) handlePluginSetup(_ http.ResponseWriter, req *http.Request) error {\n\tvar err error\n\tfor _, plugin := range h.plugins {\n\t\terr = plugin.Setup(req)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t}\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "http.ResponseWriter",
+      "*http.Request"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "handler.go",
+    "line_number": 371,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "Handler",
+    "kind": "InterfaceType",
+    "is_exported": true,
+    "source": "type Handler interface {\n\thttp.Handler\n\n\tsetOverride(http.Handler)\n\n\tgetController() Controller\n\tgetRouter() *router\n\n\tsetPath(string)\n\tGetPath() string\n\n\tsetParent(Handler)\n\tGetParent() Handler\n\n\tGetMode() Mode\n\tHasOutlet() bool\n\n\tSetAction(Action)\n\tSetRenderer(DynamicRenderer)\n\n\tAddGuard(Guard)\n\tGetGuards() []Guard\n\n\tSetErrorBoundary(ErrorBoundary)\n\tSetPanicBoundary(PanicBoundary)\n}",
+    "comments": "",
+    "file_name": "handler_api.go",
+    "line_number": 7,
+    "line_position": 6
+  },
+  {
+    "package": "",
+    "name": "setOverride",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) setOverride(override http.Handler) {\n\th.override = override\n}",
+    "comments": "",
+    "parameters": [
+      "http.Handler"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 34,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "setPath",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) setPath(pattern string) {\n\th.path = pattern\n}",
+    "comments": "",
+    "parameters": [
+      "string"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 38,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "GetPath",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) GetPath() string {\n\n\treturn h.path\n}",
+    "comments": "",
+    "returns": [
+      "string"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 42,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "getController",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) getController() Controller {\n\treturn h.ctl\n}",
+    "comments": "",
+    "returns": [
+      "Controller"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 47,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "getRouter",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) getRouter() *router {\n\treturn h.router\n}",
+    "comments": "",
+    "returns": [
+      "*router"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 51,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "setParent",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func (h *handlerImpl[T]) setParent(parent Handler) {\n\th.parent = parent\n}",
+    "comments": "",
+    "parameters": [
+      "Handler"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 55,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "GetParent",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) GetParent() Handler {\n\treturn h.parent\n}",
+    "comments": "",
+    "returns": [
+      "Handler"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 59,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "GetMode",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) GetMode() Mode {\n\treturn h.mode\n}",
+    "comments": "",
+    "returns": [
+      "Mode"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 63,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "HasOutlet",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) HasOutlet() bool {\n\tif t, ok := h.rendererT.(*templateRenderer[T]); ok {\n\t\treturn t.hasOutlet\n\t}\n\treturn false\n}",
+    "comments": "",
+    "returns": [
+      "bool"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 67,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "SetAction",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) SetAction(a Action) {\n\th.action = a\n}",
+    "comments": "",
+    "parameters": [
+      "Action"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 74,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "SetRenderer",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) SetRenderer(r DynamicRenderer) {\n\th.rendererVM = r\n}",
+    "comments": "",
+    "parameters": [
+      "DynamicRenderer"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 78,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "AddGuard",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) AddGuard(g Guard) {\n\th.guards = append(h.guards, g)\n}",
+    "comments": "",
+    "parameters": [
+      "Guard"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 82,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "GetGuards",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) GetGuards() []Guard {\n\treturn h.guards\n}",
+    "comments": "",
+    "returns": [
+      "[]Guard"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 86,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "SetErrorBoundary",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) SetErrorBoundary(b ErrorBoundary) {\n\th.errorBoundary = b\n}",
+    "comments": "",
+    "parameters": [
+      "ErrorBoundary"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 90,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "SetPanicBoundary",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func (h *handlerImpl[T]) SetPanicBoundary(b PanicBoundary) {\n\th.panicBoundary = b\n}",
+    "comments": "",
+    "parameters": [
+      "PanicBoundary"
+    ],
+    "file_name": "handler_api.go",
+    "line_number": 94,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "New",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func New[T ViewModel](ctl Controller) (Handler, error) {\n\tvar (\n\t\t\n\t\t\n\t\tvm  ViewModel = new(T)\n\t\terr error\n\t)\n\th := createHandlerImpl[T]()\n\th.ctl = ctl\n\n\terr = assertImplementations(h, ctl, vm)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"failed to assert Controller interface: %w\", err)\n\t}\n\n\tfor _, plugin := range h.plugins {\n\t\terr = plugin.Install(h)(ctl, vm)\n\t\tif err != nil {\n\t\t\treturn nil, fmt.Errorf(\"failed to install Plugin %T: %w\", plugin, err)\n\t\t}\n\t}\n\n\treturn h, nil\n}",
+    "comments": "",
+    "parameters": [
+      "Controller"
+    ],
+    "returns": [
+      "Handler",
+      "error"
+    ],
+    "file_name": "new.go",
+    "line_number": 8,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "MustNew",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func MustNew[T ViewModel](ctl Controller) Handler {\n\th, err := New[T](ctl)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\treturn h\n}",
+    "comments": "",
+    "parameters": [
+      "Controller"
+    ],
+    "returns": [
+      "Handler"
+    ],
+    "file_name": "new.go",
+    "line_number": 33,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "NewV",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func NewV(handler http.Handler) (Handler, error) {\n\th := createHandlerImpl[any]()\n\th.handler = handler\n\n\t// If the passed handler is actually an http.HandlerFunc it can't possiblly\n\t// implement any of the torque Controller interfaces.\n\tif _, ok := handler.(http.HandlerFunc); !ok {\n\t\terr := assertImplementations(h, handler, new(any))\n\t\tif err != nil {\n\t\t\treturn nil, fmt.Errorf(\"failed to assert interfaces: %w\", err)\n\t\t}\n\n\t\tif err := checkInvalidImplementations(h, handler); err != nil {\n\t\t\treturn nil, fmt.Errorf(\"cannot mix ServeHTTP method with torque interface: %w\", err)\n\t\t}\n\t}\n\n\treturn h, nil\n}",
+    "comments": "NewV takes a vanilla http.Handler and wraps it into a torque.Handler.\n\nThis allows it to be rendered to an outlet when used within a RouterProvider.\n\nIt also enables parts of the Controller API including PluginProvider,\nGuardProvider and PanicBoundary. These interfaces can be implemented\non the given http.Handler to provide additional functionality.\n",
+    "parameters": [
+      "http.Handler"
+    ],
+    "returns": [
+      "Handler",
+      "error"
+    ],
+    "file_name": "new.go",
+    "line_number": 48,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "MustNewV",
+    "kind": "function",
+    "is_exported": true,
+    "source": "func MustNewV(handler http.Handler) Handler {\n\th, err := NewV(handler)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\treturn h\n}",
+    "comments": "",
+    "parameters": [
+      "http.Handler"
+    ],
+    "returns": [
+      "Handler"
+    ],
+    "file_name": "new.go",
+    "line_number": 68,
+    "line_position": 1
+  },
+  {
+    "package": "",
+    "name": "checkInvalidImplementations",
+    "kind": "function",
+    "is_exported": false,
+    "source": "func checkInvalidImplementations(h *handlerImpl[any], src interface{}) error {\n\tif _, ok := src.(http.Handler); ok {\n\t\tif h.loader != nil {\n\t\t\treturn fmt.Errorf(\"Loader interface not supported on type %T\", src)\n\t\t} else if h.action != nil {\n\t\t\treturn fmt.Errorf(\"Action interface not supported on type %T\", src)\n\t\t} else if h.rendererT != nil || h.rendererVM != nil {\n\t\t\treturn fmt.Errorf(\"Renderer interface not supported on type %T\", src)\n\t\t} else if h.errorBoundary != nil {\n\t\t\treturn fmt.Errorf(\"ErrorBoundary interface not supported on type %T\", src)\n\t\t} else if h.router != nil {\n\t\t\treturn fmt.Errorf(\"Router interface not supported on type %T\", src)\n\t\t}\n\t}\n\treturn nil\n}",
+    "comments": "",
+    "parameters": [
+      "*handlerImpl[any]",
+      "interface{}"
+    ],
+    "returns": [
+      "error"
+    ],
+    "file_name": "new.go",
+    "line_number": 76,
+    "line_position": 1
+  }
+]

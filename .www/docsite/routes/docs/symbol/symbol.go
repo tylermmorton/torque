@@ -6,6 +6,7 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/elements"
 	"github.com/tylermmorton/torque/.www/docsite/model"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
+	"github.com/tylermmorton/torque/.www/docsite/templates"
 	"github.com/tylermmorton/torque/pkg/htmx"
 	"net/http"
 	"net/url"
@@ -19,12 +20,14 @@ import (
 var templateText string
 
 type ViewModel struct {
-	Editor elements.XCodeEditor `tmpl:"editor"`
+	Editor      elements.XCodeEditor  `tmpl:"editor"`
+	ContextMenu templates.ContextMenu `tmpl:"context-menu"`
 
 	Symbol *model.Symbol
 
 	ShowBigScreenIcon bool
 	ShowGitHubIcon    bool
+	SmallProse        bool
 }
 
 func (ViewModel) TemplateText() string {
@@ -63,6 +66,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 		Symbol:            sym,
 		ShowBigScreenIcon: true,
 		ShowGitHubIcon:    true,
+		SmallProse:        htmx.IsHtmxRequest(req),
 	}, nil
 }
 

@@ -1,11 +1,48 @@
 <nav
-  class="flex w-80 flex-grow flex-col justify-start rounded-tl-md border-r border-raisin-border bg-raisin-dark"
+  class="flex w-1/4 flex-grow flex-col justify-start rounded-tl-md border-r border-raisin-border bg-raisin"
 >
   <div
     id="header"
-    class="sticky z-50 mb-auto flex h-12 items-center rounded-t border-b border-raisin-border bg-transparent px-3 backdrop-blur"
+    class="sticky z-50 mb-auto grid h-12 grid-cols-2 items-center rounded-t border-b border-raisin-border bg-transparent pr-3 backdrop-blur"
   >
-    <h2 class="text-xl font-bold tracking-wide">Documentation</h2>
+    <button
+      class="flex h-full flex-row items-center justify-center gap-4 rounded-tl-md border-r border-raisin-border/20 font-light"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+      </svg>
+      Docs
+    </button>
+    <button
+      class="flex h-full flex-row items-center justify-center gap-4 rounded-tl-md font-light"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points="16 18 22 12 16 6"></polyline>
+        <polyline points="8 6 2 12 8 18"></polyline>
+      </svg>
+      Symbols
+    </button>
   </div>
   <div class="scrollbar flex-grow overflow-y-scroll">
     <div class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm">

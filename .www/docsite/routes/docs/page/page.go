@@ -2,6 +2,7 @@ package page
 
 import (
 	"fmt"
+	"github.com/tylermmorton/torque/.www/docsite/templates"
 	"log"
 	"net/http"
 
@@ -20,7 +21,7 @@ var (
 var pageTemplateText string
 
 type ViewModel struct {
-	contextMenu `tmpl:"context-menu"`
+	ContextMenu templates.ContextMenu `tmpl:"context-menu"`
 
 	Article model.Document
 }
@@ -66,7 +67,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 	torque.WithTitle(req, doc.Title)
 	return ViewModel{
 		Article: *doc,
-		contextMenu: contextMenu{
+		ContextMenu: templates.ContextMenu{
 			Article:       doc,
 			SearchQuery:   query.SearchQuery,
 			SearchResults: searchResults,

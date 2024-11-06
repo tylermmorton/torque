@@ -141,7 +141,7 @@ func renderCode(w io.Writer, code *ast.Code) error {
 			hx-get="/docs/symbol/%s"
 			hx-trigger="click"
 			hx-select="#symbol"
-			hx-target="#hx-swappable-context-menu"
+			hx-target="#hx-swappable-symbol-view"
 			hx-swap="innerHTML"
 			hx-params="*"
 		>%s</code>`, string(code.Literal), string(code.Literal))))

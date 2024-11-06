@@ -1,4 +1,4 @@
-package page
+package templates
 
 import (
 	_ "embed"
@@ -8,12 +8,12 @@ import (
 //go:embed context-menu.tmpl.html
 var contextMenuTemplateText string
 
-type contextMenu struct {
+type ContextMenu struct {
 	Article       *model.Document
 	SearchQuery   string
 	SearchResults []*model.Document
 }
 
-func (contextMenu) TemplateText() string {
+func (ContextMenu) TemplateText() string {
 	return contextMenuTemplateText
 }

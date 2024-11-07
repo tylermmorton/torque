@@ -28,11 +28,18 @@
       <div>tylermmorton / torque</div>
     </div>
   </div>
-  <div class="scrollbar flex-grow overflow-y-scroll">
+  <x-tab-switcher class="scrollbar flex-grow overflow-y-scroll">
+    <style>
+      .active {
+        background: #211f32;
+        border-bottom: 1px solid rgb(190 144 245);
+      }
+    </style>
     <div
       class="sticky inset-0 grid h-12 grid-cols-2 border-b border-raisin-border bg-raisin"
     >
       <button
+        data-tab-target="docs-tab"
         class="flex h-full flex-row items-center justify-center gap-3 rounded-tl-md border-r border-raisin-border/20 hover:cursor-pointer hover:bg-raisin-hover"
       >
         <svg
@@ -54,6 +61,7 @@
         Docs
       </button>
       <button
+        data-tab-target="symbols-tab"
         class="flex h-full flex-row items-center justify-center gap-3 hover:cursor-pointer hover:bg-raisin-hover"
       >
         <svg
@@ -73,7 +81,10 @@
         Symbols
       </button>
     </div>
-    <div class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm">
+    <div
+      data-tab-name="docs-tab"
+      class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm"
+    >
       {{ range .NavGroups }}
       <h3 class="flex flex-row items-center gap-2 px-2 py-2 font-light">
         {{template "icon" .Icon }} {{.Text}}
@@ -92,5 +103,9 @@
       </ol>
       {{ end }}
     </div>
-  </div>
+    <div
+      data-tab-name="symbols-tab"
+      class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm"
+    ></div>
+  </x-tab-switcher>
 </nav>

@@ -2,7 +2,12 @@
 module.exports = {
   mode: "jit",
   darkMode: "class",
-  content: ["./**/*.{html,ts,tsx,js,jsx}"],
+  content: [
+    "./elements/**/*.{html,ts,tsx,js,jsx}",
+    "./routes/**/*.{html,ts,tsx,js,jsx}",
+    "./styles/**/*.{html,ts,tsx,js,jsx}",
+    "./templates/**/*.{html,ts,tsx,js,jsx}",
+  ],
   plugins: [require("@tailwindcss/typography")],
   theme: {
     extend: {

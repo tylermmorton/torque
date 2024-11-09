@@ -5,7 +5,7 @@ tmp_dir = ".build"
 [build]
   args_bin = []
   bin = "./.build/app"
-  cmd = "npm run build:js && npm run build:go"
+  cmd = "npm run build:js && npm run build:css && npm run build:go"
   delay = 250
   exclude_dir = ["node_modules", "tmp", "vendor", "testdata"]
   exclude_file = []
@@ -14,14 +14,18 @@ tmp_dir = ".build"
   follow_symlink = false
   full_bin = ""
   include_dir = []
-  include_ext = ["go", "tpl", "tmpl", "html", "env", "md", "ts"]
+  include_ext = [
+    "go", "env",
+    "md",
+    "js", "ts", "html",
+  ]
   include_file = []
   kill_delay = "0s"
   log = "build-errors.log"
   poll = false
   poll_interval = 0
   rerun = false
-  rerun_delay = 500
+  rerun_delay = 1000
   send_interrupt = false
   stop_on_error = false
 

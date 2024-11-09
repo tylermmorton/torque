@@ -2,6 +2,10 @@ module github.com/tylermmorton/torque/.www/docsite
 
 go 1.23.2
 
+replace (
+	github.com/tylermmorton/torque => ../../
+)
+
 require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/blevesearch/bleve/v2 v2.4.2

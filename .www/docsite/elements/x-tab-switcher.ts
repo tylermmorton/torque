@@ -16,7 +16,6 @@ export class XTabSwitcher extends LitElement {
 
     const slot = this.shadowRoot?.querySelector<HTMLSlotElement>(`slot`);
     slot?.addEventListener("slotchange", () => {
-      console.log("slotchange");
       const elements = slot.assignedElements({
         flatten: true,
       }) as HTMLElement[];

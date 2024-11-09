@@ -33,6 +33,7 @@ func (ViewModel) TemplateText() string {
 type Query struct {
 	SearchQuery string `json:"q"`
 	SymbolName  string `json:"s"`
+	_           string `json:"t"`
 }
 
 type Controller struct {
@@ -51,12 +52,12 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 		return noop, err
 	}
 
-	doc, err := ctl.ContentService.GetByID(req.Context(), torque.GetPathParam(req, "pageName"))
+	doc, err := ctl.ContentService.GetDocument(req.Context(), torque.GetPathParam(req, "pageName"))
 	if err != nil {
 		return noop, ErrPageNotFound
 	}
 
-	searchResults, err := ctl.ContentService.Search(req.Context(), content.SearchQuery{Text: query.SearchQuery})
+	searchResults, err := ctl.ContentService.SearchDocuments(req.Context(), content.SearchQuery{Text: query.SearchQuery})
 	if err != nil {
 		return noop, err
 	}

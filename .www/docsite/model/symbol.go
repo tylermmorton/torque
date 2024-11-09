@@ -15,3 +15,5 @@ type Symbol struct {
 	LineNumber   uint   `json:"line_number"`   // Line number of the declaration
 	LinePosition uint   `json:"line_position"` // Column position in the line
 }
+
+type SymbolFilters struct{}

@@ -1,3 +1,5 @@
+{{- /*
+gotype:github.com/tylermmorton/torque/.www/docsite/routes/docs.navigator*/ -}}
 <nav
   class="flex w-1/4 flex-grow flex-col justify-start rounded-tl-md border-r border-raisin-border bg-raisin"
 >
@@ -41,7 +43,7 @@
       </style>
       <button
         data-tab-target="docs-tab"
-        class="flex h-full flex-row items-center justify-center gap-3 rounded-tl-md border-r border-raisin-border/20 hover:cursor-pointer hover:bg-raisin-hover"
+        class="{{if eq .SelectedTab "docs"}}active {{end}}flex h-full flex-row items-center justify-center gap-3 rounded-tl-md border-r border-raisin-border/20 hover:cursor-pointer hover:bg-raisin-hover"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -63,7 +65,7 @@
       </button>
       <button
         data-tab-target="symbols-tab"
-        class="flex h-full flex-row items-center justify-center gap-3 hover:cursor-pointer hover:bg-raisin-hover"
+        class="{{if eq .SelectedTab "symbols"}}active {{end}}flex h-full flex-row items-center justify-center gap-3 hover:cursor-pointer hover:bg-raisin-hover"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -84,6 +86,7 @@
     </div>
     <div
       data-tab-name="docs-tab"
+      {{if eq .SelectedTab "docs"}}data-tab-active{{end}}
       class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm"
     >
       {{ range .NavGroups }}
@@ -137,7 +140,7 @@
           <li>
             <a
               class="text-nowrap flex h-full w-full items-center gap-2 rounded-md px-3 py-1.5 tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
-              href="{{ .Href }}"
+              href="{{ .Href }}?t=docs"
             >
               <span>{{ .Text }}</span>
             </a>
@@ -150,6 +153,19 @@
     <div
       data-tab-name="symbols-tab"
       class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm"
-    ></div>
+    >
+      <ol class="flex flex-col gap-1 pb-2">
+        {{ range .Symbols }}
+        <li>
+          <a
+            class="font-fira-code text-sm font-light text-nowrap flex h-full w-full items-center gap-2 rounded-md px-3 py-1.5 tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+            href="/docs/symbol/{{ .Name }}?t=symbols"
+          >
+            <span>{{ .Name }}</span>
+          </a>
+        </li>
+        {{ end }}
+      </ol>
+    </div>
   </x-tab-switcher>
 </nav>

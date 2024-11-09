@@ -1,19 +1,22 @@
 package docs
 
 import (
-	"github.com/tylermmorton/torque/.www/docsite/routes/docs/symbol"
-	"github.com/tylermmorton/torque/.www/docsite/templates/icons"
+	"log"
 	"net/http"
 
 	_ "embed"
 
 	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/.www/docsite/model"
 	"github.com/tylermmorton/torque/.www/docsite/routes/docs/page"
+	"github.com/tylermmorton/torque/.www/docsite/routes/docs/symbol"
 	"github.com/tylermmorton/torque/.www/docsite/services/content"
+	"github.com/tylermmorton/torque/.www/docsite/templates/icons"
 )
 
 type Query struct {
-	SearchQuery string `json:"q"`
+	SearchQuery  string `json:"q"`
+	NavigatorTab string `json:"t"`
 }
 
 //go:embed docs.tmpl.html
@@ -45,6 +48,28 @@ func (ctl *Controller) Router(r torque.Router) {
 }
 
 func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
+	var noop ViewModel
+
+	query, err := torque.DecodeQuery[Query](req)
+	if err != nil {
+		log.Printf("failed to decode query: %s", err)
+		query = &Query{}
+	}
+	var selectedTab navTab
+	switch query.NavigatorTab {
+	case "docs":
+		selectedTab = navTabDocs
+	case "symbols":
+		selectedTab = navTabSymbols
+	default:
+		selectedTab = navTabDocs
+	}
+
+	symbols, err := ctl.ContentService.ListSymbols(req.Context(), model.SymbolFilters{})
+	if err != nil {
+		return noop, err
+	}
+
 	return ViewModel{
 		navigator: navigator{
 			NavGroups: []navGroup{
@@ -107,6 +132,8 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 					},
 				},
 			},
+			Symbols:     symbols,
+			SelectedTab: selectedTab,
 		},
 		Title: torque.UseTitle(req),
 	}, nil

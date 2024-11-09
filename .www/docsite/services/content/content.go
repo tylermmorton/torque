@@ -20,12 +20,18 @@ type SearchQuery struct {
 	Text string
 }
 
+type SymbolFilters struct {
+}
+
 // Service represents the documents service used to get and search for documents on the doc site.
 type Service interface {
-	GetByID(ctx context.Context, name string) (*model.Document, error)
-	Search(ctx context.Context, query SearchQuery) ([]*model.Document, error)
+	GetDocument(ctx context.Context, name string) (*model.Document, error)
+	SearchDocuments(ctx context.Context, query SearchQuery) ([]*model.Document, error)
 
 	GetSymbol(ctx context.Context, name string) (*model.Symbol, error)
+	ListSymbols(ctx context.Context, filters model.SymbolFilters) ([]*model.Symbol, error)
+
+	// ListByPopularity()
 }
 
 // contentService is the implementation of the documents service. Internally
@@ -186,7 +192,7 @@ func createSearchIndex(content map[string]*model.Document) (bleve.Index, error) 
 	return index, nil
 }
 
-func (svc *contentService) GetByID(ctx context.Context, objectID string) (*model.Document, error) {
+func (svc *contentService) GetDocument(ctx context.Context, objectID string) (*model.Document, error) {
 	for _, doc := range svc.documents {
 		if doc.ObjectID == objectID {
 			return doc, nil
@@ -195,7 +201,7 @@ func (svc *contentService) GetByID(ctx context.Context, objectID string) (*model
 	return nil, ErrNotFound
 }
 
-func (svc *contentService) Search(ctx context.Context, q SearchQuery) ([]*model.Document, error) {
+func (svc *contentService) SearchDocuments(ctx context.Context, q SearchQuery) ([]*model.Document, error) {
 	query := bleve.NewQueryStringQuery(q.Text)
 	res, err := svc.index.Search(bleve.NewSearchRequest(query))
 	if err != nil {
@@ -212,4 +218,12 @@ func (svc *contentService) Search(ctx context.Context, q SearchQuery) ([]*model.
 		result = append(result, doc)
 	}
 	return result, nil
+}
+
+func (svc *contentService) ListSymbols(ctx context.Context, filters model.SymbolFilters) ([]*model.Symbol, error) {
+	var results = make([]*model.Symbol, 0, len(svc.symbols))
+	for _, sym := range svc.symbols {
+		results = append(results, sym)
+	}
+	return results, nil
 }

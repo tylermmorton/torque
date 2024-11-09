@@ -3,7 +3,15 @@ package docs
 import (
 	_ "embed"
 
+	"github.com/tylermmorton/torque/.www/docsite/model"
 	"github.com/tylermmorton/torque/.www/docsite/templates/icons"
+)
+
+type navTab string
+
+const (
+	navTabDocs    navTab = "docs"
+	navTabSymbols navTab = "symbols"
 )
 
 type navItem struct {
@@ -19,6 +27,9 @@ type navGroup struct {
 
 type navigator struct {
 	NavGroups []navGroup
+	Symbols   []*model.Symbol
+
+	SelectedTab navTab
 }
 
 //go:embed navigator.tmpl.html

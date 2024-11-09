@@ -12,7 +12,12 @@
 
     /* Language and Environment */
     "target": "es2019" /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */,
-    "lib": ["esnext.array", "esnext", "es2017", "dom"] /* Specify a set of bundled library declaration files that describe the target runtime environment. */,
+    "lib": [
+      "esnext.array",
+      "esnext",
+      "es2017",
+      "dom"
+    ] /* Specify a set of bundled library declaration files that describe the target runtime environment. */,
     "experimentalDecorators": true /* Enable experimental support for legacy experimental decorators. */,
     /* Modules */
     "module": "es2015" /* Specify what module code is generated. */,

@@ -3,6 +3,8 @@ package docs
 import (
 	"log"
 	"net/http"
+	"slices"
+	"strings"
 
 	_ "embed"
 
@@ -65,9 +67,33 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 		selectedTab = navTabDocs
 	}
 
+	var symMap = make(map[string][]*model.Symbol)
 	symbols, err := ctl.ContentService.ListSymbols(req.Context(), model.SymbolFilters{})
 	if err != nil {
 		return noop, err
+	}
+	for _, sym := range symbols {
+		if _, ok := symMap[sym.FileName]; ok {
+			symMap[sym.FileName] = append(symMap[sym.FileName], sym)
+		} else {
+			symMap[sym.FileName] = []*model.Symbol{sym}
+		}
+	}
+	var symGroups = make([]symGroup, 0, len(symMap))
+	for fileName, symbols := range symMap {
+		symGroups = append(symGroups, symGroup{
+			Text:    fileName,
+			Icon:    icons.FileCodeIcon.Size(16, 16),
+			Symbols: symbols,
+		})
+	}
+	slices.SortFunc(symGroups, func(a, b symGroup) int {
+		return strings.Compare(a.Text, b.Text)
+	})
+	for _, group := range symGroups {
+		slices.SortFunc(group.Symbols, func(a, b *model.Symbol) int {
+			return strings.Compare(a.Name, b.Name)
+		})
 	}
 
 	return ViewModel{
@@ -132,6 +158,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 					},
 				},
 			},
+			SymGroups:   symGroups,
 			Symbols:     symbols,
 			SelectedTab: selectedTab,
 		},

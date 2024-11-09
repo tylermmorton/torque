@@ -6,42 +6,42 @@
 @tailwind utilities;
 
 @layer utilities {
-    .scrollbar::-webkit-scrollbar {
-        width: 10px;
-        height: 8px;
-    }
+  .scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 8px;
+  }
 
-    .scrollbar::-webkit-scrollbar-track {
-        background: #13121c;
+  .scrollbar::-webkit-scrollbar-track {
+    background: #13121c;
+  }
 
-    }
+  .scrollbar::-webkit-scrollbar-thumb {
+    background: #3b3b54;
+    border: 1px transparent;
+  }
 
-    .scrollbar::-webkit-scrollbar-thumb {
-        background: #3b3b54;
-        border: 1px transparent;
-    }
+  .scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #44445f;
+    cursor: grab;
+  }
 
-    .scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #44445F;
-        cursor: grab;
-    }
+  .scrollbar::-webkit-scrollbar-thumb:hover:active {
+    background: #44445f;
+    cursor: grabbing;
+  }
 
-    .scrollbar::-webkit-scrollbar-thumb:hover:active {
-        background: #44445f;
-        cursor: grabbing;
-    }
+  code {
+    font-family: Fira Code, monospace;
+    font-style: normal;
+    letter-spacing: 0.5px;
+    background-color: #44445f;
+    padding: 1px 3px 1px 3px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
 
-    code {
-        font-family: Fira Code, monospace;
-        font-style: normal;
-        letter-spacing: 0.5px;
-        background-color: #44445F;
-        padding: 1px 3px 1px 3px;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-
-    code::before, code::after {
-        display: none;
-    }
+  code::before,
+  code::after {
+    display: none;
+  }
 }

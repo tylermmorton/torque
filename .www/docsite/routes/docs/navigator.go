@@ -25,8 +25,15 @@ type navGroup struct {
 	NavItems []navItem
 }
 
+type symGroup struct {
+	Text    string
+	Icon    icons.Icon
+	Symbols []*model.Symbol
+}
+
 type navigator struct {
 	NavGroups []navGroup
+	SymGroups []symGroup
 	Symbols   []*model.Symbol
 
 	SelectedTab navTab

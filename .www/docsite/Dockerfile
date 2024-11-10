@@ -8,7 +8,7 @@ RUN git rev-parse --short HEAD > .gitrevision
 FROM node:20-alpine AS node-build
 
 WORKDIR /app
-COPY .www/docsite .
+COPY . .
 
 RUN npm ci
 RUN npx vite build

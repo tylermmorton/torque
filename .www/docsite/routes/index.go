@@ -46,6 +46,7 @@ var _ interface {
 } = &Controller{}
 
 func (m *Controller) Router(r torque.Router) {
+	r.Redirect("/", "/docs/getting-started", http.StatusTemporaryRedirect)
 	r.HandleFileSystem("/s", m.StaticAssets)
 	r.Handle("/docs", torque.MustNew[docs.ViewModel](&docs.Controller{ContentService: m.ContentService}))
 }

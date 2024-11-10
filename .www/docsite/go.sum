@@ -88,6 +88,8 @@ github.com/tylermmorton/tmpl v1.0.0 h1:l/fburZyoh6o5zU9SKPWGsrUTtogmwR8/pSStbjmM
 github.com/tylermmorton/tmpl v1.0.0/go.mod h1:aFT85F39qRY7ZZT5pHU01s1Ru3o9EOmbd+UjbrxxHw4=
 github.com/tylermmorton/torque v1.1.1-0.20241029030358-5c4ddcf9b776 h1:GDJQ6TOgXzginQgWNod6uVbKok9ye2cj0PMdZTSrlkQ=
 github.com/tylermmorton/torque v1.1.1-0.20241029030358-5c4ddcf9b776/go.mod h1:uplqbbzRYLmONLrfqRpg4ub5w8JtvIKZs0emLhlNkZg=
+github.com/tylermmorton/torque v1.1.1-0.20241110014118-84e9719d27b2 h1:+kkaKn/vMCjmA0WsF+3jU1Zmy9NyVFsg4hiuiLrWUNQ=
+github.com/tylermmorton/torque v1.1.1-0.20241110014118-84e9719d27b2/go.mod h1:uplqbbzRYLmONLrfqRpg4ub5w8JtvIKZs0emLhlNkZg=
 go.etcd.io/bbolt v1.3.7 h1:j+zJOnnEjF/kyHlDDgGnVL/AIqIJPq8UoB2GSNfkUfQ=
 go.etcd.io/bbolt v1.3.7/go.mod h1:N9Mkw9X8x5fupy0IKsmuqVtoGDyxsaDlbk4Rd05IAQw=
 golang.org/x/net v0.28.0 h1:a9JDOJc5GMUJ0+UDqmLT86WiEy7iWyIhz8gz8E4e5hE=

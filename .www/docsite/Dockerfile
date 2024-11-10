@@ -12,6 +12,7 @@ COPY . .
 
 RUN npm ci
 RUN npx tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css
+RUN npx vite build
 
 FROM golang:1.23.2-alpine AS torque-symbols
 

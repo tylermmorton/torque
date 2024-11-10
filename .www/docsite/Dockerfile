@@ -5,14 +5,14 @@ RUN git clone https://github.com/tylermmorton/torque.git
 WORKDIR /torque
 RUN git rev-parse --short HEAD > .gitrevision
 
-FROM node:14 AS node-build
+FROM node:20-alpine AS node-build
 
 WORKDIR /app
-COPY . .
+COPY .www/docsite .
 
 RUN npm ci
-RUN npx tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css
 RUN npx vite build
+RUN npx tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css
 
 FROM golang:1.23.2-alpine AS torque-symbols
 

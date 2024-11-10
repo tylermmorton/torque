@@ -1,16 +1,28 @@
-<div class="max-h-0 max-w-[800px] py-10 pl-20 pr-20">
-  <div id="symbol" class="flex flex-col gap-4 pb-10">
+<div id="symbol" class="flex max-h-0 w-full max-w-[800px] py-10 pl-20 pr-20">
+  <div class="flex grow flex-col gap-4 pb-10">
     <div
-      class="prose {{if .SmallProse}}prose-sm{{end}} prose-invert z-20 flex flex-row items-center justify-between [&>blockquote]:border-raisin-border"
+      class="mb-[0.8em] flex w-full flex-row items-end justify-between [&>blockquote]:border-raisin-border"
     >
-      <h1><code>{{ .Symbol.Name }}</code></h1>
+      <h1 class="text-[2em] font-bold">
+        <code>{{ .Symbol.Name }}</code>
+      </h1>
       <div class="flex flex-row gap-2">
         {{ if .ShowBigScreenIcon }}
-        <a href="/docs/symbol/{{.Symbol.Name}}">
+        <a
+          class="flex cursor-pointer items-center justify-center rounded-md p-1 hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+          href="/docs/symbol/{{.Symbol.Name}}"
+          hx-boost
+          hx-trigger="click"
+          hx-get="/docs/symbol/{{.Symbol.Name}}"
+          hx-target="#hx-swappable-docs-outlet"
+          hx-swap="innerHTML"
+          hx-select="#symbol"
+          hx-replace-url="/docs/symbol/{{.Symbol.Name}}"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
+            width="20"
+            height="20"
             fill="currentColor"
             viewBox="0 0 256 256"
           >
@@ -20,11 +32,14 @@
           </svg>
         </a>
         {{ end }} {{ if .ShowGitHubIcon }}
-        <a href="">
+        <a
+          class="flex cursor-pointer items-center justify-center rounded-md p-1 hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+          href=""
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -46,9 +61,11 @@
     </p>
   </div>
 </div>
+{{if .EnableContextMenu }}
 <div
   id="context-menu"
   class="sticky inset-0 ml-auto h-full w-1/3 rounded-r-md border-l border-raisin-border/20 bg-raisin px-5 py-10"
 >
   {{ template "context-menu" .ContextMenu }}
 </div>
+{{ end }}

@@ -137,6 +137,13 @@ gotype:github.com/tylermmorton/torque/.www/docsite/routes/docs.navigator*/ -}}
             <a
               class="text-nowrap flex h-full w-full items-center gap-2 rounded-md px-3 py-1.5 tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
               href="{{ .Href }}?t=docs"
+              hx-boost
+              hx-trigger="click"
+              hx-get="{{ .Href }}?t=docs"
+              hx-target="#hx-swappable-docs-outlet"
+              hx-swap="innerHTML"
+              hx-select="#document"
+              hx-replace-url="{{ .Href }}?t=docs"
             >
               <span>{{ .Text }}</span>
             </a>
@@ -198,8 +205,15 @@ gotype:github.com/tylermmorton/torque/.www/docsite/routes/docs.navigator*/ -}}
             {{ range .Symbols }}
             <li>
               <a
-                class="text-nowrap flex h-full w-full items-center gap-2 rounded-md px-3 py-1.5 font-fira-code text-sm font-light tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+                class="text-nowrap flex h-full w-full items-center gap-2 rounded-md px-3 py-1.5 font-fira-code text-xs font-light tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
                 href="/docs/symbol/{{ .Name }}?t=symbols"
+                hx-boost
+                hx-trigger="click"
+                hx-get="/docs/symbol/{{ .Name }}?t=symbols"
+                hx-target="#hx-swappable-docs-outlet"
+                hx-swap="innerHTML"
+                hx-select="#symbol"
+                hx-replace-url="/docs/symbol/{{ .Name }}?t=symbols"
               >
                 <span>{{ .Name }}</span>
               </a>

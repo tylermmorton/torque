@@ -23,7 +23,8 @@ var pageTemplateText string
 type ViewModel struct {
 	ContextMenu templates.ContextMenu `tmpl:"context-menu"`
 
-	Article model.Document
+	Article           model.Document
+	EnableContextMenu bool
 }
 
 func (ViewModel) TemplateText() string {

@@ -9,7 +9,6 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/templates"
 	"github.com/tylermmorton/torque/pkg/htmx"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -28,6 +27,7 @@ type ViewModel struct {
 	ShowBigScreenIcon bool
 	ShowGitHubIcon    bool
 	SmallProse        bool
+	EnableContextMenu bool
 }
 
 func (ViewModel) TemplateText() string {
@@ -71,17 +71,17 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 }
 
 func (ctl *Controller) Headers(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {
-	if htmx.IsHtmxRequest(req) {
-		u, err := url.Parse(req.Header.Get(htmx.HxCurrentURL))
-		if err != nil {
-			return err
-		}
-
-		q := u.Query()
-		q.Set("s", vm.Symbol.Name)
-		u.RawQuery = q.Encode()
-
-		wr.Header().Set(htmx.HxPushURL, u.String())
-	}
+	//if htmx.IsHtmxRequest(req) {
+	//	u, err := url.Parse(req.Header.Get(htmx.HxCurrentURL))
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	q := u.Query()
+	//	q.Set("s", vm.Symbol.Name)
+	//	u.RawQuery = q.Encode()
+	//
+	//	wr.Header().Set(htmx.HxPushURL, u.String())
+	//}
 	return nil
 }

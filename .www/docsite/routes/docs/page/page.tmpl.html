@@ -1,13 +1,15 @@
-<div class="max-h-0 max-w-[800px] py-10 pl-20 pr-20">
-  <div id="page" class="pb-10">
+<div id="document" class="max-h-0 w-full max-w-[800px] py-10 pl-20 pr-20">
+  <div class="pb-10">
     <div class="prose prose-invert z-20 [&>blockquote]:border-raisin-border">
       {{ .Article.HTML }}
     </div>
   </div>
 </div>
+{{ if .EnableContextMenu }}
 <div
   id="context-menu"
   class="sticky inset-0 ml-auto h-full w-1/3 rounded-r-md border-l border-raisin-border/20 bg-raisin px-5 py-10"
 >
   {{ template "context-menu" .ContextMenu }}
 </div>
+{{ end }}

@@ -8,7 +8,7 @@ RUN git rev-parse --short HEAD > .gitrevision
 FROM node:14 AS node-build
 
 WORKDIR /app
-COPY .www/docsite .
+COPY ./.www/docsite .
 
 RUN npm ci
 RUN npx tailwindcss -i ./styles/tailwind.css -o ./.build/static/app.css
@@ -29,7 +29,7 @@ RUN go run ./cmd/symbols/main.go -i ../../ -o content/symbols/torque.json
 FROM golang:1.23.2-alpine AS go-build
 WORKDIR /app
 
-COPY .www/docsite .
+COPY ./.www/docsite .
 COPY --from=node-build /app/.build .build
 COPY --from=gitrevision /torque/.gitrevision .gitrevision
 COPY --from=torque-symbols /go/torque/.www/docsite/content/symbols/torque.json /content/symbols/torque.json

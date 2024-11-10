@@ -18,8 +18,8 @@ type Router interface {
 
 	Handle(pattern string, handler http.Handler)
 	HandleFileSystem(pattern string, fs fs.FS)
-
-	Match(method, path string) (http.Handler, PathParams, bool)
+	Redirect(pattern string, location string, status int)
+	Match(method, pattern string) (http.Handler, PathParams, bool)
 }
 
 type Middleware func(http.Handler) http.Handler
@@ -227,4 +227,8 @@ func NoOutlet(h http.Handler) http.Handler {
 	return noWrapHandler(func(w http.ResponseWriter, req *http.Request) {
 		h.ServeHTTP(w, req)
 	})
+}
+
+func (r *router) Redirect(pattern string, url string, status int) {
+	r.Handle(pattern, NoOutlet(http.RedirectHandler(url, status)))
 }

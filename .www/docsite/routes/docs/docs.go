@@ -101,7 +101,7 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 			NavGroups: []navGroup{
 				{
 					Text: "Getting Started",
-					Icon: icons.StarIcon.Size(16, 16),
+					Icon: icons.PersonRunning.Size(16, 16),
 					NavItems: []navItem{
 						{Text: "About", Href: "/docs/about"},
 						{Text: "Quick Start", Href: "/docs/getting-started"},
@@ -143,20 +143,20 @@ func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
 						{Text: "Forms", Href: "/docs/forms"},
 						{Text: "Queries", Href: "/docs/queries"},
 						{Text: "Errors", Href: "/docs/errors"},
-						{Text: "Validation", Href: "/docs/validation"},
+						//{Text: "Validation", Href: "/docs/validation"},
 					},
 				},
-				{
-					Text: "Integrations",
-					Icon: icons.PackageIcon.Size(16, 16),
-					NavItems: []navItem{
-						{Text: "HTMX", Href: "/docs/integrations/htmx"},
-						{Text: "Tailwind CSS", Href: "/docs/integrations/tailwindcss"},
-						{Text: "eslint", Href: "/docs/integrations/eslint"},
-						{Text: "Prettier", Href: "/docs/integrations/prettier"},
-						{Text: "GoLand", Href: "/docs/integrations/goland"},
-					},
-				},
+				//{
+				//	Text: "Integrations",
+				//	Icon: icons.PackageIcon.Size(16, 16),
+				//	NavItems: []navItem{
+				//		{Text: "HTMX", Href: "/docs/integrations/htmx"},
+				//		{Text: "Tailwind CSS", Href: "/docs/integrations/tailwindcss"},
+				//		{Text: "eslint", Href: "/docs/integrations/eslint"},
+				//		{Text: "Prettier", Href: "/docs/integrations/prettier"},
+				//		{Text: "GoLand", Href: "/docs/integrations/goland"},
+				//	},
+				//},
 			},
 			SymGroups:   symGroups,
 			Symbols:     symbols,

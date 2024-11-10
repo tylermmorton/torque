@@ -86,13 +86,13 @@ gotype:github.com/tylermmorton/torque/.www/docsite/routes/docs.navigator*/ -}}
     </div>
     <div
       data-tab-name="docs-tab"
-      class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm"
+      class="flex h-full max-h-0 flex-1 flex-col py-3 text-sm"
     >
       {{ range .NavGroups }}
       <x-collapsible apply-to-content="hidden" apply-to-trigger="collapsed">
         <div
           slot="trigger"
-          class="flex w-full flex-row items-center gap-2 px-2 py-2 text-[15px] font-light"
+          class="flex w-full flex-row items-center gap-2 bg-raisin-dark px-5 py-2 text-[15px] font-light"
         >
           {{template "icon" .Icon }} {{.Text}}
           <button
@@ -131,11 +131,11 @@ gotype:github.com/tylermmorton/torque/.www/docsite/routes/docs.navigator*/ -}}
             </x-template-switch>
           </button>
         </div>
-        <ol class="flex flex-col gap-1 pb-2">
+        <ol class="flex flex-col gap-1.5 px-1 py-2">
           {{ range .NavItems }}
           <li>
             <a
-              class="text-nowrap flex h-full w-full items-center rounded-md px-3 py-1.5 tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+              class="text-nowrap flex h-full w-full items-center px-5 py-1.5 tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
               href="{{ .Href }}?t=docs"
               hx-boost="true"
               hx-trigger="click"
@@ -155,14 +155,14 @@ gotype:github.com/tylermmorton/torque/.www/docsite/routes/docs.navigator*/ -}}
     </div>
     <div
       data-tab-name="symbols-tab"
-      class="mx-3 flex h-full max-h-0 flex-1 flex-col py-3 text-sm"
+      class="flex h-full max-h-0 flex-1 flex-col py-3 text-sm"
     >
       <div class="flex flex-col gap-1 pb-2">
         {{ range .SymGroups }}
         <x-collapsible apply-to-content="hidden" apply-to-trigger="collapsed">
           <div
             slot="trigger"
-            class="flex w-full flex-row items-center gap-2 px-2 py-2 text-[15px] font-light"
+            class="flex w-full flex-row items-center gap-2 bg-raisin-dark px-5 py-2 text-[15px] font-light"
           >
             {{template "icon" .Icon }} {{.Text}}
             <button
@@ -201,11 +201,11 @@ gotype:github.com/tylermmorton/torque/.www/docsite/routes/docs.navigator*/ -}}
               </x-template-switch>
             </button>
           </div>
-          <ol class="flex flex-col gap-1 pb-2">
+          <ol class="flex flex-col gap-1.5 px-1 py-2">
             {{ range .Symbols }}
             <li>
               <a
-                class="text-nowrap flex h-full w-full items-center gap-2 rounded-md px-3 py-1.5 font-fira-code text-sm font-light tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
+                class="text-nowrap flex h-full w-full items-center gap-2 px-5 py-1.5 font-fira-code tracking-wide hover:bg-raisin-hover focus:bg-raisin-hover focus:outline-none focus:ring-1 focus:ring-raisin focus:ring-offset-1"
                 href="/docs/symbol/{{ .Name }}?t=symbols"
                 hx-boost="true"
                 hx-trigger="click"

@@ -25,7 +25,7 @@ This quick start tutorial will show you how to use `torque` to build out a dynam
 
 The torque workflow starts with a standard `html/template`. For more information on the syntax, see this [useful syntax primer from HashiCorp](https://developer.hashicorp.com/nomad/tutorials/templates/go-template-syntax).
 
-```html
+```html homepage.tmpl.html
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -47,7 +47,7 @@ In order to tie your template to your Go code, declare a `ViewModel` struct that
 
 In this struct, any _exported_ fields (or methods attached via pointer receiver) will be accessible in your template from the all powerful dot.
 
-```go
+```go homepage.go
 package homepage
 
 type ViewModel struct {
@@ -59,7 +59,7 @@ type ViewModel struct {
 
 ### TemplateProvider {#templateprovider}
 
-To turn your `ViewModel` struct into a target for the template compiler, your struct type must implement the TemplateProvider interface:
+In order to associate your `ViewModel` struct to your template your struct type must implement the TemplateProvider interface:
 
 ```go
 type TemplateProvider interface {
@@ -67,9 +67,9 @@ type TemplateProvider interface {
 }
 ```
 
-The most straightforward approach is to embed the template into your Go program using the embed package from the standard library.
+The most straightforward approach is to embed the template into your Go program by using the embed package from the standard library.
 
-```go
+```go homepage.go
 package homepage
 
 import (
@@ -82,7 +82,9 @@ var (
 )
 
 type ViewModel struct {
-    ...
+    Title     string `json:"title"`
+    FirstName string `json:"firstName"`
+    LastName  string `json:"lastName"`
 }
 
 func (ViewModel) TemplateText() string {
@@ -100,25 +102,48 @@ package homepage
 type Controller struct{}
 ```
 
-The `torque` _Handler API_ provides a set of interfaces that your `Controller` struct can implement to handle different types of HTTP requests made by a web browser.
+The `torque` _Controller API_ provides a set of interfaces that your `Controller` struct can implement to handle different types of HTTP requests made by a web browser.
 
 ### Loader[T] {#loader}
 
-The `Loader[T]` interface is the most ubiquitous interface in the `torque` framework. It's job is to fetch data, usually from a database, and return a `ViewModel` struct.
+The `Loader` interface is the only required interface in the `torque` framework. Its job is to fetch data during a GET request, and return a `ViewModel` struct to be later "rendered" into a response. 
 
-```go
+`Loader` has a generic constraint `T` that represents your `ViewModel` and allows you to return it directly from `Load`:
+
+```go homepage.go
 package homepage
 
-import "net/http"
+import (
+    _ "embed"
+    "net/http"
+    
+    "github.com/tylermmorton/torque"
+)
 
-type ViewModel struct { ... }
-type Controller struct { ... }
+var (
+    //go:embed homepage.tmpl.html
+    templateText string
+)
+
+type ViewModel struct {
+    Title     string `json:"title"`
+    FirstName string `json:"firstName"`
+    LastName  string `json:"lastName"`
+}
+
+func (ViewModel) TemplateText() string {
+    return templateText
+}
+
+type Controller struct { }
+
+var _ torque.Loader[ViewModel] = &Controller{}
 
 func (ctl *Controller) Load(req *http.Request) (ViewModel, error) {
     return ViewModel{
         Title:     "Welcome to torque!",
         FirstName: "Michael",
-        LastName: "Scott",
+        LastName:  "Scott",
     }, nil
 }
 ```
@@ -134,11 +159,11 @@ var _ interface {
 } = &Controller{}
 ```
 
-### Page Server {#server}
+### Constructing a Handler
 
-To serve your new page, create a new `http.Handler` instance using the `torque.New[T]` function by passing an instance of your `Controller` struct. This is also where you'd do dependency injection, if necessary.
+To serve your new page over HTTP, create a new `http.Handler` instance with the `New` function by passing a reference to your `Controller` struct. 
 
-```go
+```go main.go
 package main
 
 import (
@@ -162,7 +187,7 @@ Congratulations! You've just built a server rendered webpage using `torque`.
 
 Hopefully that's enough to get you started! There's plenty more to learn about `torque`, though. Here's a few next steps to consider:
 
-📎 Bookmark the [Handler API Reference](/handler-api-reference) and keep it on hand as you build out your applications.
+📎 Bookmark the [Controller API Reference](/handler-api-reference) and keep it on hand as you build out your applications.
 
 🛠️ Check out the [examples workspace]() to see some fully functioning applications built with `torque`! Including this [docsite]().
 

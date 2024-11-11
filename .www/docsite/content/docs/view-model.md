@@ -1,74 +1,195 @@
-# Views
+# ViewModel
 
-torque is an SSR framework that is designed for rendering HTML to the browser. 
+The `ViewModel` is a conceptual type that you will use often while working with torque, as it represents how you'll turn raw response data into fully featured web pages. 
 
+### Terms
 
-A _model_ is any data 
+> *Model*: This is the underlying data or the structure of information you want to present.
+> 
+> *View*: The visual or structured way this data is presented to users, such as HTML, JSON, or XML.
+> 
+> *Rendering*: The process of taking data from the model and transforming it into a view.
 
+## In Practice
 
-. A _view_ is an abstract term for how data is displayed to the user.  The model  encoded into many formats through _rendering_, such as HTML or JSON.
+In an actual torque application, a `ViewModel` is a Go struct that holds the data needed to render a view.
 
-torque implements the model-view-controller (MVC) pattern. It manages the View and Controller, but leaves you to provide the Model.
+For example, a blog post `ViewModel` might look something like this:
 
-### ViewModel
-
-
-
-In practice, a `ViewModel` is a Go struct that holds the data needed to render a view. It's a way to pass data from your Go code to your HTML templates. 
-
-For example, a blog post `ViewModel` might look like this:
-
-```go
-package blog_post
+```go blogpost.go
+package blogpost
 
 type ViewModel struct {
-    Title   string
-    Content string
-    Tags    []string
+    Title       string
+    Author      string
+    Content     string
+    PublishDate time.Time
+    Tags        []string
 }
 ```
 
-Typically there is only one ViewModel per Go package. 
+The `ViewModel` is associated one-to-one with a `Controller`, as the `Controller` loads the `ViewModel` and renders it to an HTTP response.
 
-Note that the `ViewModel` interface in torque is a conceptual type that you will see often in the Controller API as a hint to provide your own model type.
+```go blogpost.go
+package blogpost
 
-```go
-package torque 
+type ViewModel struct {
+    Title       string
+    Author      string
+    Content     string
+    PublishDate time.Time
+    Tags        []string
+}
 
-type ViewModel interface {}
+type Controller struct {}
 ```
 
-### Rendering
+The `ViewModel` is used as the generic constraint when building a `Handler` using the `New` function. 
+
+This constraint is passed along to any of the Controller API interfaces implemented by the given `Controller`.
+
+```go main.go
+package main
+
+import (
+	"log"
+	"net/http"
+
+	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/blogpost"
+)
+
+func main() {
+	handler, err := torque.New[blogpost.ViewModel](&blogpost.Controller{})
+	if err != nil {
+		log.Fatalf("failed to compile torque handler: %s", err)
+	}
+
+	http.ListenAndServe(":8080", handler)
+}
+
+```
+
+## Loading
+
+`ViewModel`s are loaded during an HTTP `GET` request. 
+
+The generic constraint `T` in the `Loader` interface corresponds to your `ViewModel` type.
+
+```go blogpost.go
+package blogpost
+
+import "net/http"
+
+type ViewModel struct {
+    Title       string
+    Author      string
+    Content     string
+    PublishDate time.Time
+    Tags        []string
+}
+
+type Controller struct {}
+
+func (*Controller) Load(req *http.Request) (ViewModel, error) {
+    return ViewModel{
+        Title:       "Understanding Go Concurrency",
+        Author:      "Jane Doe",
+        Content:     "Concurrency in Go is powerful yet simple...",
+        PublishDate: time.Date(2024, 11, 10, 0, 0, 0, 0, time.UTC),
+        Tags:        []string{"Go", "Concurrency", "Programming"},
+    }, nil
+}
+```
+
+## Rendering
 
 In response to an HTTP request, a `ViewModel`s can be rendered into many formats depending on the interfaces it implements and the request's `Accept` header.
 
-#### text/html
+By default, torque will render your data into `json` format. To change this, you have some options:
 
-Most likely you will be rendering HTML views. Use the `TemplateProvider` interface to provide a static HTML template.
+### HTML Templates
+Associate your `ViewModel` with a Go template by implementing the `TemplateProvider` interface. Read more about [templates and the `tmpl` compiler.](/docs/template-provider)
 
-```go
-package blog_post
+```go blogpost.go
+package blogpost
+
+import (
+	_ "embed"
+	"net/http"
+)
+
+//go:embed blogpost.tmpl.html
+var templateText string
+
+type ViewModel struct {
+    Title       string
+    Author      string
+    Content     string
+    PublishDate time.Time
+    Tags        []string
+}
 
 func (ViewModel) TemplateText() string {
-	return `
-            <html>
-              <head>
-                <title>{{ .Title }}</title>
-              </head>
-              <body>
-                <p>{{ .Content }}</p>
-              </body>
-              <footer>
-                <ul>
-                  {{ range .Tags }}
-                    <li>#{{ . }}</li>
-                  {{ end }}
-                </ul>
-              </footer>
-            </html>`
+	return templateText
+}
+
+type Controller struct {}
+
+func (*Controller) Load(req *http.Request) (ViewModel, error) {
+    return ViewModel{
+        Title:       "Understanding Go Concurrency",
+        Author:      "Jane Doe",
+        Content:     "Concurrency in Go is powerful yet simple...",
+        PublishDate: time.Date(2024, 11, 10, 0, 0, 0, 0, time.UTC),
+        Tags:        []string{"Go", "Concurrency", "Programming"},
+    }, nil
+}
+```
+```html blogpost.tmpl.html
+<html>
+    <head>
+        <title>{{ .Title }}</title>
+    </head>
+    <body>
+        <h1>{{.Title}}</h1>
+        <p>{{.Content}}</p>
+    </body>
+</html>
+```
+
+### Custom Renderer
+Implement a custom `Renderer` to write your data in other formats such as XML or plaintext.
+
+```go blogpost.go
+package blogpost
+
+import "net/http"
+
+type ViewModel struct {
+    Title       string
+    Author      string
+    Content     string
+    PublishDate time.Time
+    Tags        []string
+}
+
+type Controller struct {}
+
+func (*Controller) Load(req *http.Request) (ViewModel, error) {
+    return ViewModel{
+        Title:       "Understanding Go Concurrency",
+        Author:      "Jane Doe",
+        Content:     "Concurrency in Go is powerful yet simple...",
+        PublishDate: time.Date(2024, 11, 10, 0, 0, 0, 0, time.UTC),
+        Tags:        []string{"Go", "Concurrency", "Programming"},
+    }, nil
+}
+
+func (*Controller) Render(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {
+    // write anything directly to the http.ResponseWriter!
+    _, err := wr.Write([]byte(vm.Content))
+    return err
 }
 ```
 
-```go
-
-#### application/json

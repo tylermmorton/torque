@@ -56,7 +56,7 @@ func (ChildController) Router(r torque.Router) {
 }
 ```
 
-Now, use `ParentController` as the application's root. Any requests made will recursively route into all nested `Controller` implementations:
+Controllers can be nested indefinitely, allowing you to build your application routes in a tree-like structure. Just pass the parent-most `Controller` to `torque.New` - Any requests made will recursively route into all nested `Controller` implementations:
 
 ```go
 package main
@@ -74,7 +74,7 @@ func main() {
 
 ## Template Render Outlets
 
-Things start to get interesting when implementing both the `RouterProvider` and `TemplateProvider` interfaces. A `Controller` that renders a template and provides child routes can also provide a render outlet. An `outlet` is a mechanism for template wrapping that is helpful when breaking your application code into layers.
+A `Controller` that renders a template and provides child routes can also provide a render outlet. An `outlet` is a mechanism for template wrapping that is helpful when breaking your UI up into layers that load separately.
 
 This is all done by using the `{{ outlet }}` directive in a Go template:
 
@@ -116,7 +116,7 @@ Now any child routes registered to this `Handler`'s router will have their conte
 </main>
 ```
 
-When navigating to the `/blog-post` route, it will render the child's response into the parent's outlet. This all happens recursively, so nesting and wrapping can be as many layers as you like before your stack overflows.
+When navigating to the `/blog-post` route, it will render the child's response into the parent's outlet.
 
 ```html
 <html>

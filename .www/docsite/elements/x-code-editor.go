@@ -15,5 +15,5 @@ type XCodeEditor struct {
 var _ tmpl.TemplateProvider = &XCodeEditor{}
 
 func (x XCodeEditor) TemplateText() string {
-	return `<x-code-editor class="{{.Class}}" name="{{.Name}}" code="{{.Code}}" language="{{.Lang}}" base64="{{.Base64}}" {{if eq .HideGutters true}}hideGutters="true"{{end}} {{if eq .HideFooter true}}hideFooter="true"{{end}}></x-code-editor>`
+	return `<x-code-editor class="fs-unmask {{.Class}}" name="{{.Name}}" code="{{.Code}}" language="{{.Lang}}" base64="{{.Base64}}" {{if eq .HideGutters true}}hideGutters="true"{{end}} {{if eq .HideFooter true}}hideFooter="true"{{end}}></x-code-editor>`
 }

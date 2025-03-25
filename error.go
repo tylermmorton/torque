@@ -12,6 +12,19 @@ var (
 	errNotImplemented = errors.New("method not implemented for route")
 )
 
+type errRedirect struct {
+	url    string
+	status int
+}
+
+func (e errRedirect) Error() string {
+	return e.url
+}
+
+func RedirectError(url string, status int) error {
+	return &errRedirect{url, status}
+}
+
 type errReload struct{ err error }
 
 func (e errReload) Error() string {

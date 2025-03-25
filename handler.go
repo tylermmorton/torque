@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gorilla/schema"
 	"html/template"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"runtime/debug"
 	"time"
+
+	"github.com/gorilla/schema"
 )
 
 type handlerImpl[T ViewModel] struct {
@@ -77,6 +78,7 @@ func createHandlerImpl[T ViewModel]() *handlerImpl[T] {
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	renderAsOutlet, ok := req.Context().Value(outletContextKey).(bool)
 	renderAsOutlet = renderAsOutlet && ok
+	renderAsOutlet = renderAsOutlet && req.Method == http.MethodGet
 
 	if h.router != nil && !renderAsOutlet {
 		log.Printf("[Router] (%s) %s -> %T\n", req.Method, req.URL, h.ctl)
@@ -101,8 +103,21 @@ func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) 
 	// child before parent, because it can set additional context
 	// while handling the request
 	h.serveRequest(childResp, childReq)
-	h.GetParent().ServeHTTP(parentResp, parentReq.WithContext(childReq.Context()))
+	if childResp.Code != http.StatusOK {
+		// child route is indicating a non-200 error code, do not
+		// render as outlet, maybe it's a redirect
+		for key := range childResp.Header() {
+			wr.Header().Set(key, childResp.Header().Get(key))
+		}
+		wr.WriteHeader(childResp.Code)
+		_, err := wr.Write(childResp.Body.Bytes())
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
 
+	h.GetParent().ServeHTTP(parentResp, parentReq.WithContext(childReq.Context()))
 	t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
 
 	for key := range childResp.Header() {
@@ -219,6 +234,8 @@ func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request)
 
 func (h *handlerImpl[T]) handleError(wr http.ResponseWriter, req *http.Request, err error) {
 	if ok := h.handleReloadError(wr, req, err); ok {
+		return
+	} else if ok = h.handleRedirectError(wr, req, err); ok {
 		return
 	} else if ok := h.handleInternalError(wr, req, err); ok {
 		log.Printf("[Error] %s", err.Error())
@@ -348,6 +365,15 @@ func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request,
 	} else {
 		log.Printf("[Renderer] %s -> success (%dms)\n", req.URL, time.Since(start).Milliseconds())
 		return nil
+	}
+}
+
+func (h *handlerImpl[T]) handleRedirectError(wr http.ResponseWriter, req *http.Request, err error) bool {
+	if err, ok := err.(*errRedirect); !ok {
+		return false
+	} else {
+		http.Redirect(wr, req, err.url, err.status)
+		return true
 	}
 }
 

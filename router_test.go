@@ -360,6 +360,110 @@ func TestRouter_Outlets_InfiniteNesting(t *testing.T) {
 	Expect(string(byt)).To(Equal("<div><span><div><span>Hello world!</span></div></span></div>"))
 }
 
+func TestRouter_Outlets_Index(t *testing.T) {
+	h := torque.MustNew[MockDivOutletTemplateProvider](&struct {
+		Name string
+		MockLoader[MockDivOutletTemplateProvider]
+		MockRouterProvider
+	}{
+		Name: "A",
+		MockLoader: MockLoader[MockDivOutletTemplateProvider]{
+			LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+				return MockDivOutletTemplateProvider{}, nil
+			},
+		},
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				// The 'index' route is the default content for the parent's outlet
+				r.Handle("/", torque.MustNew[MockTemplateProvider](&struct {
+					Name string
+					MockLoader[MockTemplateProvider]
+				}{
+					Name: "D",
+					MockLoader: MockLoader[MockTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+							return MockTemplateProvider{Message: "Hello world!"}, nil
+						},
+					},
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("<div>Hello world!</div>"))
+}
+
+func TestRouter_Outlets_Index_Nested(t *testing.T) {
+	h := torque.MustNew[MockDivOutletTemplateProvider](&struct {
+		Name string
+		MockLoader[MockDivOutletTemplateProvider]
+		MockRouterProvider
+	}{
+		Name: "A",
+		MockLoader: MockLoader[MockDivOutletTemplateProvider]{
+			LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+				return MockDivOutletTemplateProvider{}, nil
+			},
+		},
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.Handle("/two", torque.MustNew[MockDivOutletTemplateProvider](&struct {
+					Name string
+					MockLoader[MockDivOutletTemplateProvider]
+					MockRouterProvider
+				}{
+					Name: "C",
+					MockLoader: MockLoader[MockDivOutletTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+							return MockDivOutletTemplateProvider{}, nil
+						},
+					},
+					MockRouterProvider: MockRouterProvider{
+						RouterFunc: func(r torque.Router) {
+							// The 'index' route is the default content for the parent's outlet
+							r.Handle("/", torque.MustNew[MockTemplateProvider](&struct {
+								Name string
+								MockLoader[MockTemplateProvider]
+							}{
+								Name: "D",
+								MockLoader: MockLoader[MockTemplateProvider]{
+									LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+										return MockTemplateProvider{Message: "Hello world!"}, nil
+									},
+								},
+							}))
+						},
+					},
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/two", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("<div><div>Hello world!</div></div>"))
+}
+
 //go:embed testdata/router_test
 var testFilesystem embed.FS
 

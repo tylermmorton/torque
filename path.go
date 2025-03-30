@@ -34,7 +34,7 @@ func DecodePathParams[T any](req *http.Request) (*T, error) {
 
 	var dst T
 	if params, ok := req.Context().Value(paramsContextKey).(PathParams); ok {
-		err := d.Decode(dst, params.Values())
+		err := d.Decode(&dst, params.Values())
 		if err != nil {
 			return nil, err
 		}

@@ -140,6 +140,9 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 			for key, child := range childRouter.children {
 				node.children[key] = child
 			}
+			if len(childRouter.handlers) > 0 {
+				node.handlers[method] = childRouter.handlers[method]
+			}
 		}
 	}
 }

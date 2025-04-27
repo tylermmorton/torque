@@ -2,8 +2,10 @@ package torque
 
 import (
 	"context"
-	"github.com/gorilla/schema"
 	"net/http"
+
+	"github.com/gorilla/schema"
+	"github.com/tylermmorton/tmpl"
 )
 
 type contextKey string
@@ -14,6 +16,7 @@ const (
 	decoderKey contextKey = "decoder"
 	modeKey    contextKey = "mode"
 	scriptsKey contextKey = "scripts"
+	funcMapKey contextKey = "funcMap"
 
 	// internal keys
 	paramsContextKey contextKey = "params"
@@ -104,4 +107,15 @@ func UseScripts(req *http.Request) []string {
 
 func UseTarget(req *http.Request) string {
 	return req.Header.Get("X-Torque-Target")
+}
+
+func WithFuncMap(req *http.Request, funcMap tmpl.FuncMap) {
+	*req = *req.WithContext(context.WithValue(req.Context(), funcMapKey, funcMap))
+}
+
+func UseFuncMap(req *http.Request) tmpl.FuncMap {
+	if funcMap, ok := req.Context().Value(funcMapKey).(tmpl.FuncMap); ok {
+		return funcMap
+	}
+	return nil
 }

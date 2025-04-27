@@ -18,6 +18,9 @@ func (t templateRenderer[T]) Render(wr http.ResponseWriter, req *http.Request, v
 	if target := UseTarget(req); len(target) != 0 {
 		opts = append(opts, tmpl.WithTarget(target))
 	}
+	if funcMap := UseFuncMap(req); funcMap != nil {
+		opts = append(opts, tmpl.WithFuncs(funcMap))
+	}
 	return t.template.Render(wr, any(vm).(tmpl.TemplateProvider), opts...)
 }
 

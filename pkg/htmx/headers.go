@@ -9,6 +9,7 @@ const (
 	HxTarget        string = "HX-Target"
 	HxTrigger       string = "HX-Trigger"
 	HxTriggerName   string = "HX-Trigger-Name"
+	HxRedirect      string = "HX-Redirect"
 )
 
 func IsHtmxRequest(r *http.Request) bool {

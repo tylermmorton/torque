@@ -130,7 +130,17 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 	if handler, ok := handler.(Handler); ok {
 		// create a relationship between the parent and child
 		if r.h.HasOutlet() {
-			handler.setParent(r.h)
+			// This child route could have a parent if it provides a layout.
+			// Layouts can be many layers so find the greatest parent
+			var parentMostHandler = handler
+			for {
+				if parentMostHandler.GetParent() != nil {
+					parentMostHandler = parentMostHandler.GetParent()
+				} else {
+					break
+				}
+			}
+			parentMostHandler.setParent(r.h)
 		}
 
 		// "merge-up" the radix sub-trie from the child router. when this handler's internal

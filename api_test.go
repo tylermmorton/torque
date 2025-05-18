@@ -60,6 +60,14 @@ func (m MockRouterProvider) Router(r torque.Router) {
 	m.RouterFunc(r)
 }
 
+type MockLayoutProvider struct {
+	LayoutFunc func() torque.Handler
+}
+
+func (m MockLayoutProvider) Layout() torque.Handler {
+	return m.LayoutFunc()
+}
+
 type MockViewModel struct {
 	Message string `json:"message"`
 }

@@ -360,6 +360,151 @@ func TestRouter_Outlets_InfiniteNesting(t *testing.T) {
 	Expect(string(byt)).To(Equal("<div><span><div><span>Hello world!</span></div></span></div>"))
 }
 
+func TestRouter_Outlets_LayoutProvider(t *testing.T) {
+	h := torque.MustNew[MockTemplateProvider](&struct {
+		MockLoader[MockTemplateProvider]
+		MockLayoutProvider
+	}{
+		MockLoader: MockLoader[MockTemplateProvider]{
+			LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+				return MockTemplateProvider{Message: "Hello world!"}, nil
+			},
+		},
+		MockLayoutProvider: MockLayoutProvider{
+			LayoutFunc: func() torque.Handler {
+				return torque.MustNew[MockDivOutletTemplateProvider](&struct {
+					MockLoader[MockDivOutletTemplateProvider]
+				}{
+					MockLoader: MockLoader[MockDivOutletTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+							return MockDivOutletTemplateProvider{}, nil
+						},
+					},
+				})
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("<div>Hello world!</div>"))
+}
+
+func TestRouter_Outlets_RouterAndLayoutProvider(t *testing.T) {
+	h := torque.MustNew[MockSpanOutletTemplateProvider](&struct {
+		MockLoader[MockSpanOutletTemplateProvider]
+		MockLayoutProvider
+		MockRouterProvider
+	}{
+		MockLoader: MockLoader[MockSpanOutletTemplateProvider]{
+			LoadFunc: func(req *http.Request) (MockSpanOutletTemplateProvider, error) {
+				return MockSpanOutletTemplateProvider{}, nil
+			},
+		},
+		MockLayoutProvider: MockLayoutProvider{
+			LayoutFunc: func() torque.Handler {
+				return torque.MustNew[MockDivOutletTemplateProvider](&struct {
+					MockLoader[MockDivOutletTemplateProvider]
+				}{
+					MockLoader: MockLoader[MockDivOutletTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+							return MockDivOutletTemplateProvider{}, nil
+						},
+					},
+				})
+			},
+		},
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.Handle("/", torque.MustNew[MockTemplateProvider](&struct {
+					MockLoader[MockTemplateProvider]
+				}{
+					MockLoader: MockLoader[MockTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+							return MockTemplateProvider{Message: "Hello world!"}, nil
+						},
+					},
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("<div><span>Hello world!</span></div>"))
+}
+
+func TestRouter_Outlets_ChildRouteProvidesLayout(t *testing.T) {
+	h := torque.MustNew[MockSpanOutletTemplateProvider](&struct {
+		MockLoader[MockSpanOutletTemplateProvider]
+		MockRouterProvider
+	}{
+		MockLoader: MockLoader[MockSpanOutletTemplateProvider]{
+			LoadFunc: func(req *http.Request) (MockSpanOutletTemplateProvider, error) {
+				return MockSpanOutletTemplateProvider{}, nil
+			},
+		},
+		MockRouterProvider: MockRouterProvider{
+			RouterFunc: func(r torque.Router) {
+				r.Handle("/", torque.MustNew[MockTemplateProvider](&struct {
+					MockLoader[MockTemplateProvider]
+					MockLayoutProvider
+				}{
+					MockLoader: MockLoader[MockTemplateProvider]{
+						LoadFunc: func(req *http.Request) (MockTemplateProvider, error) {
+							return MockTemplateProvider{Message: "Hello world!"}, nil
+						},
+					},
+					MockLayoutProvider: MockLayoutProvider{
+						LayoutFunc: func() torque.Handler {
+							return torque.MustNew[MockDivOutletTemplateProvider](&struct {
+								MockLoader[MockDivOutletTemplateProvider]
+							}{
+								MockLoader: MockLoader[MockDivOutletTemplateProvider]{
+									LoadFunc: func(req *http.Request) (MockDivOutletTemplateProvider, error) {
+										return MockDivOutletTemplateProvider{}, nil
+									},
+								},
+							})
+						},
+					},
+				}))
+			},
+		},
+	})
+
+	RegisterTestingT(t)
+	wr := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(wr, req)
+
+	res := wr.Result()
+	defer Expect(res.Body.Close()).To(BeNil())
+	byt, err := io.ReadAll(res.Body)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(res.StatusCode).To(Equal(http.StatusOK))
+	Expect(string(byt)).To(Equal("<span><div>Hello world!</div></span>"))
+}
+
 func TestRouter_Outlets_Index(t *testing.T) {
 	h := torque.MustNew[MockDivOutletTemplateProvider](&struct {
 		Name string

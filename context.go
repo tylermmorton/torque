@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/schema"
 	"github.com/tylermmorton/tmpl"
+	"github.com/tylermmorton/torque/pkg/templates/html"
 )
 
 type contextKey string
@@ -15,12 +16,13 @@ const (
 	errorKey   contextKey = "error"
 	decoderKey contextKey = "decoder"
 	modeKey    contextKey = "mode"
+	linksKey   contextKey = "links"
 	scriptsKey contextKey = "scripts"
 	funcMapKey contextKey = "funcMap"
 
 	// internal keys
-	paramsContextKey contextKey = "params"
-	outletContextKey contextKey = "outlet-flow"
+	paramsContextKey      contextKey = "params"
+	routerMatchContextKey contextKey = "outlet-flow"
 )
 
 type Mode string
@@ -30,15 +32,16 @@ const (
 	ModeProduction  Mode = "production"
 )
 
-func With[T any](req *http.Request, key any, value *T) {
+func With[T any](req *http.Request, key any, value T) {
 	*req = *req.WithContext(context.WithValue(req.Context(), key, value))
 }
 
-func Use[T any](req *http.Request, key any) *T {
+func Use[T any](req *http.Request, key any) (T, bool) {
+	var noop T
 	if value, ok := req.Context().Value(key).(T); ok {
-		return &value
+		return value, true
 	}
-	return nil
+	return noop, false
 }
 
 func withError(ctx context.Context, err error) context.Context {
@@ -75,8 +78,8 @@ func UseMode(ctx context.Context) Mode {
 }
 
 // WithTitle sets the page title in the request context.
-func WithTitle(req *http.Request, title string) {
-	*req = *req.WithContext(context.WithValue(req.Context(), titleKey, title))
+func WithTitle(req *http.Request, title string) *http.Request {
+	return req.WithContext(context.WithValue(req.Context(), titleKey, title))
 }
 
 // UseTitle returns the page title set in the request context.
@@ -87,19 +90,35 @@ func UseTitle(req *http.Request) string {
 	return ""
 }
 
-func WithScript(req *http.Request, script string) {
-	var scripts, ok = req.Context().Value(scriptsKey).([]string)
+func WithLink(req *http.Request, link html.LinkTag) *http.Request {
+	var links, ok = req.Context().Value(linksKey).([]html.LinkTag)
 	if !ok {
-		scripts = []string{script}
+		links = []html.LinkTag{link}
+	} else {
+		links = append(links, link)
+	}
+	return req.WithContext(context.WithValue(req.Context(), linksKey, links))
+}
+
+func UseLinks(req *http.Request) []html.LinkTag {
+	if links, ok := req.Context().Value(linksKey).([]html.LinkTag); ok {
+		return links
+	}
+	return nil
+}
+
+func WithScript(req *http.Request, script html.ScriptTag) *http.Request {
+	var scripts, ok = req.Context().Value(scriptsKey).([]html.ScriptTag)
+	if !ok {
+		scripts = []html.ScriptTag{script}
 	} else {
 		scripts = append(scripts, script)
 	}
-
-	*req = *req.WithContext(context.WithValue(req.Context(), scriptsKey, scripts))
+	return req.WithContext(context.WithValue(req.Context(), scriptsKey, scripts))
 }
 
-func UseScripts(req *http.Request) []string {
-	if scripts, ok := req.Context().Value(scriptsKey).([]string); ok {
+func UseScripts(req *http.Request) []html.ScriptTag {
+	if scripts, ok := req.Context().Value(scriptsKey).([]html.ScriptTag); ok {
 		return scripts
 	}
 	return nil

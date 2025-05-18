@@ -73,6 +73,10 @@ type DynamicRenderer interface {
 	Render(wr http.ResponseWriter, req *http.Request, vm ViewModel) error
 }
 
+type LayoutProvider interface {
+	Layout() Handler
+}
+
 // EventSource is a server-sent event stream. It is used to stream data to the
 // client in real-time.
 type EventSource interface {
@@ -142,8 +146,7 @@ type PluginProvider interface {
 
 func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm ViewModel) error {
 	var (
-		err       error
-		hasOutlet bool
+		err error
 	)
 
 	// check if the controller is a pointer before asserting any types.
@@ -163,7 +166,7 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 	if renderer, ok := ctl.(Renderer[T]); ok {
 		h.rendererT = renderer
 	} else if tp, ok := vm.(tmpl.TemplateProvider); ok {
-		h.rendererT, hasOutlet, err = createTemplateRenderer[T](tp)
+		h.rendererT, _, err = createTemplateRenderer[T](tp)
 		if err != nil {
 			return err
 		}
@@ -185,10 +188,16 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 		h.panicBoundary = panicBoundary
 	}
 
+	if layoutProvider, ok := ctl.(LayoutProvider); ok {
+		layoutHandler := layoutProvider.Layout()
+		if !layoutHandler.HasOutlet() {
+			return fmt.Errorf("template for controller type %T must provide an {{ outlet }} to be a layout", layoutHandler.getController())
+		}
+		h.parent = layoutHandler
+	}
+
 	if _, ok := ctl.(RouterProvider); ok {
 		h.router = createRouter[T](h, ctl)
-	} else if hasOutlet {
-		return fmt.Errorf("controller type %T must implement RouterProvider to use template outlets", ctl)
 	}
 
 	if guardProvider, ok := ctl.(GuardProvider); ok {

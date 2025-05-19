@@ -79,8 +79,6 @@ func writeErrorResponse(wr http.ResponseWriter, req *http.Request, err error, st
 		return nil
 	}
 
-	// in production mode, write the Go error message to the response
-	// and return a 500 status code -- perhaps this could be improved
-	http.Error(wr, err.Error(), http.StatusInternalServerError)
+	http.Error(wr, "internal server error", http.StatusInternalServerError)
 	return nil
 }

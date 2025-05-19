@@ -49,7 +49,7 @@ func NewV(handler http.Handler) (Handler, error) {
 	h := createHandlerImpl[any]()
 	h.handler = handler
 
-	// If the passed handler is actually an http.HandlerFunc it can't possiblly
+	// If the passed handler is actually an http.HandlerFunc it can't possibly
 	// implement any of the torque Controller interfaces.
 	if _, ok := handler.(http.HandlerFunc); !ok {
 		err := assertImplementations(h, handler, new(any))

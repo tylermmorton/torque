@@ -31,7 +31,10 @@ type Handler interface {
 	GetGuards() []Guard
 
 	SetErrorBoundary(ErrorBoundary)
+	GetErrorBoundary() ErrorBoundary
+
 	SetPanicBoundary(PanicBoundary)
+	GetPanicBoundary() PanicBoundary
 }
 
 func (h *handlerImpl[T]) setOverride(override http.Handler) {
@@ -114,8 +117,16 @@ func (h *handlerImpl[T]) GetGuards() []Guard {
 	return h.guards
 }
 
+func (h *handlerImpl[T]) GetErrorBoundary() ErrorBoundary {
+	return h.errorBoundary
+}
+
 func (h *handlerImpl[T]) SetErrorBoundary(b ErrorBoundary) {
 	h.errorBoundary = b
+}
+
+func (h *handlerImpl[T]) GetPanicBoundary() PanicBoundary {
+	return h.panicBoundary
 }
 
 func (h *handlerImpl[T]) SetPanicBoundary(b PanicBoundary) {

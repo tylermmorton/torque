@@ -276,12 +276,32 @@ func (h *handlerImpl[T]) handleError(wr http.ResponseWriter, req *http.Request, 
 			h(wr, req)
 			return
 		}
-	} else {
-		// No ErrorBoundary was implemented in the route Controller.
-		// So your error goes to the PanicBoundary.
-		log.Printf("[ErrorBoundary] %s -> not implemented\n", req.URL)
-		panic(err)
+	} else if h.parent != nil {
+		// Walk up the tree of parent handlers to see if they have
+		// an ErrorBoundary implemented. If so, call it.
+		var parent = h.parent
+		for {
+			if parent == nil {
+				break
+			}
+
+			if errorBoundary := parent.GetErrorBoundary(); errorBoundary != nil {
+				h := errorBoundary.ErrorBoundary(wr, req, err)
+				if h != nil {
+					log.Printf("[ErrorBoundary] %s -> handled by %T\n", req.URL, parent)
+					h(wr, req)
+					return
+				}
+			}
+
+			parent = parent.GetParent()
+		}
 	}
+
+	// No ErrorBoundary was able to catch the error
+	// So your error goes to the PanicBoundary.
+	log.Printf("[ErrorBoundary] %s -> uncaught error\n", req.URL)
+	panic(err)
 }
 
 func (h *handlerImpl[T]) handleEventSource(wr http.ResponseWriter, req *http.Request) error {
@@ -339,13 +359,31 @@ func (h *handlerImpl[T]) handlePanic(wr http.ResponseWriter, req *http.Request, 
 			h(wr, req)
 			return
 		}
-	} else {
-		stack := debug.Stack()
-		log.Printf("[UncaughtPanic] %s\n-- ERROR --\nUncaught panic in route ctl %T: %+v\n-- STACK TRACE --\n%s", req.URL, h.ctl, err, stack)
-		err = writeErrorResponse(wr, req, err, stack)
-		if err != nil {
-			log.Printf("[UncaughtPanic] %s -> failed to write error response: %v\n", req.URL, err)
+	} else if h.parent != nil {
+		var parent = h.parent
+		for {
+			if parent == nil {
+				break
+			}
+
+			if panicBoundary := parent.GetPanicBoundary(); panicBoundary != nil {
+				h := panicBoundary.PanicBoundary(wr, req, err)
+				if h != nil {
+					log.Printf("[PanicBoundary] %s -> handled by %T\n", req.URL, parent)
+					h(wr, req)
+					return
+				}
+			}
+
+			parent = parent.GetParent()
 		}
+	}
+
+	stack := debug.Stack()
+	log.Printf("[UncaughtPanic] %s\n-- ERROR --\nUncaught panic in route controller %T: %+v\n-- STACK TRACE --\n%s", req.URL, h.ctl, err, stack)
+	err = writeErrorResponse(wr, req, err, stack)
+	if err != nil {
+		log.Printf("[UncaughtPanic] %s -> failed to write error response: %v\n", req.URL, err)
 	}
 }
 

@@ -22,7 +22,7 @@ Built in support for Go templates is provided via [tylermmorton/tmpl](https://gi
 go get github.com/tylermmorton/torque
 ```
 
-# Quick Start {#quick-start}
+# Quick Start
 
 This quick start tutorial will show you how to use `torque` to build out a dynamically rendered webpage using the `net/http` package and an `html/template` from Go's standard library.
 
@@ -44,7 +44,7 @@ The torque workflow starts with a standard `html/template`. For more information
 </html>
 ```
 
-### ViewModel {#viewmodel}
+### ViewModel
 
 In order to tie your template to your Go code, declare a `ViewModel` struct that represents the "dot context" of the template. The dot context is the value of the "dot" (`{{ . }}`) in Go's templating language.
 
@@ -62,7 +62,7 @@ type ViewModel struct {
 }
 ```
 
-### TemplateProvider {#templateprovider}
+### TemplateProvider
 
 In order to associate your `ViewModel` struct to your template your struct type must implement the TemplateProvider interface:
 
@@ -97,7 +97,7 @@ func (ViewModel) TemplateText() string {
 }
 ```
 
-### Controller {#controller}
+### Controller
 
 To turn your template into a fully functioning web page, you'll need to build a `Controller` that will handle incoming HTTP requests and render the template.
 
@@ -109,7 +109,7 @@ type Controller struct{}
 
 The `torque` _Controller API_ provides a set of interfaces that your `Controller` struct can implement to handle different types of HTTP requests made by a web browser.
 
-### Loader[T] {#loader}
+### Loader[T]
 
 The `Loader` interface is the only required interface in the `torque` framework. Its job is to fetch data during a GET request, and return a `ViewModel` struct to be later "rendered" into a response.
 
@@ -188,7 +188,7 @@ Finally, visit `http://localhost:9001` in your browser to see the rendered page.
 
 Congratulations! You've just built a server rendered webpage using `torque`.
 
-# Next Steps {#next-steps}
+# Next Steps
 
 Hopefully that's enough to get you started! There's plenty more to learn about `torque`, though. Here's a few next steps to consider:
 

@@ -15,10 +15,10 @@ type templateRenderer[T ViewModel] struct {
 
 func (t templateRenderer[T]) Render(wr http.ResponseWriter, req *http.Request, vm T) error {
 	opts := make([]tmpl.RenderOption, 0)
-	if target := UseTarget(req); len(target) != 0 {
+	if target, ok := UseRenderTarget(req); ok {
 		opts = append(opts, tmpl.WithTarget(target))
 	}
-	if funcMap := UseFuncMap(req); funcMap != nil {
+	if funcMap, ok := UseFuncMap(req); ok {
 		opts = append(opts, tmpl.WithFuncs(funcMap))
 	}
 	return t.template.Render(wr, any(vm).(tmpl.TemplateProvider), opts...)

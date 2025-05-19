@@ -57,8 +57,8 @@ func DecodeForm[T any](req *http.Request) (*T, error) {
 		}
 	}
 
-	d := UseDecoder(req.Context())
-	if d == nil {
+	d, ok := UseDecoder(req)
+	if !ok {
 		return nil, ErrDecoderUndefined
 	}
 
@@ -79,8 +79,8 @@ func DecodeAndValidateForm[T SelfValidator](req *http.Request) (*T, error) {
 		}
 	}
 
-	d := UseDecoder(req.Context())
-	if d == nil {
+	d, ok := UseDecoder(req)
+	if !ok {
 		return nil, ErrDecoderUndefined
 	}
 

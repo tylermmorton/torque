@@ -12,13 +12,14 @@ import (
 type contextKey string
 
 const (
-	titleKey   contextKey = "title"
-	errorKey   contextKey = "error"
-	decoderKey contextKey = "decoder"
-	modeKey    contextKey = "mode"
-	linksKey   contextKey = "links"
-	scriptsKey contextKey = "scripts"
-	funcMapKey contextKey = "funcMap"
+	titleKey        contextKey = "title"
+	errorKey        contextKey = "error"
+	decoderKey      contextKey = "decoder"
+	modeKey         contextKey = "mode"
+	linksKey        contextKey = "links"
+	scriptsKey      contextKey = "scripts"
+	funcMapKey      contextKey = "funcMap"
+	renderTargetKey contextKey = "renderTarget"
 
 	// internal keys
 	paramsContextKey      contextKey = "params"
@@ -32,8 +33,8 @@ const (
 	ModeProduction  Mode = "production"
 )
 
-func With[T any](req *http.Request, key any, value T) {
-	*req = *req.WithContext(context.WithValue(req.Context(), key, value))
+func With[T any](req *http.Request, key any, value T) *http.Request {
+	return req.WithContext(context.WithValue(req.Context(), key, value))
 }
 
 func Use[T any](req *http.Request, key any) (T, bool) {
@@ -44,32 +45,32 @@ func Use[T any](req *http.Request, key any) (T, bool) {
 	return noop, false
 }
 
-func withError(ctx context.Context, err error) context.Context {
-	return context.WithValue(ctx, errorKey, err)
+func withError(req *http.Request, err error) *http.Request {
+	return With(req, errorKey, err)
 }
 
-func UseError(ctx context.Context) error {
-	if err, ok := ctx.Value(errorKey).(error); ok {
-		return err
+func UseError(req *http.Request) error {
+	err, ok := Use[error](req, errorKey)
+	if !ok {
+		return nil
 	}
-	return nil
+	return err
 }
 
 func withDecoder(ctx context.Context, d *schema.Decoder) context.Context {
 	return context.WithValue(ctx, decoderKey, d)
 }
 
-func UseDecoder(ctx context.Context) *schema.Decoder {
-	if d, ok := ctx.Value(decoderKey).(*schema.Decoder); ok {
-		return d
-	}
-	return nil
+func UseDecoder(req *http.Request) (*schema.Decoder, bool) {
+	return Use[*schema.Decoder](req, decoderKey)
 }
 
+// Deprecated
 func WithMode(ctx context.Context, mode Mode) context.Context {
 	return context.WithValue(ctx, modeKey, mode)
 }
 
+// Deprecated
 func UseMode(ctx context.Context) Mode {
 	if mode, ok := ctx.Value(modeKey).(Mode); ok {
 		return mode
@@ -79,15 +80,12 @@ func UseMode(ctx context.Context) Mode {
 
 // WithTitle sets the page title in the request context.
 func WithTitle(req *http.Request, title string) *http.Request {
-	return req.WithContext(context.WithValue(req.Context(), titleKey, title))
+	return With(req, titleKey, title)
 }
 
 // UseTitle returns the page title set in the request context.
-func UseTitle(req *http.Request) string {
-	if title, ok := req.Context().Value(titleKey).(string); ok {
-		return title
-	}
-	return ""
+func UseTitle(req *http.Request) (string, bool) {
+	return Use[string](req, titleKey)
 }
 
 func WithLink(req *http.Request, link html.LinkTag) *http.Request {
@@ -97,11 +95,11 @@ func WithLink(req *http.Request, link html.LinkTag) *http.Request {
 	} else {
 		links = append(links, link)
 	}
-	return req.WithContext(context.WithValue(req.Context(), linksKey, links))
+	return With(req, linksKey, links)
 }
 
 func UseLinks(req *http.Request) []html.LinkTag {
-	if links, ok := req.Context().Value(linksKey).([]html.LinkTag); ok {
+	if links, ok := Use[[]html.LinkTag](req, linksKey); ok {
 		return links
 	}
 	return nil
@@ -114,27 +112,28 @@ func WithScript(req *http.Request, script html.ScriptTag) *http.Request {
 	} else {
 		scripts = append(scripts, script)
 	}
-	return req.WithContext(context.WithValue(req.Context(), scriptsKey, scripts))
+	return With(req, scriptsKey, scripts)
 }
 
 func UseScripts(req *http.Request) []html.ScriptTag {
-	if scripts, ok := req.Context().Value(scriptsKey).([]html.ScriptTag); ok {
+	if scripts, ok := Use[[]html.ScriptTag](req, scriptsKey); ok {
 		return scripts
 	}
 	return nil
 }
 
-func UseTarget(req *http.Request) string {
-	return req.Header.Get("X-Torque-Target")
+func WithFuncMap(req *http.Request, funcMap tmpl.FuncMap) *http.Request {
+	return With(req, funcMapKey, funcMap)
 }
 
-func WithFuncMap(req *http.Request, funcMap tmpl.FuncMap) {
-	*req = *req.WithContext(context.WithValue(req.Context(), funcMapKey, funcMap))
+func UseFuncMap(req *http.Request) (tmpl.FuncMap, bool) {
+	return Use[tmpl.FuncMap](req, funcMapKey)
 }
 
-func UseFuncMap(req *http.Request) tmpl.FuncMap {
-	if funcMap, ok := req.Context().Value(funcMapKey).(tmpl.FuncMap); ok {
-		return funcMap
-	}
-	return nil
+func UseRenderTarget(req *http.Request) (string, bool) {
+	return Use[string](req, renderTargetKey)
+}
+
+func WithRenderTarget(req *http.Request, target string) *http.Request {
+	return With(req, renderTargetKey, target)
 }

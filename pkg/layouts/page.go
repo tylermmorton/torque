@@ -71,8 +71,8 @@ func (ctl *pageController) Load(req *http.Request) (pageViewModel, error) {
 	var links = torque.UseLinks(req)
 	var scripts = torque.UseScripts(req)
 
-	var title = torque.UseTitle(req)
-	if len(title) == 0 {
+	var title, ok = torque.UseTitle(req)
+	if !ok || len(title) == 0 {
 		title = ctl.Title
 	}
 

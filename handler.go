@@ -34,13 +34,14 @@ type handlerImpl[T ViewModel] struct {
 	handler       http.Handler
 	action        Action
 	loader        Loader[T]
-	headers       ResponseHeaders[T]
+	headers       HeaderRenderer[T]
 	rendererT     Renderer[T]
 	rendererVM    DynamicRenderer
 	guards        []Guard
 	plugins       []Plugin
 	errorBoundary ErrorBoundary
 	panicBoundary PanicBoundary
+	hookProvider  HookProvider
 }
 
 func createHandlerImpl[T ViewModel]() *handlerImpl[T] {
@@ -78,7 +79,6 @@ func createHandlerImpl[T ViewModel]() *handlerImpl[T] {
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	didRouteMatch, ok := req.Context().Value(routerMatchContextKey).(bool)
 	didRouteMatch = didRouteMatch && ok
-	didRouteMatch = didRouteMatch && req.Method == http.MethodGet
 
 	if h.router != nil && !didRouteMatch {
 		log.Printf("[Router] (%s) %s -> %T\n", req.Method, req.URL, h.ctl)
@@ -87,10 +87,10 @@ func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 		ctx := context.WithValue(req.Context(), routerMatchContextKey, true)
 		// Match the request with the router
 		h.router.ServeHTTP(wr, req.WithContext(ctx))
-	} else if h.GetParent() != nil && h.GetParent().HasOutlet() {
+	} else if req.Method == http.MethodGet && h.GetParent() != nil && h.GetParent().HasOutlet() {
 		h.serveOutlet(wr, req)
 	} else {
-		h.serveRequest(wr, req)
+		_ = h.serveRequest(wr, req)
 	}
 }
 
@@ -104,7 +104,7 @@ func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) 
 
 	// child before parent, because it can set additional context
 	// while handling the request
-	h.serveRequest(childResp, childReq)
+	childReq = h.serveRequest(childResp, childReq)
 	if childResp.Code != http.StatusOK {
 		// child route is indicating a non-200 error code, do not
 		// render as outlet, maybe it's a redirect
@@ -119,6 +119,7 @@ func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) 
 		return
 	}
 
+	// pass the childReq context here, because it might have been modified by hooks
 	h.GetParent().ServeHTTP(parentResp, parentReq.WithContext(childReq.Context()))
 	t := template.Must(template.New("outlet").Parse(parentResp.Body.String()))
 
@@ -137,11 +138,15 @@ func (h *handlerImpl[T]) serveOutlet(wr http.ResponseWriter, req *http.Request) 
 
 // serveRequest is the core handler logic for torque. It is responsible for handling incoming
 // HTTP requests and applying the appropriate API methods from the Controller API.
-func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request) {
+//
+// serveRequest returns the request object because it can modify the request context via hooks
+// and plugins. This is only needed during serveOutlet, where the request context is then passed
+// along to the parent handler.
+func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request) *http.Request {
 	var err error
 	// attach the decoder to the request context so it can be used
 	// by handlers in the request stack
-	*req = *req.WithContext(withDecoder(req.Context(), h.decoder))
+	req = req.WithContext(withDecoder(req.Context(), h.decoder))
 
 	// defer a panic recoverer and pass panics to the PanicBoundary
 	defer func() {
@@ -153,11 +158,28 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 
 	log.Printf("[Request] (%s) %s -> %T\n", req.Method, req.URL, h.ctl)
 
-	// plugins can be used to set up the request context
-	err = h.handlePluginSetup(wr, req)
+	// some request headers set by the client can be used to
+	// affect the request context
+	req, err = h.handleRequestHeaders(req)
 	if err != nil {
 		h.handleError(wr, req, err)
-		return
+		return nil
+	}
+
+	// plugins can also be used to set up the request context
+	req, err = h.handlePluginSetup(wr, req)
+	if err != nil {
+		h.handleError(wr, req, err)
+		return nil
+	}
+
+	// hooks can be used to modify the request safely, before it
+	// is handled by the controller. modifications are returned
+	// and propagated to parent handlers
+	req, err = h.handleHooks(req)
+	if err != nil {
+		h.handleError(wr, req, err)
+		return nil
 	}
 
 	// guards can prevent a request from going through by
@@ -166,7 +188,7 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 		if h := guard(req); h != nil {
 			log.Printf("[Guard] %s -> handled by %T\n", req.URL, guard)
 			h(wr, req)
-			return
+			return nil
 		}
 	}
 
@@ -174,7 +196,7 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 	// it short-circuits a majority of the controller flow. Just serve the request.
 	if h.handler != nil {
 		h.handler.ServeHTTP(wr, req)
-		return
+		return nil
 	}
 
 	switch req.Method {
@@ -184,38 +206,41 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 			if err != nil {
 				h.handleError(wr, req, err)
 			}
-			return
+			return nil
 		}
 
 		vm, err := h.handleLoader(wr, req)
 		if err != nil && !errors.Is(err, errNotImplemented) {
 			h.handleError(wr, req, err)
-			return
+			return nil
 		}
 
-		err = h.handleResponseHeaders(wr, req, vm)
+		err = h.handleRenderHeaders(wr, req, vm)
 		if err != nil {
 			h.handleError(wr, req, err)
-			return
+			return nil
 		}
 
 		err = h.handleRender(wr, req, vm)
 		if err != nil {
 			h.handleError(wr, req, err)
-			return
+			return nil
 		}
 
 	case http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete:
 		err = h.handleAction(wr, req)
 		if err != nil {
 			h.handleError(wr, req, err)
-			return
+			return nil
 		}
 
 	default:
 		http.Error(wr, "method not allowed", http.StatusMethodNotAllowed)
-		return
+		return nil
 	}
+
+	// return request, in case it was modified by any hooks or plugins
+	return req
 }
 
 func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request) error {
@@ -324,14 +349,14 @@ func (h *handlerImpl[T]) handlePanic(wr http.ResponseWriter, req *http.Request, 
 	}
 }
 
-func (h *handlerImpl[T]) handleResponseHeaders(wr http.ResponseWriter, req *http.Request, vm T) error {
+func (h *handlerImpl[T]) handleRenderHeaders(wr http.ResponseWriter, req *http.Request, vm T) error {
 	if h.headers != nil {
-		err := h.headers.Headers(wr, req, vm)
+		err := h.headers.RenderHeaders(wr, req, vm)
 		if err != nil {
-			log.Printf("[Headers] %s -> error: %s\n", req.URL, err.Error())
+			log.Printf("[RenderHeaders] %s -> error: %s\n", req.URL, err.Error())
 			return err
 		} else {
-			log.Printf("[Headers] %s -> success\n", req.URL)
+			log.Printf("[RenderHeaders] %s -> success\n", req.URL)
 		}
 	}
 	return nil
@@ -371,21 +396,21 @@ func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request,
 }
 
 func (h *handlerImpl[T]) handleRedirectError(wr http.ResponseWriter, req *http.Request, err error) bool {
-	if err, ok := err.(*errRedirect); !ok {
+	if redirectErr, ok := err.(*errRedirect); !ok {
 		return false
 	} else {
-		http.Redirect(wr, req, err.url, err.status)
+		http.Redirect(wr, req, redirectErr.url, redirectErr.status)
 		return true
 	}
 }
 
 func (h *handlerImpl[T]) handleReloadError(wr http.ResponseWriter, req *http.Request, err error) bool {
-	if err, ok := err.(*errReload); !ok {
+	if reloadErr, ok := err.(*errReload); !ok {
 		return false
 	} else if req.Method == http.MethodGet {
 		panic(errors.New("ReloadWithError can only be returned from an Action"))
-	} else if err.err != nil {
-		req = req.WithContext(withError(req.Context(), err.err))
+	} else if reloadErr.err != nil {
+		req = withError(req, reloadErr.err)
 	}
 
 	log.Printf("[ReloadWithError] %s -> %s\n", req.URL, err.Error())
@@ -396,13 +421,40 @@ func (h *handlerImpl[T]) handleReloadError(wr http.ResponseWriter, req *http.Req
 	return true
 }
 
-func (h *handlerImpl[T]) handlePluginSetup(_ http.ResponseWriter, req *http.Request) error {
+func (h *handlerImpl[T]) handleRequestHeaders(req *http.Request) (*http.Request, error) {
+	if target := req.Header.Get(HeaderKeyRenderTarget); len(target) != 0 {
+		req = WithRenderTarget(req, target)
+	}
+	return req, nil
+}
+
+func (h *handlerImpl[T]) handleHooks(req *http.Request) (*http.Request, error) {
+	var url = req.URL.String()
+	var err error
+	var start = time.Now()
+	if h.hookProvider != nil {
+		req, err = h.hookProvider.Hooks(req)
+		if err != nil {
+			log.Printf("[Hooks] %s -> error: %s\n", url, err.Error())
+			return nil, err
+		} else {
+			log.Printf("[Hooks] %s -> success (%dms)\n", url, time.Since(start).Milliseconds())
+		}
+	}
+	return req, nil
+}
+
+func (h *handlerImpl[T]) handlePluginSetup(_ http.ResponseWriter, req *http.Request) (*http.Request, error) {
 	var err error
 	for _, plugin := range h.plugins {
 		err = plugin.Setup(req)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		req, err = plugin.Hooks(req)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return req, nil
 }

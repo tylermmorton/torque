@@ -207,7 +207,7 @@ var _ = Describe("Handler API", func() {
 					},
 					MockLoader[MockViewModel]{
 						LoadFunc: func(req *http.Request) (MockViewModel, error) {
-							err := torque.UseError(req.Context())
+							err := torque.UseError(req)
 							Expect(err).NotTo(BeNil())
 							Expect(err.Error()).To(Equal("hello world"))
 							return MockViewModel{Message: "success!"}, nil

@@ -39,7 +39,7 @@ type router struct {
 	prefix string
 }
 
-func createRouter[T ViewModel](h *handlerImpl[T], ctl Controller) *router {
+func createRouter[T ViewModel](h *handlerImpl[T], routeFunc func(r Router)) *router {
 	r := &router{
 		h:      h,
 		prefix: h.path,
@@ -49,9 +49,7 @@ func createRouter[T ViewModel](h *handlerImpl[T], ctl Controller) *router {
 		},
 	}
 
-	if rp, ok := ctl.(RouterProvider); ok {
-		rp.Router(r)
-	}
+	routeFunc(r)
 
 	return r
 }

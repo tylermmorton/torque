@@ -10,11 +10,14 @@ type Handler interface {
 	setOverride(http.Handler)
 
 	getController() Controller
+	getHookProvider() HookProvider
 	getRouter() *router
 
 	setPath(string)
 	GetPath() string
 
+	addChild(child Handler)
+	getChildren() []Handler
 	setParent(Handler)
 	GetParent() Handler
 
@@ -40,7 +43,6 @@ func (h *handlerImpl[T]) setPath(pattern string) {
 }
 
 func (h *handlerImpl[T]) GetPath() string {
-
 	return h.path
 }
 
@@ -48,12 +50,37 @@ func (h *handlerImpl[T]) getController() Controller {
 	return h.ctl
 }
 
+func (h *handlerImpl[T]) getHookProvider() HookProvider {
+	return h.hookProvider
+}
+
 func (h *handlerImpl[T]) getRouter() *router {
 	return h.router
 }
 
+func (h *handlerImpl[T]) addChild(child Handler) {
+	h.children = append(h.children, child)
+	if child.GetParent() != h {
+		child.setParent(h)
+	}
+}
+
+func (h *handlerImpl[T]) getChildren() []Handler {
+	return h.children
+}
+
 func (h *handlerImpl[T]) setParent(parent Handler) {
 	h.parent = parent
+	var found = false
+	for _, child := range parent.getChildren() {
+		if child == h {
+			found = true
+			break
+		}
+	}
+	if !found {
+		parent.addChild(h)
+	}
 }
 
 func (h *handlerImpl[T]) GetParent() Handler {

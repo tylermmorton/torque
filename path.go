@@ -1,9 +1,10 @@
 package torque
 
 import (
-	"github.com/pkg/errors"
 	"net/http"
 	"net/url"
+
+	"github.com/pkg/errors"
 )
 
 type PathParams map[string]string
@@ -27,8 +28,8 @@ func GetPathParam(req *http.Request, key string) string {
 }
 
 func DecodePathParams[T any](req *http.Request) (*T, error) {
-	d := UseDecoder(req.Context())
-	if d == nil {
+	d, ok := UseDecoder(req)
+	if !ok {
 		return nil, ErrDecoderUndefined
 	}
 

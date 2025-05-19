@@ -46,11 +46,6 @@ type Loader[T ViewModel] interface {
 	Load(req *http.Request) (T, error)
 }
 
-// Headers can be used to render response headers to the client
-type ResponseHeaders[T ViewModel] interface {
-	Headers(wr http.ResponseWriter, req *http.Request, vm T) error
-}
-
 type RenderFunc[T ViewModel] func(wr http.ResponseWriter, req *http.Request, vm T) error
 
 // Renderer is executed during an HTTP GET request after the Loader
@@ -73,8 +68,12 @@ type DynamicRenderer interface {
 	Render(wr http.ResponseWriter, req *http.Request, vm ViewModel) error
 }
 
-type LayoutProvider interface {
-	Layout() Handler
+// HeaderRenderer is executed before the Renderer and can be used as a hook
+// to attach HTTP headers to the response. This is useful if your ViewModel
+// implements TemplateProvider and there is no need to implement the Renderer
+// interface, you can still set headers on the response.
+type HeaderRenderer[T ViewModel] interface {
+	RenderHeaders(wr http.ResponseWriter, req *http.Request, vm T) error
 }
 
 // EventSource is a server-sent event stream. It is used to stream data to the
@@ -103,21 +102,28 @@ type PanicBoundary interface {
 	PanicBoundary(wr http.ResponseWriter, req *http.Request, err error) http.HandlerFunc
 }
 
-// TODO(v2.1) Easily add a deadline to a request
-//type DeadlineBoundary interface {
-//	ProvideDeadline(req *http.Request) (deadline time.Time, ok bool)
-//	DeadlineBoundary(req *http.Request) http.HandlerFunc
-//}
+// HookProvider is executed during a request and allows for modification of the request before
+// it is handled. This can be used to add additional values to the request's context. Values added
+// to the context are available to all subsequent handler methods such as Loader, ErrorBoundary,
+// etc.
+//
+// Note that values added to the context are also propagated to other controllers when rendering
+// an outlet chain. This is especially useful for passing template data to layouts before they
+// are rendered.
+type HookProvider interface {
+	Hooks(req *http.Request) (*http.Request, error)
+}
 
-// TODO(v2.1) Context driven boundaries may be useful in some scenarios
-//type CancelBoundary interface {
-//	CancelBoundary(wr http.ResponseWriter, req *http.Request) http.HandlerFunc
-//}
-
-// TODO(v2.1) Each controller can specify a CORS configuration that applies to its subtree
-//type CORSProvider interface {
-//	CORS() []string
-//}
+// LayoutProvider is executed when the Controller is first initialized. It is responsible for
+// providing the layout to wrap the Controller. A layout is another controller that renders a
+// template containing an {{outlet}} directive. Both controllers are executed in response to a
+// request, and the content is merged, with the layout being the parent and the child being the
+// controller implementing LayoutProvider.
+//
+// Note that Controllers can be wrapped indefinitely.
+type LayoutProvider interface {
+	Layout() Handler
+}
 
 // RouterProvider is executed when the torque Controller is first initialized. Using
 // the given Router interface, one can register additional handlers, middleware, etc.
@@ -140,31 +146,50 @@ type GuardProvider interface {
 	Guards() []Guard
 }
 
+// PluginProvider is an interface for plugins that can be used to extend the torque framework.
+//
+// /!\ This interface is experimental and may change in the future. /!\
 type PluginProvider interface {
 	Plugins() []Plugin
 }
 
-func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm ViewModel) error {
-	var (
-		err error
-	)
+// TODO(v2.1) Easily add a deadline to a request, exceeded deadlines get
+//   sent to the ErrorBoundary wrapped in a context.DeadlineExceeded error.
+//type DeadlineProvider interface {
+//	Deadline(req *http.Request) (deadline time.Time, ok bool)
+//}
 
-	// check if the controller is a pointer before asserting any types.
+// TODO(v2.1) Context driven boundaries may be useful in some scenarios
+//type DeadlineBoundary interface {
+//	DeadlineBoundary(wr http.ResponseWriter, req *http.Request) http.HandlerFunc
+//}
+//type CancelBoundary interface {
+//	CancelBoundary(wr http.ResponseWriter, req *http.Request) http.HandlerFunc
+//}
+
+func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm ViewModel) error {
+	var err error
+
+	// the controller instance must be a pointer to a struct
+	// before asserting any of its interface implementations.
 	if reflect.ValueOf(ctl).Kind() != reflect.Ptr {
 		return fmt.Errorf("controller type %T is not a pointer", ctl)
+	}
+
+	if action, ok := ctl.(Action); ok {
+		h.action = action
 	}
 
 	if loader, ok := ctl.(Loader[T]); ok {
 		h.loader = loader
 	}
 
-	if headers, ok := ctl.(ResponseHeaders[T]); ok {
-		h.headers = headers
-	}
-
 	// explicit Renderer implementations take precedence
-	if renderer, ok := ctl.(Renderer[T]); ok {
-		h.rendererT = renderer
+	// over implicit template renderer
+	if rendererT, ok := ctl.(Renderer[T]); ok {
+		h.rendererT = rendererT
+	} else if rendererVM, ok := ctl.(DynamicRenderer); ok {
+		h.rendererVM = rendererVM
 	} else if tp, ok := vm.(tmpl.TemplateProvider); ok {
 		h.rendererT, _, err = createTemplateRenderer[T](tp)
 		if err != nil {
@@ -172,8 +197,8 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 		}
 	}
 
-	if action, ok := ctl.(Action); ok {
-		h.action = action
+	if headers, ok := ctl.(HeaderRenderer[T]); ok {
+		h.headers = headers
 	}
 
 	if eventSource, ok := ctl.(EventSource); ok {
@@ -188,16 +213,20 @@ func assertImplementations[T ViewModel](h *handlerImpl[T], ctl Controller, vm Vi
 		h.panicBoundary = panicBoundary
 	}
 
+	if hookProvider, ok := ctl.(HookProvider); ok {
+		h.hookProvider = hookProvider
+	}
+
 	if layoutProvider, ok := ctl.(LayoutProvider); ok {
 		layoutHandler := layoutProvider.Layout()
 		if !layoutHandler.HasOutlet() {
 			return fmt.Errorf("template for controller type %T must provide an {{ outlet }} to be a layout", layoutHandler.getController())
 		}
-		h.parent = layoutHandler
+		h.setParent(layoutHandler)
 	}
 
-	if _, ok := ctl.(RouterProvider); ok {
-		h.router = createRouter[T](h, ctl)
+	if routerProvider, ok := ctl.(RouterProvider); ok {
+		h.router = createRouter[T](h, routerProvider.Router)
 	}
 
 	if guardProvider, ok := ctl.(GuardProvider); ok {

@@ -21,7 +21,7 @@ type Renderer interface {
 // ContextProvider enables adding data to the context before
 // any Loaders are executed.
 type ContextProvider interface {
-	Provide(req *http.Request) *http.Request
+	Context(req *http.Request) *http.Request
 }
 
 type Action interface {

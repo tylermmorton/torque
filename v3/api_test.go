@@ -29,6 +29,12 @@ func (v *ViewModel) Load(req *http.Request) error {
 	return nil
 }
 
+func (v *ViewModel) Context(req *http.Request) *http.Request {
+	req = torque.Provide(req, "hello", "value")
+
+	return req
+}
+
 func TestApp(t *testing.T) {
 	r := torque.NewRouter()
 	r.Handle("/", torque.MustNewHandler[ViewModel]())

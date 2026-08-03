@@ -41,6 +41,8 @@ func MustNewHandler[T ViewModel]() http.Handler {
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	var vm any = new(T)
 
+	req = h.handleContext(wr, req, vm)
+
 	switch req.Method {
 	case http.MethodGet:
 		err := h.handleLoader(wr, req, vm)
@@ -61,6 +63,10 @@ func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
+}
+
+func (h *handlerImpl[T]) handleContext(wr http.ResponseWriter, req *http.Request, vm ViewModel) *http.Request {
+	return Context(req, vm)
 }
 
 func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {

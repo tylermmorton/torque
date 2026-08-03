@@ -92,24 +92,16 @@ func (h *handlerImpl[T]) handleLoader(wr http.ResponseWriter, req *http.Request,
 
 func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {
 	if r, ok := vm.(Renderer); ok {
-		err := r.Render(wr, req)
-		if err != nil {
-			return err
-		}
-	} else if h.template != nil {
-		err := h.template.Render(wr, vm)
-		if err != nil {
-			return err
-		}
+		return r.Render(wr, req)
 	} else if req.Header.Get("Content-Type") == "application/json" {
 		byt, err := json.Marshal(vm)
 		if err != nil {
 			return err
 		}
 		_, err = wr.Write(byt)
-		if err != nil {
-			return err
-		}
+		return err
+	} else if h.template != nil {
+		return h.template.Render(wr, vm)
 	}
 
 	return nil

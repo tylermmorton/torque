@@ -10,6 +10,10 @@ type TemplateProvider interface {
 	Template() string
 }
 
+type FuncMapProvider interface {
+	FuncMap() FuncMap
+}
+
 type Loader interface {
 	Load(req *http.Request) error
 }

@@ -12,18 +12,14 @@ import (
 
 func (*ViewModel) Template() string {
 	//language=html
-	return `
-	<div>
-		{{ outlet "/path/to/{{ .Ident }}" }}
-	</div>
-`
+	return `<div>Hello, {{ .FirstName }}</div>`
 }
 
 type ViewModel struct {
 	FirstName string `json:"first_name"`
 }
 
-func (v *ViewModel) Load(req *http.Request) error {
+func (v *ViewModel) Load(_ *http.Request) error {
 	v.FirstName = "Tyler"
 
 	return nil
@@ -38,6 +34,15 @@ func (v *ViewModel) Context(req *http.Request) *http.Request {
 func TestApp(t *testing.T) {
 	r := torque.NewRouter()
 	r.Handle("/", torque.MustNewHandler[ViewModel]())
+
+	t.Run("get_returns_rendered_html", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		require.Equal(t, http.StatusOK, rec.Code)
+		require.Equal(t, "<div>Hello, Tyler</div>", rec.Body.String())
+	})
 
 	t.Run("get_returns_loaded_json", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)

@@ -7,10 +7,54 @@ import (
 	"net/http"
 )
 
+type handlerInternal interface {
+	http.Handler
+
+	GetParent() handlerInternal
+	setParent(p handlerInternal)
+
+	getRouter() *routerImpl
+
+	GetTemplate() Template[TemplateProvider]
+
+	setRenderOutlet(val bool)
+	HasRenderOutlet() bool
+}
+
 type handlerImpl[T ViewModel] struct {
+	// parent is the handler that wraps this handler
+	parent handlerInternal
+	// router is the internal router for this handler
+	router *routerImpl
 	// template is the internal template, set if the underlying view model type
 	// implements the TemplateProvider interface.
 	template Template[TemplateProvider]
+	// hasOutlet is a flag indicating the internal template defines an outlet
+	hasOutlet bool
+}
+
+func (h *handlerImpl[T]) GetParent() handlerInternal {
+	return h.parent
+}
+
+func (h *handlerImpl[T]) setParent(p handlerInternal) {
+	h.parent = p
+}
+
+func (h *handlerImpl[T]) getRouter() *routerImpl {
+	return h.router
+}
+
+func (h *handlerImpl[T]) GetTemplate() Template[TemplateProvider] {
+	return h.template
+}
+
+func (h *handlerImpl[T]) setRenderOutlet(val bool) {
+	h.hasOutlet = val
+}
+
+func (h *handlerImpl[T]) HasRenderOutlet() bool {
+	return h.hasOutlet
 }
 
 func NewHandler[T ViewModel]() (http.Handler, error) {
@@ -19,8 +63,28 @@ func NewHandler[T ViewModel]() (http.Handler, error) {
 	vmTyp := any(new(T))
 	handler := &handlerImpl[T]{}
 
+	handler.router = &routerImpl{
+		root: &trieNode{
+			children: make(map[string]*trieNode),
+			handlers: map[string]http.Handler{"*": handler},
+		},
+		prefix:     "",
+		contextMap: make(map[any]any),
+	}
+
 	if tp, ok := vmTyp.(TemplateProvider); ok {
-		handler.template, err = CompileTemplate(tp)
+		handler.template, err = CompileTemplate(tp,
+			TemplateCompilerOptionAnalyzers(
+				templateAnalyzerOutletProvider(handler),
+			),
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if rp, ok := vmTyp.(RouterProvider); ok {
+		err = rp.Router(handler.router)
 		if err != nil {
 			return nil, err
 		}
@@ -39,6 +103,21 @@ func MustNewHandler[T ViewModel]() http.Handler {
 }
 
 func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+	didRouteMatch, ok := req.Context().Value(routerMatchedContextKey).(bool)
+	didRouteMatch = didRouteMatch && ok
+
+	if !didRouteMatch {
+		h.router.ServeHTTP(wr, req)
+		return
+	} else if req.Method == http.MethodGet && h.GetParent() != nil && h.GetParent().HasRenderOutlet() {
+		return
+	}
+
+	h.serveRequest(wr, req)
+	return
+}
+
+func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request) {
 	var vm any = new(T)
 
 	req = h.handleContext(wr, req, vm)

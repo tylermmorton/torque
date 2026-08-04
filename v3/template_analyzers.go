@@ -26,3 +26,27 @@ var TemplateAnalyzerStaticCheck = func(opts TemplateAnalyzerStaticCheckOptions) 
 		return nil, nil
 	}
 }
+
+var templateAnalyzerOutletProvider = func(h handlerInternal) TemplateAnalyzer {
+	const outletIdent = "outlet"
+
+	return func(analysis *TemplateAnalysis) (TemplateAnalyzerResult, error) {
+		var hasOutlet bool
+
+		TraverseTemplate(analysis.Root, func(node parse.Node) {
+			switch node := node.(type) {
+			case *parse.IdentifierNode:
+				if node.Ident == outletIdent && hasOutlet == true {
+					analysis.AddError(node, "outlet can only be defined once per template")
+				} else if node.Ident == outletIdent {
+					hasOutlet = true
+					analysis.AddFunc(outletIdent, func() string { return "{{ . }}" })
+				}
+			}
+		})
+
+		h.setRenderOutlet(hasOutlet)
+
+		return nil, nil
+	}
+}

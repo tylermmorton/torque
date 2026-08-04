@@ -6,7 +6,6 @@ import (
 	"io"
 	"reflect"
 	"strings"
-	"sync"
 )
 
 type Template[T TemplateProvider] interface {
@@ -43,9 +42,16 @@ func TemplateCompilerOptionSkipChecks() TemplateCompilerOption {
 	}
 }
 
+func TemplateCompilerOptionAnalyzers(analyzers ...TemplateAnalyzer) TemplateCompilerOption {
+	return func(opts *templateCompilerOptions) {
+		opts.Analyzers = append(opts.Analyzers, analyzers...)
+	}
+}
+
 type templateCompilerOptions struct {
 	LeftDelim, RightDelim string
 	FuncMap               FuncMap
+	Analyzers             []TemplateAnalyzer
 	SkipChecks            bool
 }
 
@@ -54,6 +60,7 @@ func CompileTemplate[T TemplateProvider](tp T, opts ...TemplateCompilerOption) (
 		LeftDelim:  "{{",
 		RightDelim: "}}",
 		FuncMap:    make(FuncMap),
+		Analyzers:  make([]TemplateAnalyzer, 0),
 		SkipChecks: false,
 	}
 	for _, opt := range opts {
@@ -65,7 +72,6 @@ func CompileTemplate[T TemplateProvider](tp T, opts ...TemplateCompilerOption) (
 
 type templateImpl[T TemplateProvider] struct {
 	template *template.Template
-	mu       *sync.RWMutex
 }
 
 func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateCompilerOptions) (*templateImpl[T], error) {
@@ -76,9 +82,10 @@ func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateComp
 	)
 
 	if !opts.SkipChecks {
-		analyzers := []TemplateAnalyzer{
+		analyzers := opts.Analyzers
+		analyzers = append(analyzers,
 			TemplateAnalyzerStaticCheck(TemplateAnalyzerStaticCheckOptions{}),
-		}
+		)
 
 		analysis, err := AnalyzeTemplate(tp,
 			analyzeTemplateOptionCompiler(opts),
@@ -91,6 +98,12 @@ func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateComp
 		if len(analysis.Errors) != 0 {
 			return nil, fmt.Errorf("template compilation failed with errors:"+
 				"\n%s", strings.Join(analysis.Errors, "\n"))
+		}
+
+		for _, result := range analysis.Results {
+			if result, ok := result.(*templateAnalyzerResultFuncMapEntry); ok {
+				funcMap[result.Key] = result.Value
+			}
 		}
 	}
 
@@ -143,6 +156,5 @@ func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateComp
 
 	return &templateImpl[T]{
 		template: t,
-		mu:       &sync.RWMutex{},
 	}, nil
 }

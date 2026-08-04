@@ -18,6 +18,8 @@ type Loader interface {
 	Load(req *http.Request) error
 }
 
+// HeaderRenderer
+
 type Renderer interface {
 	Render(wr http.ResponseWriter, req *http.Request) error
 }
@@ -31,3 +33,17 @@ type ContextProvider interface {
 type Action interface {
 	Action(wr http.ResponseWriter, req *http.Request) error
 }
+
+type RouterProvider interface {
+	Router(r Router) error
+}
+
+// RouterProvider
+// ErrorBoundary
+// PanicBoundary
+
+// MixinProvider
+
+// StylesProvider
+// Builds one stylesheet and injects it into the page
+// ScriptsProvider

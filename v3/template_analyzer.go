@@ -31,6 +31,18 @@ type TemplateAnalysis struct {
 	Warnings []string
 }
 
+type templateAnalyzerResultFuncMapEntry struct {
+	Key   string
+	Value any
+}
+
+func (t *TemplateAnalysis) AddFunc(key string, val any) {
+	t.Results = append(t.Results, &templateAnalyzerResultFuncMapEntry{
+		Key:   key,
+		Value: val,
+	})
+}
+
 func (t *TemplateAnalysis) AddError(node parse.Node, errorText string) {
 	t.Errors = append(t.Errors, fmt.Sprintf("%v, %s", node.Position(), errorText))
 }

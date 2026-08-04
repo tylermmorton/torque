@@ -15,6 +15,8 @@ const (
 	errorKey         contextKey = "error"
 	decoderKey       contextKey = "decoder"
 	paramsContextKey contextKey = "params"
+
+	routerMatchedContextKey contextKey = "router_matched"
 )
 
 func Provide[T any](req *http.Request, key any, value T) *http.Request {

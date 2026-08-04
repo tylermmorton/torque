@@ -3,41 +3,27 @@ package torque
 import (
 	"context"
 	"net/http"
+	"reflect"
+	"sync"
 
 	"github.com/gorilla/schema"
-	"github.com/tylermmorton/tmpl"
-	"github.com/tylermmorton/torque/pkg/templates/html"
 )
 
 type contextKey string
 
 const (
-	titleKey        contextKey = "title"
-	errorKey        contextKey = "error"
-	decoderKey      contextKey = "decoder"
-	modeKey         contextKey = "mode"
-	linksKey        contextKey = "links"
-	scriptsKey      contextKey = "scripts"
-	funcMapKey      contextKey = "funcMap"
-	renderTargetKey contextKey = "renderTarget"
+	errorKey         contextKey = "error"
+	decoderKey       contextKey = "decoder"
+	paramsContextKey contextKey = "params"
 
-	// internal keys
-	paramsContextKey      contextKey = "params"
-	routerMatchContextKey contextKey = "outlet-flow"
+	routerMatchedContextKey contextKey = "router_matched"
 )
 
-type Mode string
-
-const (
-	ModeDevelopment Mode = "development"
-	ModeProduction  Mode = "production"
-)
-
-func With[T any](req *http.Request, key any, value T) *http.Request {
+func Provide[T any](req *http.Request, key any, value T) *http.Request {
 	return req.WithContext(context.WithValue(req.Context(), key, value))
 }
 
-func Use[T any](req *http.Request, key any) (T, bool) {
+func Inject[T any](req *http.Request, key any) (T, bool) {
 	var noop T
 	if value, ok := req.Context().Value(key).(T); ok {
 		return value, true
@@ -46,15 +32,111 @@ func Use[T any](req *http.Request, key any) (T, bool) {
 }
 
 func withError(req *http.Request, err error) *http.Request {
-	return With(req, errorKey, err)
+	return Provide(req, errorKey, err)
 }
 
 func UseError(req *http.Request) error {
-	err, ok := Use[error](req, errorKey)
+	err, ok := Inject[error](req, errorKey)
 	if !ok {
 		return nil
 	}
 	return err
+}
+
+// contextStep describes one direct field that is itself a ContextProvider.
+type contextStep struct {
+	index     int
+	isPointer bool
+}
+
+// contextPlan is the precomputed, cached recipe for a single struct type. It only
+// ever records type-level facts (indices), never instance values.
+type contextPlan struct {
+	steps []contextStep
+}
+
+var (
+	contextPlanCache    sync.Map
+	contextProviderType = reflect.TypeOf((*ContextProvider)(nil)).Elem()
+)
+
+// compileContextPlan builds the plan for t once, then serves it from cache.
+func compileContextPlan(t reflect.Type) *contextPlan {
+	if cached, ok := contextPlanCache.Load(t); ok {
+		return cached.(*contextPlan)
+	}
+
+	plan := &contextPlan{}
+	if t.Kind() == reflect.Struct {
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+			if !f.IsExported() {
+				continue
+			}
+			switch {
+			case f.Type.Kind() == reflect.Ptr && f.Type.Implements(contextProviderType):
+				plan.steps = append(plan.steps, contextStep{index: i, isPointer: true})
+			case reflect.PointerTo(f.Type).Implements(contextProviderType):
+				plan.steps = append(plan.steps, contextStep{index: i, isPointer: false})
+			}
+		}
+	}
+
+	actual, _ := contextPlanCache.LoadOrStore(t, plan)
+	return actual.(*contextPlan)
+}
+
+// Context traverses vm in pre-order DFS, calling Context() on each node that
+// implements ContextProvider. Each node receives the req returned by its parent,
+// allowing children to read and override ancestor-provided values. Sibling
+// subtrees are isolated — one sibling's context does not affect another's.
+func Context(req *http.Request, vm any) *http.Request {
+	var vs visitorStack
+	return executeContextPlan(req, reflect.ValueOf(vm), &vs)
+}
+
+func executeContextPlan(req *http.Request, v reflect.Value, visitor *visitorStack) *http.Request {
+	elem := v.Elem()
+
+	if elem.Kind() == reflect.Struct {
+		st := elem.Type()
+		visitor.push(st)
+
+		// Pre-order: call Context on current node before descending into children.
+		if cp, ok := v.Interface().(ContextProvider); ok {
+			req = cp.Context(req)
+		}
+
+		for _, step := range compileContextPlan(st).steps {
+			fv := elem.Field(step.index)
+
+			childStruct := fv.Type()
+			if childStruct.Kind() == reflect.Ptr {
+				childStruct = childStruct.Elem()
+			}
+			if visitor.has(childStruct) {
+				continue
+			}
+
+			var child reflect.Value
+			if step.isPointer {
+				if fv.IsNil() {
+					fv.Set(reflect.New(fv.Type().Elem()))
+				}
+				child = fv
+			} else {
+				child = fv.Addr()
+			}
+
+			// Each sibling receives the parent's req; one child's result
+			// does not carry over to the next sibling.
+			executeContextPlan(req, child, visitor)
+		}
+
+		visitor.pop()
+	}
+
+	return req
 }
 
 func withDecoder(ctx context.Context, d *schema.Decoder) context.Context {
@@ -62,78 +144,5 @@ func withDecoder(ctx context.Context, d *schema.Decoder) context.Context {
 }
 
 func UseDecoder(req *http.Request) (*schema.Decoder, bool) {
-	return Use[*schema.Decoder](req, decoderKey)
-}
-
-// Deprecated
-func WithMode(ctx context.Context, mode Mode) context.Context {
-	return context.WithValue(ctx, modeKey, mode)
-}
-
-// Deprecated
-func UseMode(ctx context.Context) Mode {
-	if mode, ok := ctx.Value(modeKey).(Mode); ok {
-		return mode
-	}
-	return ModeProduction
-}
-
-// WithTitle sets the page title in the request context.
-func WithTitle(req *http.Request, title string) *http.Request {
-	return With(req, titleKey, title)
-}
-
-// UseTitle returns the page title set in the request context.
-func UseTitle(req *http.Request) (string, bool) {
-	return Use[string](req, titleKey)
-}
-
-func WithLink(req *http.Request, link html.LinkTag) *http.Request {
-	var links, ok = req.Context().Value(linksKey).([]html.LinkTag)
-	if !ok {
-		links = []html.LinkTag{link}
-	} else {
-		links = append(links, link)
-	}
-	return With(req, linksKey, links)
-}
-
-func UseLinks(req *http.Request) []html.LinkTag {
-	if links, ok := Use[[]html.LinkTag](req, linksKey); ok {
-		return links
-	}
-	return nil
-}
-
-func WithScript(req *http.Request, script html.ScriptTag) *http.Request {
-	var scripts, ok = req.Context().Value(scriptsKey).([]html.ScriptTag)
-	if !ok {
-		scripts = []html.ScriptTag{script}
-	} else {
-		scripts = append(scripts, script)
-	}
-	return With(req, scriptsKey, scripts)
-}
-
-func UseScripts(req *http.Request) []html.ScriptTag {
-	if scripts, ok := Use[[]html.ScriptTag](req, scriptsKey); ok {
-		return scripts
-	}
-	return nil
-}
-
-func WithFuncMap(req *http.Request, funcMap tmpl.FuncMap) *http.Request {
-	return With(req, funcMapKey, funcMap)
-}
-
-func UseFuncMap(req *http.Request) (tmpl.FuncMap, bool) {
-	return Use[tmpl.FuncMap](req, funcMapKey)
-}
-
-func UseRenderTarget(req *http.Request) (string, bool) {
-	return Use[string](req, renderTargetKey)
-}
-
-func WithRenderTarget(req *http.Request, target string) *http.Request {
-	return With(req, renderTargetKey, target)
+	return Inject[*schema.Decoder](req, decoderKey)
 }

@@ -1,4 +1,4 @@
-package torque
+package torque_test
 
 import (
 	"bytes"
@@ -6,16 +6,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/require"
+	"github.com/tylermmorton/torque"
 )
 
-func Test_IsMultipartForm(t *testing.T) {
-	RegisterTestingT(t)
-
+func TestForm_IsMultipartForm(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", &bytes.Buffer{})
 	req.Header.Set("Content-Type", "")
-	Expect(IsMultipartForm(req)).To(BeFalse())
+
+	require.False(t, torque.IsMultipartForm(req))
 
 	req.Header.Set("Content-Type", "multipart/form-data")
-	Expect(IsMultipartForm(req)).To(BeTrue())
+	require.True(t, torque.IsMultipartForm(req))
 }

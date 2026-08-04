@@ -1,10 +1,9 @@
 package torque
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
-
-	"github.com/pkg/errors"
 )
 
 type PathParams map[string]string
@@ -50,7 +49,7 @@ func DecodeAndValidatePathParams[T SelfValidator](req *http.Request) (*T, error)
 	}
 
 	if err := (*res).Validate(req.Context()); err != nil {
-		return nil, errors.Wrap(ErrPathParamValidationFailure, err.Error())
+		return nil, errors.Join(ErrPathParamValidationFailure, err)
 	}
 
 	return res, nil

@@ -2,12 +2,11 @@ package torque
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/schema"
-
-	"github.com/pkg/errors"
 )
 
 type SelfValidator interface {
@@ -53,7 +52,7 @@ func DecodeForm[T any](req *http.Request) (*T, error) {
 	if req.Form == nil {
 		err := req.ParseForm()
 		if err != nil {
-			return nil, errors.Wrap(err, ErrFormParseFailure.Error())
+			return nil, errors.Join(err, ErrFormParseFailure)
 		}
 	}
 
@@ -65,7 +64,7 @@ func DecodeForm[T any](req *http.Request) (*T, error) {
 	var res T
 	err := d.Decode(&res, req.PostForm)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrFormDecodeFailure.Error())
+		return nil, errors.Join(err, ErrFormDecodeFailure)
 	}
 
 	return &res, nil
@@ -75,7 +74,7 @@ func DecodeAndValidateForm[T SelfValidator](req *http.Request) (*T, error) {
 	if req.Form == nil {
 		err := req.ParseForm()
 		if err != nil {
-			return nil, errors.Wrap(err, ErrFormParseFailure.Error())
+			return nil, errors.Join(err, ErrFormParseFailure)
 		}
 	}
 
@@ -87,11 +86,11 @@ func DecodeAndValidateForm[T SelfValidator](req *http.Request) (*T, error) {
 	var res T
 	err := d.Decode(&res, req.PostForm)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrFormDecodeFailure.Error())
+		return nil, errors.Join(err, ErrFormDecodeFailure)
 	}
 
 	if err := res.Validate(req.Context()); err != nil {
-		return nil, errors.Wrap(err, ErrFormValidationFailure.Error())
+		return nil, errors.Join(err, ErrFormValidationFailure)
 	}
 
 	return &res, nil

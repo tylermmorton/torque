@@ -2,8 +2,6 @@ package torque
 
 import (
 	"context"
-	"io/fs"
-	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -17,9 +15,12 @@ type Router interface {
 	http.Handler
 
 	Handle(pattern string, handler http.Handler)
-	HandleFileSystem(pattern string, fs fs.FS)
+	//HandleFileSystem(pattern string, fs fs.FS)
 	Redirect(pattern string, location string, status int)
 	Match(method, pattern string) (http.Handler, PathParams, bool)
+
+	// Add a global template shared with all templates within this router
+	//AddTemplate(name string, tp TemplateProvider)
 }
 
 type Middleware func(http.Handler) http.Handler
@@ -33,28 +34,40 @@ type trieNode struct {
 	paramName string
 }
 
-type router struct {
-	h      Handler
+type routerImpl struct {
+	h          *handlerImpl[ViewModel]
+	contextMap map[any]any
+
 	root   *trieNode
 	prefix string
 }
 
-func createRouter[T ViewModel](h *handlerImpl[T], routeFunc func(r Router)) *router {
-	r := &router{
-		h:      h,
-		prefix: h.path,
+func NewRouter() Router {
+	return &routerImpl{
+		h: &handlerImpl[ViewModel]{},
 		root: &trieNode{
 			children: make(map[string]*trieNode),
-			handlers: map[string]http.Handler{"*": h},
+			handlers: map[string]http.Handler{},
 		},
 	}
-
-	routeFunc(r)
-
-	return r
 }
 
-func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+//func createRouter[T ViewModel](h *handlerImpl[T], routeFunc func(r Router)) *router {
+//	r := &router{
+//		h:      h,
+//		prefix: h.path,
+//		root: &trieNode{
+//			children: make(map[string]*trieNode),
+//			handlers: map[string]http.Handler{"*": h},
+//		},
+//	}
+//
+//	routeFunc(r)
+//
+//	return r
+//}
+
+func (r *routerImpl) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h, params, ok := r.Match(req.Method, req.URL.Path)
 	if !ok {
 		http.NotFound(w, req)
@@ -63,28 +76,19 @@ func (r *router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, paramsContextKey, params)
+	// Indicate to any handlers they should not attempt to handle the request using
+	// their internal router because the request has already been matched
+	ctx = context.WithValue(req.Context(), routerMatchedContextKey, true)
 
 	h.ServeHTTP(w, req.WithContext(ctx))
 }
 
-func (r *router) Handle(path string, h http.Handler) {
+func (r *routerImpl) Handle(path string, h http.Handler) {
 	r.handleMethod("*", path, h)
 }
 
-// handleMethod registers a handler or merges a router if passed.
-func (r *router) handleMethod(method, path string, h http.Handler) {
-	var handler http.Handler
-	switch h.(type) {
-	case Handler:
-		handler = h
-	case noWrapHandler:
-		// prevent wrapping by using torque.NoOutlet
-		handler = h
-	case http.Handler:
-		// promote any vanilla handlers by wrapping
-		handler = MustNewV(h.(http.Handler))
-	}
-
+// handleMethod registers a handler or merges a routerImpl if passed.
+func (r *routerImpl) handleMethod(method, path string, h http.Handler) {
 	var (
 		fullPath = filepath.Join(r.prefix, path)
 		segments = strings.Split(fullPath, "/")
@@ -123,13 +127,10 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 	}
 
 	// Store the handler at the final node for the given method (e.g., GET)
-	node.handlers[method] = handler
+	node.handlers[method] = h
 
-	if handler, ok := handler.(Handler); ok {
-		// create a relationship between the parent and child
-		if r.h.HasOutlet() {
-			// This child route could have a parent if it provides a layout.
-			// Layouts can be many layers so find the greatest parent
+	if handler, ok := h.(handlerInternal); ok {
+		if r.h.HasRenderOutlet() {
 			var parentMostHandler = handler
 			for {
 				if parentMostHandler.GetParent() != nil {
@@ -153,10 +154,39 @@ func (r *router) handleMethod(method, path string, h http.Handler) {
 			}
 		}
 	}
+
+	//if handler, ok := handler.(Handler); ok {
+	//	// create a relationship between the parent and child
+	//	if r.h.HasOutlet() {
+	//		// This child route could have a parent if it provides a layout.
+	//		// Layouts can be many layers so find the greatest parent
+	//		var parentMostHandler = handler
+	//		for {
+	//			if parentMostHandler.GetParent() != nil {
+	//				parentMostHandler = parentMostHandler.GetParent()
+	//			} else {
+	//				break
+	//			}
+	//		}
+	//		parentMostHandler.setParent(r.h)
+	//	}
+	//
+	//	// "merge-up" the radix sub-trie from the child router. when this handler's internal
+	//	// router is ever executed it will need to know about its children during Router.Match.
+	//	if handler.getRouter() != nil {
+	//		var childRouter = handler.getRouter().root
+	//		for key, child := range childRouter.children {
+	//			node.children[key] = child
+	//		}
+	//		if len(childRouter.handlers) > 0 {
+	//			node.handlers[method] = childRouter.handlers[method]
+	//		}
+	//	}
+	//}
 }
 
 // Match finds a handler based on the method and path
-func (r *router) Match(method, path string) (http.Handler, PathParams, bool) {
+func (r *routerImpl) Match(method, path string) (http.Handler, PathParams, bool) {
 	params := make(map[string]string)
 	segments := strings.Split(path, "/")
 
@@ -190,40 +220,40 @@ func (r *router) Match(method, path string) (http.Handler, PathParams, bool) {
 
 	if handler != nil {
 		return handler, params, true
-	} else {
-		return nil, nil, false
 	}
+
+	return nil, nil, false
 }
 
-func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
-	pattern = strings.TrimSuffix(pattern, "/*")
+//func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
+//	pattern = strings.TrimSuffix(pattern, "/*")
+//
+//	if r.h.GetMode() == ModeDevelopment {
+//		logFileSystem(fs)
+//	}
+//
+//	r.handleMethod("GET", pattern+"/*", NoOutlet(http.StripPrefix(pattern, http.FileServer(http.FS(fs)))))
+//}
 
-	if r.h.GetMode() == ModeDevelopment {
-		logFileSystem(fs)
-	}
-
-	r.handleMethod("GET", pattern+"/*", NoOutlet(http.StripPrefix(pattern, http.FileServer(http.FS(fs)))))
-}
-
-func logFileSystem(fsys fs.FS) {
-	var walkFn func(path string, d fs.DirEntry, err error) error
-
-	walkFn = func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		} else if d.IsDir() {
-			log.Printf("Dir: %s", path)
-		} else {
-			log.Printf("File: %s", path)
-		}
-		return nil
-	}
-
-	err := fs.WalkDir(fsys, ".", walkFn)
-	if err != nil {
-		panic(err)
-	}
-}
+//func logFileSystem(fsys fs.FS) {
+//	var walkFn func(path string, d fs.DirEntry, err error) error
+//
+//	walkFn = func(path string, d fs.DirEntry, err error) error {
+//		if err != nil {
+//			return err
+//		} else if d.IsDir() {
+//			log.Printf("Dir: %s", path)
+//		} else {
+//			log.Printf("File: %s", path)
+//		}
+//		return nil
+//	}
+//
+//	err := fs.WalkDir(fsys, ".", walkFn)
+//	if err != nil {
+//		panic(err)
+//	}
+//}
 
 type noWrapHandler func(http.ResponseWriter, *http.Request)
 
@@ -240,6 +270,6 @@ func NoOutlet(h http.Handler) http.Handler {
 	})
 }
 
-func (r *router) Redirect(pattern string, url string, status int) {
+func (r *routerImpl) Redirect(pattern string, url string, status int) {
 	r.Handle(pattern, NoOutlet(http.RedirectHandler(url, status)))
 }

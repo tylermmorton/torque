@@ -1,60 +1,160 @@
 package torque
 
 import (
-	"net/http"
+	"fmt"
+	"html/template"
+	"io"
 	"reflect"
-	"text/template/parse"
-
-	"github.com/tylermmorton/tmpl"
+	"strings"
 )
 
-type templateRenderer[T ViewModel] struct {
-	hasOutlet bool
-	template  tmpl.Template[tmpl.TemplateProvider]
+type Template[T TemplateProvider] interface {
+	Render(wr io.Writer, data any, opts ...TemplateRenderOption) error
+	RenderT(wr io.Writer, data T, opts ...TemplateRenderOption) error
 }
 
-func (t templateRenderer[T]) Render(wr http.ResponseWriter, req *http.Request, vm T) error {
-	opts := make([]tmpl.RenderOption, 0)
-	if target, ok := UseRenderTarget(req); ok {
-		opts = append(opts, tmpl.WithTarget(target))
+type FuncMap = template.FuncMap
+
+type TemplateCompilerOption = func(opts *templateCompilerOptions)
+
+// TemplateCompilerOptionDelims sets the template delimiters before parsing. Default delimiters are {{ and }}
+func TemplateCompilerOptionDelims(left, right string) TemplateCompilerOption {
+	return func(opts *templateCompilerOptions) {
+		opts.LeftDelim = left
+		opts.RightDelim = right
 	}
-	if funcMap, ok := UseFuncMap(req); ok {
-		opts = append(opts, tmpl.WithFuncs(funcMap))
-	}
-	return t.template.Render(wr, any(vm).(tmpl.TemplateProvider), opts...)
 }
 
-func createTemplateRenderer[T ViewModel](tp tmpl.TemplateProvider) (*templateRenderer[T], bool, error) {
+func TemplateCompilerOptionFuncMap(funcMap FuncMap) TemplateCompilerOption {
+	return func(opts *templateCompilerOptions) {
+		for key, value := range funcMap {
+			opts.FuncMap[key] = value
+		}
+	}
+}
+
+// TemplateCompilerOptionSkipChecks disables static analysis during compilation.
+// By default, CompileTemplate runs all built-in analyzers and returns an error
+// when they report problems. Pass this option to skip those checks.
+func TemplateCompilerOptionSkipChecks() TemplateCompilerOption {
+	return func(opts *templateCompilerOptions) {
+		opts.SkipChecks = true
+	}
+}
+
+func TemplateCompilerOptionAnalyzers(analyzers ...TemplateAnalyzer) TemplateCompilerOption {
+	return func(opts *templateCompilerOptions) {
+		opts.Analyzers = append(opts.Analyzers, analyzers...)
+	}
+}
+
+type templateCompilerOptions struct {
+	LeftDelim, RightDelim string
+	FuncMap               FuncMap
+	Analyzers             []TemplateAnalyzer
+	SkipChecks            bool
+}
+
+func CompileTemplate[T TemplateProvider](tp T, opts ...TemplateCompilerOption) (Template[T], error) {
+	compilerOptions := &templateCompilerOptions{
+		LeftDelim:  "{{",
+		RightDelim: "}}",
+		FuncMap:    make(FuncMap),
+		Analyzers:  make([]TemplateAnalyzer, 0),
+		SkipChecks: false,
+	}
+	for _, opt := range opts {
+		opt(compilerOptions)
+	}
+
+	return compileTemplate[T](tp, compilerOptions)
+}
+
+type templateImpl[T TemplateProvider] struct {
+	template *template.Template
+}
+
+func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateCompilerOptions) (*templateImpl[T], error) {
 	var (
-		r   = &templateRenderer[T]{}
-		err error
+		err     error
+		t       *template.Template
+		funcMap = opts.FuncMap
 	)
 
-	r.template, err = tmpl.Compile(
-		tp,
-		tmpl.UseAnalyzers(outletAnalyzer(r)),
-	)
-	if err != nil {
-		return nil, false, err
-	}
+	if !opts.SkipChecks {
+		analyzers := opts.Analyzers
+		analyzers = append(analyzers,
+			TemplateAnalyzerStaticCheck(TemplateAnalyzerStaticCheckOptions{}),
+		)
 
-	return r, r.hasOutlet, nil
-}
+		analysis, err := AnalyzeTemplate(tp,
+			analyzeTemplateOptionCompiler(opts),
+			AnalyzeTemplateOptionAnalyzers(analyzers...),
+		)
+		if err != nil {
+			return nil, err
+		}
 
-const outletIdent = "outlet"
+		if len(analysis.Errors) != 0 {
+			return nil, fmt.Errorf("template compilation failed with errors:"+
+				"\n%s", strings.Join(analysis.Errors, "\n"))
+		}
 
-func outletAnalyzer[T ViewModel](t *templateRenderer[T]) tmpl.Analyzer {
-	return func(h *tmpl.AnalysisHelper) tmpl.AnalyzerFunc {
-		return func(val reflect.Value, node parse.Node) {
-			switch node := node.(type) {
-			case *parse.IdentifierNode:
-				if node.Ident == outletIdent && t.hasOutlet == true {
-					h.AddError(node, "outlet can only be defined once per template")
-				} else if node.Ident == outletIdent {
-					t.hasOutlet = true
-					h.AddFunc(outletIdent, func() string { return "{{ . }}" })
-				}
+		for _, result := range analysis.Results {
+			if result, ok := result.(*templateAnalyzerResultFuncMapEntry); ok {
+				funcMap[result.Key] = result.Value
 			}
 		}
 	}
+
+	err = recurseFieldsImplementing[FuncMapProvider](tp, func(val FuncMapProvider, field reflect.StructField) error {
+		for key, value := range val.FuncMap() {
+			funcMap[key] = value
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = recurseFieldsImplementing[TemplateProvider](tp, func(val TemplateProvider, field reflect.StructField) error {
+		var templateText string
+
+		templateName, ok := field.Tag.Lookup("template")
+		if !ok {
+			templateName = strings.TrimPrefix(field.Name, "*")
+		}
+
+		if t == nil {
+			// t == nil is the recursive entrypoint so
+			// some setup needs to happen.
+			t = template.New(templateName)
+			t = t.Delims(opts.LeftDelim, opts.RightDelim)
+
+			templateText = val.Template()
+		} else {
+			// if this is a nested template wrap its text in a {{ define }}
+			// statement, so it may be referenced by the "parent" template
+			// ex: {{define %q -}}\n%s{{end}}
+			templateText = fmt.Sprintf("%[1]sdefine %[3]q -%[2]s\n%[4]s%[1]send%[2]s\n", opts.LeftDelim, opts.RightDelim, templateName, val.Template())
+		}
+
+		if opts.SkipChecks {
+			// todo: turn off fn checks here
+		}
+
+		t, err = t.Funcs(funcMap).Parse(templateText)
+		if err != nil {
+			return fmt.Errorf("failed to parse template '%s': %w", templateName, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &templateImpl[T]{
+		template: t,
+	}, nil
 }

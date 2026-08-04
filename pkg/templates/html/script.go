@@ -9,9 +9,11 @@ import (
 var scriptTag string
 
 type ScriptTag struct {
-	Src     *string
-	Type    string
-	Content *template.JS
+	Src         string
+	Type        string
+	Content     template.HTML
+	Integrity   string
+	CrossOrigin string
 
 	Async bool
 	Defer bool

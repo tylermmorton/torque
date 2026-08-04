@@ -13,6 +13,7 @@ import (
 var pageLayoutTemplateText string
 
 type pageViewModel struct {
+	Lang    language.Tag
 	Links   []html.LinkTag   `tmpl:"link"`
 	Scripts []html.ScriptTag `tmpl:"script"`
 
@@ -77,7 +78,8 @@ func (ctl *pageController) Load(req *http.Request) (pageViewModel, error) {
 	}
 
 	return pageViewModel{
-		Title:   ctl.Title,
+		Lang:    ctl.Lang,
+		Title:   title,
 		Links:   append(ctl.Links, links...),
 		Scripts: append(ctl.Scripts, scripts...),
 	}, nil

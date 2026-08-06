@@ -35,7 +35,7 @@ type trieNode struct {
 }
 
 type routerImpl struct {
-	h          *handlerImpl[ViewModel]
+	h          Handler
 	contextMap map[any]any
 
 	root   *trieNode
@@ -44,7 +44,6 @@ type routerImpl struct {
 
 func NewRouter() Router {
 	return &routerImpl{
-		h: &handlerImpl[ViewModel]{},
 		root: &trieNode{
 			children: make(map[string]*trieNode),
 			handlers: map[string]http.Handler{},
@@ -52,34 +51,29 @@ func NewRouter() Router {
 	}
 }
 
-//func createRouter[T ViewModel](h *handlerImpl[T], routeFunc func(r Router)) *router {
-//	r := &router{
-//		h:      h,
-//		prefix: h.path,
-//		root: &trieNode{
-//			children: make(map[string]*trieNode),
-//			handlers: map[string]http.Handler{"*": h},
-//		},
-//	}
-//
-//	routeFunc(r)
-//
-//	return r
-//}
-
 func (r *routerImpl) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	// The outermost router injects itself so outlet funcs can dispatch sub-requests.
+	if ctx.Value(rootRouterKey) == nil {
+		ctx = context.WithValue(ctx, rootRouterKey, Router(r))
+		req = req.WithContext(ctx)
+	}
+
 	h, params, ok := r.Match(req.Method, req.URL.Path)
 	if !ok {
+		// Fall back to the owning handler (serves the handler's own URL when used standalone).
+		if r.h != nil {
+			ctx = context.WithValue(req.Context(), paramsContextKey, PathParams{})
+			ctx = context.WithValue(ctx, routerMatchedContextKey, true)
+			r.h.ServeHTTP(w, req.WithContext(ctx))
+			return
+		}
 		http.NotFound(w, req)
 		return
 	}
 
-	ctx := req.Context()
-	ctx = context.WithValue(ctx, paramsContextKey, params)
-	// Indicate to any handlers they should not attempt to handle the request using
-	// their internal router because the request has already been matched
-	ctx = context.WithValue(req.Context(), routerMatchedContextKey, true)
-
+	ctx = context.WithValue(req.Context(), paramsContextKey, params)
+	ctx = context.WithValue(ctx, routerMatchedContextKey, true)
 	h.ServeHTTP(w, req.WithContext(ctx))
 }
 
@@ -129,8 +123,8 @@ func (r *routerImpl) handleMethod(method, path string, h http.Handler) {
 	// Store the handler at the final node for the given method (e.g., GET)
 	node.handlers[method] = h
 
-	if handler, ok := h.(handlerInternal); ok {
-		if r.h.HasRenderOutlet() {
+	if handler, ok := h.(Handler); ok {
+		if r.h != nil {
 			var parentMostHandler = handler
 			for {
 				if parentMostHandler.GetParent() != nil {
@@ -154,35 +148,6 @@ func (r *routerImpl) handleMethod(method, path string, h http.Handler) {
 			}
 		}
 	}
-
-	//if handler, ok := handler.(Handler); ok {
-	//	// create a relationship between the parent and child
-	//	if r.h.HasOutlet() {
-	//		// This child route could have a parent if it provides a layout.
-	//		// Layouts can be many layers so find the greatest parent
-	//		var parentMostHandler = handler
-	//		for {
-	//			if parentMostHandler.GetParent() != nil {
-	//				parentMostHandler = parentMostHandler.GetParent()
-	//			} else {
-	//				break
-	//			}
-	//		}
-	//		parentMostHandler.setParent(r.h)
-	//	}
-	//
-	//	// "merge-up" the radix sub-trie from the child router. when this handler's internal
-	//	// router is ever executed it will need to know about its children during Router.Match.
-	//	if handler.getRouter() != nil {
-	//		var childRouter = handler.getRouter().root
-	//		for key, child := range childRouter.children {
-	//			node.children[key] = child
-	//		}
-	//		if len(childRouter.handlers) > 0 {
-	//			node.handlers[method] = childRouter.handlers[method]
-	//		}
-	//	}
-	//}
 }
 
 // Match finds a handler based on the method and path

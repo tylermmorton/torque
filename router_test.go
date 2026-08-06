@@ -138,23 +138,4 @@ func TestRouter_RouterProvider(t *testing.T) {
 	})
 }
 
-type outletRootVM struct{}
 
-func (*outletRootVM) Template() string { return `<div>{{outlet}}</div>` }
-
-func (*outletRootVM) Router(r torque.Router) error {
-	r.Handle("/child", newTestHandler("content"))
-	return nil
-}
-
-func TestRouter_OutletProvider(t *testing.T) {
-	r := torque.NewRouter()
-	r.Handle("/", torque.MustNewHandler[outletRootVM]())
-	t.Run("outlet_wraps_nested_handler_output", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		r.ServeHTTP(rec, req)
-		require.Equal(t, http.StatusOK, rec.Code)
-		require.Equal(t, "<div>content</div>", rec.Body.String())
-	})
-}

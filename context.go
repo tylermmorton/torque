@@ -17,6 +17,9 @@ const (
 	paramsContextKey contextKey = "params"
 
 	routerMatchedContextKey contextKey = "router_matched"
+	rootRouterKey           contextKey = "root_router"
+	childContentKey         contextKey = "child_content"
+	noOutletWrapKey         contextKey = "no_outlet_wrap"
 )
 
 func Provide[T any](req *http.Request, key any, value T) *http.Request {

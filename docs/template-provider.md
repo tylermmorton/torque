@@ -91,7 +91,7 @@ type FuncMapProvider interface {
 }
 ```
 
-storque discovers `FuncMapProvider` implementations the same way it discovers nested `TemplateProvider` fields — by recursing through struct fields. All function maps are merged before the template is parsed.
+torque discovers `FuncMapProvider` implementations the same way it discovers nested `TemplateProvider` fields — by recursing through struct fields. All function maps are merged before the template is parsed.
 
 ```go
 type PageViewModel struct{}
@@ -118,3 +118,5 @@ You can also compile and render templates directly, outside of any handler, usin
 If your ViewModel implements both `TemplateProvider` and `Renderer`, the `Renderer` takes precedence. Use `TemplateProvider` for standard HTML rendering and `Renderer` when you need full control over the response.
 
 See [renderer](renderer.md) for more.
+
+For guidance on when to use nested templates versus `LayoutProvider` or outlet-based routing, see [composability](composability.md).

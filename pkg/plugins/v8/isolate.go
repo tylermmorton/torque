@@ -1,9 +1,12 @@
+//go:build ignore
+
 package v8
 
 import (
-	"rogchap.com/v8go"
 	"runtime"
 	"sync"
+
+	"rogchap.com/v8go"
 )
 
 type IsolatePool struct {

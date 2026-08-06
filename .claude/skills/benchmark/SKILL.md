@@ -66,8 +66,44 @@ Suggested investigations (ranked by likely impact):
 When the user selects a path, **spawn a sub-agent** to run the investigation. Do not run the deep-dive inline — this keeps the main conversation context clean. The sub-agent should:
 - Run the appropriate profile or analysis
 - Report root cause with evidence (annotated pprof output, specific line numbers)
-- Propose a fix with explanation
+- Propose a fix using the [Complexity & Readability Evaluation](#complexity--readability-evaluation) rules below
 - **Not apply any changes** — the user reviews and decides
+
+---
+
+## Complexity & Readability Evaluation
+
+Every proposed fix — whether from inline analysis or a sub-agent investigation — must go through this evaluation before being presented to the user.
+
+### Self-assessment pass (one attempt)
+Before presenting a fix, attempt one simplification pass: can the same performance gain be achieved with less complexity? If a simpler approach exists, present that instead. If not, add a brief note: "I couldn't find a simpler approach — this complexity appears to be load-bearing for the gain."
+
+### Complexity signals
+Flag a fix as carrying a readability cost if it triggers any of the following. Weight the top two most heavily:
+
+1. **(Highest weight)** Introduces non-obvious patterns — `sync.Pool`, `unsafe`, manual memory management, bit manipulation tricks
+2. **(Highest weight)** Breaks a clean existing abstraction — inlines something that was cleanly separated, or couples things that were independent
+3. Adds indirection — new interfaces, wrapper types, or abstraction layers not required by the design
+4. Increases cyclomatic complexity — more branches, nested conditions, or harder-to-follow control flow
+5. Reduces test surface — makes the code harder to unit test in isolation
+
+### Tradeoff framing
+Present every fix with a bidirectional tradeoff: what you gain by applying it, and what you lose by skipping it. Contextualize the performance side using call frequency when known — raw ns/op numbers without context are hard to act on.
+
+Format: headline rating followed by one sentence of prose.
+
+```
+Complexity: Medium — saves ~40ns/op on a path called in every request handler,
+but introduces sync.Pool which is non-obvious and harder to unit test in isolation.
+```
+
+Complexity ratings:
+- **Low** — no signals triggered; straightforward change
+- **Medium** — one or two lower-weight signals triggered
+- **High** — any highest-weight signal triggered, or three or more signals total
+
+### The user always decides
+Never apply a fix without user review, even after the simplification pass. The evaluation exists to give the user the information they need to decide — not to make the decision for them.
 
 ---
 
@@ -213,5 +249,5 @@ The sub-agent should return:
 1. Which profile was run and why
 2. The top findings with specific line numbers and function names
 3. Root cause explanation in plain language
-4. A proposed fix with before/after code
+4. A proposed fix with before/after code, evaluated using the [Complexity & Readability Evaluation](#complexity--readability-evaluation) rules — include the headline rating and tradeoff prose
 5. A note that no changes have been applied — user reviews and decides

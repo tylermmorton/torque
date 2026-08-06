@@ -10,6 +10,20 @@ import (
 	"github.com/tylermmorton/torque"
 )
 
+func (*LayoutModel) Template() string {
+	//language=html
+	return `<div data-config="{{.Config}}">{{outlet}}</div>`
+}
+
+type LayoutModel struct {
+	Config string `json:"config"`
+}
+
+func (l *LayoutModel) Load(_ *http.Request) error {
+	l.Config = "testing_123"
+	return nil
+}
+
 func (*ViewModel) Template() string {
 	//language=html
 	return `<div>Hello, {{ .FirstName }}</div>`
@@ -21,8 +35,11 @@ type ViewModel struct {
 
 func (v *ViewModel) Load(_ *http.Request) error {
 	v.FirstName = "Tyler"
-
 	return nil
+}
+
+func (v *ViewModel) Layout() torque.Handler {
+	return torque.MustNewHandler[LayoutModel]()
 }
 
 func (v *ViewModel) Context(req *http.Request) *http.Request {
@@ -41,7 +58,7 @@ func TestApp(t *testing.T) {
 		r.ServeHTTP(rec, req)
 
 		require.Equal(t, http.StatusOK, rec.Code)
-		require.Equal(t, "<div>Hello, Tyler</div>", rec.Body.String())
+		require.Equal(t, `<div data-config="testing_123"><div>Hello, Tyler</div></div>`, rec.Body.String())
 	})
 
 	t.Run("get_returns_loaded_json", func(t *testing.T) {

@@ -38,6 +38,10 @@ type RouterProvider interface {
 	Router(r Router) error
 }
 
+type LayoutProvider interface {
+	Layout() Handler
+}
+
 // RouterProvider
 // ErrorBoundary
 // PanicBoundary

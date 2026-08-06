@@ -6,7 +6,6 @@ require (
 	github.com/gorilla/schema v1.4.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.57.0
-	golang.org/x/text v0.40.0
 	rogchap.com/v8go v0.9.0
 )
 

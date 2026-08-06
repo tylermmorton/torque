@@ -7,11 +7,11 @@ import (
 	"net/http"
 )
 
-type handlerInternal interface {
+type Handler interface {
 	http.Handler
 
-	GetParent() handlerInternal
-	setParent(p handlerInternal)
+	GetParent() Handler
+	setParent(p Handler)
 
 	getRouter() *routerImpl
 
@@ -23,7 +23,7 @@ type handlerInternal interface {
 
 type handlerImpl[T ViewModel] struct {
 	// parent is the handler that wraps this handler
-	parent handlerInternal
+	parent Handler
 	// router is the internal router for this handler
 	router *routerImpl
 	// template is the internal template, set if the underlying view model type
@@ -33,11 +33,11 @@ type handlerImpl[T ViewModel] struct {
 	hasOutlet bool
 }
 
-func (h *handlerImpl[T]) GetParent() handlerInternal {
+func (h *handlerImpl[T]) GetParent() Handler {
 	return h.parent
 }
 
-func (h *handlerImpl[T]) setParent(p handlerInternal) {
+func (h *handlerImpl[T]) setParent(p Handler) {
 	h.parent = p
 }
 
@@ -57,19 +57,26 @@ func (h *handlerImpl[T]) HasRenderOutlet() bool {
 	return h.hasOutlet
 }
 
-func NewHandler[T ViewModel]() (http.Handler, error) {
+func NewHandler[T ViewModel]() (Handler, error) {
 	var err error
 
 	vmTyp := any(new(T))
 	handler := &handlerImpl[T]{}
 
-	handler.router = &routerImpl{
-		root: &trieNode{
-			children: make(map[string]*trieNode),
-			handlers: map[string]http.Handler{"*": handler},
-		},
-		prefix:     "",
-		contextMap: make(map[any]any),
+	if rp, ok := vmTyp.(RouterProvider); ok {
+		handler.router = &routerImpl{
+			h: handler,
+			root: &trieNode{
+				children: make(map[string]*trieNode),
+				handlers: map[string]http.Handler{},
+			},
+			prefix:     "",
+			contextMap: make(map[any]any),
+		}
+		err = rp.Router(handler.router)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if tp, ok := vmTyp.(TemplateProvider); ok {
@@ -83,17 +90,21 @@ func NewHandler[T ViewModel]() (http.Handler, error) {
 		}
 	}
 
-	if rp, ok := vmTyp.(RouterProvider); ok {
-		err = rp.Router(handler.router)
-		if err != nil {
-			return nil, err
+	if lp, ok := vmTyp.(LayoutProvider); ok {
+		layoutHandler := lp.Layout()
+		if !layoutHandler.HasRenderOutlet() {
+			return nil, fmt.Errorf("the Template for %T must define an {{outlet}} to be used as a LayoutProvider", layoutHandler)
 		}
+		if layoutHandler.getRouter() != nil {
+			return nil, fmt.Errorf("the LayoutProvider returned by %T cannot also implement RouterProvider", vmTyp)
+		}
+		handler.setParent(layoutHandler)
 	}
 
 	return handler, nil
 }
 
-func MustNewHandler[T ViewModel]() http.Handler {
+func MustNewHandler[T ViewModel]() Handler {
 	h, err := NewHandler[T]()
 	if err != nil {
 		panic(fmt.Sprintf("failed to create new handler: %s", err))
@@ -106,18 +117,22 @@ func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	didRouteMatch, ok := req.Context().Value(routerMatchedContextKey).(bool)
 	didRouteMatch = didRouteMatch && ok
 
-	if !didRouteMatch {
+	if h.router != nil && !didRouteMatch {
 		h.router.ServeHTTP(wr, req)
 		return
-	} else if req.Method == http.MethodGet && h.GetParent() != nil && h.GetParent().HasRenderOutlet() {
+	}
+
+	noWrap, _ := req.Context().Value(noOutletWrapKey).(bool)
+	isJSON := req.Header.Get("Content-Type") == "application/json"
+	if !noWrap && !isJSON && req.Method == http.MethodGet && h.GetParent() != nil && h.GetParent().HasRenderOutlet() {
+		h.serveOutlet(wr, req)
 		return
 	}
 
 	h.serveRequest(wr, req)
-	return
 }
 
-func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request) {
+func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request) *http.Request {
 	var vm any = new(T)
 
 	req = h.handleContext(wr, req, vm)
@@ -127,21 +142,23 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 		err := h.handleLoader(wr, req, vm)
 		if err != nil {
 			h.handleError(wr, req, err)
-			return
+			return req
 		}
 
 		err = h.handleRender(wr, req, vm)
 		if err != nil {
 			h.handleError(wr, req, err)
-			return
+			return req
 		}
 	case http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete:
 		err := h.handleAction(wr, req, vm)
 		if err != nil {
 			h.handleError(wr, req, err)
-			return
+			return req
 		}
 	}
+
+	return req
 }
 
 func (h *handlerImpl[T]) handleContext(wr http.ResponseWriter, req *http.Request, vm ViewModel) *http.Request {
@@ -180,6 +197,11 @@ func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request,
 		_, err = wr.Write(byt)
 		return err
 	} else if h.template != nil {
+		if h.hasOutlet {
+			return h.template.Render(wr, vm, TemplateRenderOptionFuncMap(FuncMap{
+				"outlet": h.buildOutletFunc(req),
+			}))
+		}
 		return h.template.Render(wr, vm)
 	}
 

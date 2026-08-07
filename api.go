@@ -42,12 +42,10 @@ type LayoutProvider interface {
 	Layout() Handler
 }
 
-// RouterProvider
 // ErrorBoundary
 // PanicBoundary
 
-// MixinProvider
-
 // StylesProvider
 // Builds one stylesheet and injects it into the page
+
 // ScriptsProvider

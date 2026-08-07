@@ -1,12 +1,6 @@
 package html
 
-import (
-	_ "embed"
-	"html/template"
-)
-
-//go:embed script.tmpl.html
-var scriptTag string
+import "html/template"
 
 type ScriptTag struct {
 	Src         string
@@ -19,6 +13,13 @@ type ScriptTag struct {
 	Defer bool
 }
 
-func (ScriptTag) TemplateText() string {
-	return scriptTag
+func (ScriptTag) Template() string {
+	//language=html
+	return `<script type="{{ .Type }}"
+  {{ if ne .Src ""}}src="{{.Src}}"{{ end }}
+  {{ if ne .Integrity ""}}integrity="{{.Integrity}}"{{ end }}
+  {{ if ne .CrossOrigin ""}}crossorigin="{{.CrossOrigin}}"{{ end }}
+>
+  {{- if ne .Content "" }}{{ .Content }}{{ end -}}
+</script>`
 }

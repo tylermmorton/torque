@@ -1,0 +1,9 @@
+{
+  "name": "torque-claude-plugin",
+  "description": "Turns your agent into an expert with the torque web framework",
+  "version": "3.0.0",
+  "author": {
+    "name": "tylermmorton"
+  },
+  "repository": "https://github.com/tylermmorton/torque"
+}

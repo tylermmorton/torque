@@ -80,7 +80,7 @@ func BenchmarkBuildOutletFunc_cache_hit(b *testing.B) {
 
 	for b.Loop() {
 		fn := h.buildOutletFunc(req)
-		_, _ = fn("/nav")        // first call — allocates bufferedResponseWriter
+		_, _ = fn("/nav")       // first call — allocates bufferedResponseWriter
 		result, _ := fn("/nav") // second call — cache hit, no sub-request
 		Sink = result
 	}

@@ -121,7 +121,7 @@ func (*vmWithNoOutletLayout) Layout() torque.Handler {
 
 type routerLayoutModel struct{}
 
-func (*routerLayoutModel) Template() string              { return `<div>{{outlet}}</div>` }
+func (*routerLayoutModel) Template() string             { return `<div>{{outlet}}</div>` }
 func (*routerLayoutModel) Router(_ torque.Router) error { return nil }
 
 type vmWithRouterLayout struct{}
@@ -159,7 +159,7 @@ func (*combinedPageVM) Template() string { return `<p>page</p>` }
 // Tests
 
 func TestRouter_OutletProvider(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/", torque.MustNewHandler[outletRootVM]())
 
 	t.Run("child_wraps_in_parent_outlet", func(t *testing.T) {
@@ -180,7 +180,7 @@ func TestRouter_OutletProvider(t *testing.T) {
 }
 
 func TestRouter_OutletProvider_MultiLevel(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/", torque.MustNewHandler[outletMultiRootVM]())
 
 	t.Run("three_level_nesting", func(t *testing.T) {
@@ -193,7 +193,7 @@ func TestRouter_OutletProvider_MultiLevel(t *testing.T) {
 }
 
 func TestHandler_LayoutProvider(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/", torque.MustNewHandler[layoutContentVM]())
 
 	t.Run("content_wrapped_in_layout", func(t *testing.T) {
@@ -215,7 +215,7 @@ func TestHandler_LayoutProvider(t *testing.T) {
 }
 
 func TestHandler_LayoutProvider_ThreeLevel(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/", torque.MustNewHandler[layoutL3ContentVM]())
 
 	t.Run("three_levels_of_layout_chaining", func(t *testing.T) {
@@ -240,7 +240,7 @@ func TestNewHandler_LayoutProvider(t *testing.T) {
 }
 
 func TestHandler_LayoutProvider_Combined(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/", torque.MustNewHandler[combinedShellVM]())
 
 	t.Run("child_wrapped_in_shell_and_outer_layout", func(t *testing.T) {

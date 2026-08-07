@@ -29,6 +29,11 @@ func (*ViewModel) Template() string {
 	return `<div>Hello, {{ .FirstName }}</div>`
 }
 
+func (*ViewModel) Styles() string {
+	//language=css
+	return ``
+}
+
 type ViewModel struct {
 	FirstName string `json:"first_name"`
 }
@@ -49,7 +54,7 @@ func (v *ViewModel) Context(req *http.Request) *http.Request {
 }
 
 func TestApp(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/", torque.MustNewHandler[ViewModel]())
 
 	t.Run("get_returns_rendered_html", func(t *testing.T) {

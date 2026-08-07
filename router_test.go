@@ -16,7 +16,7 @@ func newTestHandler(body string) http.Handler {
 }
 
 func TestRouter_VanillaHandlers(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/foo", newTestHandler("foo"))
 	r.Handle("/bar", newTestHandler("bar"))
 
@@ -45,7 +45,7 @@ func TestRouter_VanillaHandlers(t *testing.T) {
 }
 
 func TestRouter_PathParams(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/users/{id}", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte(torque.GetPathParam(req, "id")))
 	}))
@@ -75,7 +75,7 @@ func TestRouter_PathParams(t *testing.T) {
 }
 
 func TestRouter_Redirect(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Redirect("/old", "/new", http.StatusMovedPermanently)
 	r.Handle("/new", newTestHandler("new"))
 
@@ -110,7 +110,7 @@ func (*rpRootVM) Router(r torque.Router) error {
 }
 
 func TestRouter_RouterProvider(t *testing.T) {
-	r := torque.NewRouter()
+	r := torque.NewRouter(torque.DisableRootLayout())
 	r.Handle("/", torque.MustNewHandler[rpRootVM]())
 
 	t.Run("nesting", func(t *testing.T) {
@@ -137,5 +137,3 @@ func TestRouter_RouterProvider(t *testing.T) {
 		})
 	})
 }
-
-

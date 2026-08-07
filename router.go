@@ -25,6 +25,15 @@ type Router interface {
 
 type Middleware func(http.Handler) http.Handler
 
+type RouterOption func(*routerImpl)
+
+// DisableRootLayout disables the default PageLayoutViewModel root layout.
+func DisableRootLayout() RouterOption {
+	return func(r *routerImpl) {
+		r.rootLayout = nil
+	}
+}
+
 type trieNode struct {
 	segment   string
 	parent    *trieNode
@@ -36,19 +45,25 @@ type trieNode struct {
 
 type routerImpl struct {
 	h          Handler
+	rootLayout Handler
 	contextMap map[any]any
 
 	root   *trieNode
 	prefix string
 }
 
-func NewRouter() Router {
-	return &routerImpl{
+func NewRouter(opts ...RouterOption) Router {
+	r := &routerImpl{
+		rootLayout: MustNewHandler[PageLayoutViewModel](),
 		root: &trieNode{
 			children: make(map[string]*trieNode),
 			handlers: map[string]http.Handler{},
 		},
 	}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r
 }
 
 func (r *routerImpl) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -124,7 +139,11 @@ func (r *routerImpl) handleMethod(method, path string, h http.Handler) {
 	node.handlers[method] = h
 
 	if handler, ok := h.(Handler); ok {
-		if r.h != nil {
+		rootParent := r.rootLayout
+		if rootParent == nil {
+			rootParent = r.h
+		}
+		if rootParent != nil {
 			var parentMostHandler = handler
 			for {
 				if parentMostHandler.GetParent() != nil {
@@ -133,7 +152,7 @@ func (r *routerImpl) handleMethod(method, path string, h http.Handler) {
 					break
 				}
 			}
-			parentMostHandler.setParent(r.h)
+			parentMostHandler.setParent(rootParent)
 		}
 
 		// "merge-up" the radix sub-trie from the child router. when this handler's internal

@@ -1,7 +1,0 @@
-<script type="{{ .Type }}"
-  {{ if ne .Src ""}}src="{{.Src}}"{{ end }}
-  {{ if ne .Integrity ""}}integrity="{{.Integrity}}"{{ end }}
-  {{ if ne .CrossOrigin ""}}crossorigin="{{.CrossOrigin}}"{{ end }}
->
-  {{- if ne .Content "" }}{{ .Content }}{{ end -}}
-</script>

@@ -78,6 +78,26 @@ func (vm *PageViewModel) Context(req *http.Request) *http.Request {
 | `Async` | Renders the `async` attribute when `true` |
 | `Defer` | Renders the `defer` attribute when `true` |
 
+## Adding inline styles
+
+Implement `StyleSheetProvider` on a ViewModel to generate CSS from template data and inject it as an inline `<style>` block in the document `<head>`:
+
+```go
+type ButtonViewModel struct {
+    Color string
+}
+
+func (*ButtonViewModel) StyleSheet() string {
+    return `button { color: {{ .Color }}; }`
+}
+```
+
+The CSS template is executed after `Load` completes, so dynamic values (colors, sizes, theme tokens) work naturally. If the template produces an empty string, no `<style>` tag is emitted.
+
+Struct fields that also implement `StyleSheetProvider` are discovered automatically — their CSS is collected alongside the root ViewModel's CSS, enabling component-scoped styles without manual wiring.
+
+See [stylesheet provider](stylesheet-provider.md) for the full reference.
+
 ## Why ContextProvider, not Loader
 
 `ProvideStylesheets` and `ProvideScriptTags` must be called from `Context`, not `Load`.

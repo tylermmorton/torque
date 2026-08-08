@@ -2,6 +2,7 @@ package torque
 
 import (
 	"context"
+	"io/fs"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -15,8 +16,12 @@ type Router interface {
 	http.Handler
 
 	Handle(pattern string, handler http.Handler)
-	//HandleFileSystem(pattern string, fs fs.FS)
-	Redirect(pattern string, location string, status int)
+	HandleFileSystem(pattern string, fs fs.FS)
+	HandleRedirect(pattern string, location string, status int)
+
+	Use(mw Middleware)
+	Provide(key any, value any)
+
 	Match(method, pattern string) (http.Handler, PathParams, bool)
 
 	// Add a global template shared with all templates within this router
@@ -209,6 +214,11 @@ func (r *routerImpl) Match(method, path string) (http.Handler, PathParams, bool)
 	return nil, nil, false
 }
 
+func (r *routerImpl) HandleFileSystem(pattern string, fs fs.FS) {}
+
+func (r *routerImpl) Use(mw Middleware)          {}
+func (r *routerImpl) Provide(key any, value any) {}
+
 //func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
 //	pattern = strings.TrimSuffix(pattern, "/*")
 //
@@ -254,6 +264,6 @@ func NoOutlet(h http.Handler) http.Handler {
 	})
 }
 
-func (r *routerImpl) Redirect(pattern string, url string, status int) {
+func (r *routerImpl) HandleRedirect(pattern string, url string, status int) {
 	r.Handle(pattern, NoOutlet(http.RedirectHandler(url, status)))
 }

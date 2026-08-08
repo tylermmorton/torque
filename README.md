@@ -10,13 +10,18 @@
 [x] Outlets
 [x] Layouts
 
+[ ] Error/Panic Boundaries
+    - Default 500 and 404 pages
+[ ] Deadline + Boundaries
+    - Deadline exceeded, render supplied handler instead
+
 ### V3 Features
 
-[] Built-in HTML Layout API
+[x] Built-in HTML Layout API
     - Provide scripts, styles, assets
-[] Mixins
+~~[] Mixins
     - Mixins provide layouts, scripts, assets
-    - Encapsulates integrations like v8go, tailwind
+    - Encapsulates integrations like v8go, tailwind~~
 [] v8go Experiment
     - Benchmarked flow 
     - React JSX?

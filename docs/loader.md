@@ -35,7 +35,7 @@ loading ArticleViewModel: record not found
 
 ## Nested loaders
 
-ViewModels can embed or contain other structs that also implement `Loader`. torque discovers these fields automatically at startup (by reflecting on the type once and caching the result) and calls them in depth-first, post-order: children are loaded before their parent.
+ViewModels can embed or contain other structs that also implement `Loader`. torque discovers these fields automatically at startup (by reflecting on the type once and caching the result) and calls them in depth-first, pre-order: the parent loads before its children.
 
 ```go
 type AuthorViewModel struct {
@@ -48,24 +48,59 @@ func (vm *AuthorViewModel) Load(req *http.Request) error {
 }
 
 type ArticleViewModel struct {
-    Author AuthorViewModel // loaded first
+    Author AuthorViewModel // loaded second
     Title  string
 }
 
 func (vm *ArticleViewModel) Load(req *http.Request) error {
-    vm.Title = "Getting started with torque" // loaded second
+    vm.Title = "Getting started with torque" // loaded first
     return nil
 }
 ```
 
 This lets you compose independent data concerns into a single ViewModel without coupling their loading logic.
 
+### Parent-sets-child pattern
+
+Because the parent's `Load` runs before its children, the parent can write values into child struct fields that the child then reads during its own `Load`. This is the primary mechanism for passing configuration from a parent component to a composable sub-component.
+
+```go
+type StargazersViewModel struct {
+    RepositoryURL string // set by the parent before Load is called
+    Count         int
+}
+
+func (vm *StargazersViewModel) Load(req *http.Request) error {
+    // RepositoryURL is already populated by NavBarViewModel.Load
+    count, err := fetchStargazers(vm.RepositoryURL)
+    if err != nil {
+        return err
+    }
+    vm.Count = count
+    return nil
+}
+
+type NavBarViewModel struct {
+    GitHubURL string
+    Stars     StargazersViewModel
+}
+
+func (vm *NavBarViewModel) Load(req *http.Request) error {
+    vm.GitHubURL = "https://github.com/org/repo"
+    // Write into the child before the child's Load runs
+    vm.Stars.RepositoryURL = vm.GitHubURL
+    return nil
+}
+```
+
+The traversal for this example calls `NavBarViewModel.Load` first, then `StargazersViewModel.Load`. By the time `StargazersViewModel.Load` runs, `RepositoryURL` is already set.
+
 ### Rules for nested loaders
 
 - Only **exported** fields are discovered. Unexported fields are skipped.
-- Pointer fields (`*T`) are allocated automatically if nil before their `Load` is called.
-- Cyclic references (a type that contains a pointer to itself) are detected and left nil.
-- If a nested `Load` returns an error, the parent's `Load` is not called and the error propagates up.
+- Pointer fields (`*T`) are allocated automatically if nil before the parent's `Load` is called, so the parent can safely reference them.
+- Cyclic references (a type that contains a pointer to itself) are detected and skipped.
+- If the parent's `Load` returns an error, all children are skipped and the error propagates up. If a child's `Load` returns an error, its remaining siblings are skipped and the error propagates up.
 
 ## Accessing the request
 

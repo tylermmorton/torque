@@ -76,7 +76,7 @@ func TestRouter_PathParams(t *testing.T) {
 
 func TestRouter_Redirect(t *testing.T) {
 	r := torque.NewRouter(torque.DisableRootLayout())
-	r.Redirect("/old", "/new", http.StatusMovedPermanently)
+	r.HandleRedirect("/old", "/new", http.StatusMovedPermanently)
 	r.Handle("/new", newTestHandler("new"))
 
 	t.Run("redirects_to_new_location", func(t *testing.T) {

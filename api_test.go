@@ -29,7 +29,7 @@ func (*ViewModel) Template() string {
 	return `<div>Hello, {{ .FirstName }}</div>`
 }
 
-func (*ViewModel) Styles() string {
+func (*ViewModel) StyleSheet() string {
 	//language=css
 	return ``
 }

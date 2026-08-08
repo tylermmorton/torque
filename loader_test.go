@@ -135,14 +135,14 @@ func TestLoad(t *testing.T) {
 		require.Equal(t, "loaded", vm.Value)
 	})
 
-	t.Run("nested_value_loader_fires_before_parent", func(t *testing.T) {
+	t.Run("parent_loader_fires_before_nested_value_loader", func(t *testing.T) {
 		var order []string
 		vm := &orderMid{
 			order: &order,
 			Leaf:  orderLeaf{order: &order},
 		}
 		require.NoError(t, torque.Load(req, vm))
-		require.Equal(t, []string{"orderLeaf", "orderMid"}, order)
+		require.Equal(t, []string{"orderMid", "orderLeaf"}, order)
 	})
 
 	t.Run("nil_pointer_loader_field_is_allocated_and_loaded", func(t *testing.T) {
@@ -153,7 +153,7 @@ func TestLoad(t *testing.T) {
 		require.True(t, vm.Loaded)
 	})
 
-	t.Run("depth_first_post_order_across_three_levels", func(t *testing.T) {
+	t.Run("top_down_pre_order_across_three_levels", func(t *testing.T) {
 		var order []string
 		vm := &orderRoot{
 			order: &order,
@@ -163,7 +163,7 @@ func TestLoad(t *testing.T) {
 			},
 		}
 		require.NoError(t, torque.Load(req, vm))
-		require.Equal(t, []string{"orderLeaf", "orderMid", "orderRoot"}, order)
+		require.Equal(t, []string{"orderRoot", "orderMid", "orderLeaf"}, order)
 	})
 
 	t.Run("loader_error_propagates_wrapped_with_type_name", func(t *testing.T) {
@@ -172,7 +172,8 @@ func TestLoad(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorIs(t, err, errLoadFailed)
 		require.True(t, strings.Contains(err.Error(), "errLeaf"))
-		require.False(t, vm.Loaded)
+		// parent runs before child with top-down loading, so it IS loaded when the child errors
+		require.True(t, vm.Loaded)
 	})
 
 	t.Run("cyclic_pointer_field_does_not_recurse_infinitely", func(t *testing.T) {

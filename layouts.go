@@ -20,6 +20,9 @@ func (vm *PageLayoutViewModel) Template() string {
 		{{ range .Scripts }}
 			{{ template "script-tag" . }}
 		{{ end }}
+		{{ range .InlineStyles }}
+			{{ template "style-tag" . }}
+		{{ end }}
 	</head>
 	<body>
 		{{ outlet }}
@@ -30,13 +33,15 @@ func (vm *PageLayoutViewModel) Template() string {
 type PageLayoutViewModel struct {
 	Title string `json:"title"`
 
-	Styles  []html.LinkTag   `json:"styles"  template:"link-tag"`
-	Scripts []html.ScriptTag `json:"scripts" template:"script-tag"`
+	Styles       []html.LinkTag   `json:"styles"        template:"link-tag"`
+	Scripts      []html.ScriptTag `json:"scripts"       template:"script-tag"`
+	InlineStyles []html.StyleTag  `json:"inline_styles" template:"style-tag"`
 }
 
 func (vm *PageLayoutViewModel) Load(req *http.Request) error {
 	vm.Styles = InjectStylesheets(req)
 	vm.Scripts = InjectScriptTags(req)
+	vm.InlineStyles = InjectInlineStyles(req)
 	return nil
 }
 
@@ -52,6 +57,22 @@ func InjectStylesheets(req *http.Request) []html.LinkTag {
 	tags, ok := Inject[[]html.LinkTag](req, contextKeyLinkTags)
 	if !ok {
 		tags = make([]html.LinkTag, 0)
+	}
+	return tags
+}
+
+const contextKeyStyleTags contextKey = "styleTags"
+
+func ProvideInlineStyles(req *http.Request, tags ...html.StyleTag) *http.Request {
+	existing := InjectInlineStyles(req)
+	existing = append(existing, tags...)
+	return Provide(req, contextKeyStyleTags, existing)
+}
+
+func InjectInlineStyles(req *http.Request) []html.StyleTag {
+	tags, ok := Inject[[]html.StyleTag](req, contextKeyStyleTags)
+	if !ok {
+		tags = make([]html.StyleTag, 0)
 	}
 	return tags
 }

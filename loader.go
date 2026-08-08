@@ -82,8 +82,10 @@ func compileLoadPlan(t reflect.Type) *loadPlan {
 	return actual.(*loadPlan)
 }
 
-// executeLoadPlan does a depth-first traversal of all Loader implementation on or within the given
-// reflected value. Each Loader will populate the reflected value.
+// executeLoadPlan does a depth-first, pre-order traversal of all Loader implementations on
+// or within the given reflected value. Each node loads itself before its children, so a
+// parent's Load() can set fields on child structs that the children then read during their
+// own Load() calls.
 func executeLoadPlan(req *http.Request, v reflect.Value, visitor *visitorStack) error {
 	elem := v.Elem()
 
@@ -91,11 +93,34 @@ func executeLoadPlan(req *http.Request, v reflect.Value, visitor *visitorStack) 
 		st := elem.Type()
 		visitor.push(st)
 
-		for _, step := range compileLoadPlan(st).steps {
+		plan := compileLoadPlan(st)
+
+		// Step 1: pre-allocate pointer children so the parent's Load() can reference them.
+		for _, step := range plan.steps {
+			if !step.isPointer {
+				continue
+			}
+			fv := elem.Field(step.index)
+			childStruct := fv.Type().Elem()
+			if visitor.has(childStruct) {
+				continue
+			}
+			if fv.IsNil() {
+				fv.Set(reflect.New(fv.Type().Elem()))
+			}
+		}
+
+		// Step 2: load self before children.
+		if loader, ok := v.Interface().(Loader); ok {
+			if err := loader.Load(req); err != nil {
+				return fmt.Errorf("loading %s: %w", st.Name(), err)
+			}
+		}
+
+		// Step 3: recurse into children in field declaration order.
+		for _, step := range plan.steps {
 			fv := elem.Field(step.index)
 
-			// The struct type this branch would descend into; guard cycles
-			// before allocating so cyclic pointers are simply left nil.
 			childStruct := fv.Type()
 			if childStruct.Kind() == reflect.Ptr {
 				childStruct = childStruct.Elem()
@@ -120,9 +145,9 @@ func executeLoadPlan(req *http.Request, v reflect.Value, visitor *visitorStack) 
 		}
 
 		visitor.pop()
+		return nil
 	}
 
-	// Depth first: children are hydrated above; now this node loads itself.
 	if loader, ok := v.Interface().(Loader); ok {
 		if err := loader.Load(req); err != nil {
 			return fmt.Errorf("loading %s: %w", elem.Type().Name(), err)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 )
 
 type Handler interface {
@@ -29,6 +30,9 @@ type handlerImpl[T ViewModel] struct {
 	// template is the internal template, set if the underlying view model type
 	// implements the TemplateProvider interface.
 	template Template[TemplateProvider]
+	// hasStylesheet indicates the view model type (or a field on it) implements
+	// StyleSheetProvider, enabling the handleStylesheet step on each GET request.
+	hasStylesheet bool
 	// hasOutlet is a flag indicating the internal template defines an outlet
 	hasOutlet bool
 }
@@ -90,6 +94,13 @@ func NewHandler[T ViewModel]() (Handler, error) {
 		}
 	}
 
+	vmElemType := reflect.TypeOf(new(T)).Elem()
+	plan, err := compileStylesheetPlan(vmElemType)
+	if err != nil {
+		return nil, err
+	}
+	handler.hasStylesheet = plan.root != nil || len(plan.steps) > 0
+
 	if lp, ok := vmTyp.(LayoutProvider); ok {
 		layoutHandler := lp.Layout()
 		if !layoutHandler.HasRenderOutlet() {
@@ -145,6 +156,12 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 			return req
 		}
 
+		req, err = h.handleStylesheet(wr, req, vm)
+		if err != nil {
+			h.handleError(wr, req, err)
+			return req
+		}
+
 		err = h.handleRender(wr, req, vm)
 		if err != nil {
 			h.handleError(wr, req, err)
@@ -175,6 +192,13 @@ func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request,
 	}
 
 	return fmt.Errorf("failed to handle %s action: %w", req.Method, errNotImplemented)
+}
+
+func (h *handlerImpl[T]) handleStylesheet(wr http.ResponseWriter, req *http.Request, vm ViewModel) (*http.Request, error) {
+	if !h.hasStylesheet {
+		return req, nil
+	}
+	return ApplyStyleSheets(req, vm)
 }
 
 func (h *handlerImpl[T]) handleLoader(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {

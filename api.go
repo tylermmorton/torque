@@ -10,6 +10,10 @@ type TemplateProvider interface {
 	Template() string
 }
 
+type StyleSheetProvider interface {
+	StyleSheet() string
+}
+
 type FuncMapProvider interface {
 	FuncMap() FuncMap
 }

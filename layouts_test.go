@@ -11,7 +11,7 @@ import (
 
 // pageWrap wraps content in the default PageLayoutViewModel shell for test assertions.
 func pageWrap(content string) string {
-	return "<!DOCTYPE html>\n<html lang=\"en\">\n\t<head>\n\t\t<meta charset=\"utf-8\"/>\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>\n\t\t<title></title>\n\t\t\n\t\t\n\t</head>\n\t<body>\n\t\t" + content + "\n\t</body>\n</html>"
+	return "<!DOCTYPE html>\n<html lang=\"en\">\n\t<head>\n\t\t<meta charset=\"utf-8\"/>\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>\n\t\t<title></title>\n\t\t\n\t\t\n\t\t\n\t</head>\n\t<body>\n\t\t" + content + "\n\t</body>\n</html>"
 }
 
 type rootLayoutContentVM struct{}

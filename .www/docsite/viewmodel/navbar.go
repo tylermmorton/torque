@@ -40,9 +40,9 @@ func (vm *Stargazers) Load(req *http.Request) error {
 		return nil
 	}
 
-	svc, ok := torque.Inject[services.Services](req, ContextKeyServices)
-	if !ok {
-		return fmt.Errorf("failed to load dependency: services.Services")
+	svc, err := torque.Inject[*services.Services](req, ContextKeyServices)
+	if err != nil {
+		return fmt.Errorf("failed to load dependency: %w", err)
 	}
 
 	count, err := svc.GitHubService.GetStars(req.Context(), vm.RepositoryURL)

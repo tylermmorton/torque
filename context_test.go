@@ -122,14 +122,36 @@ func (v *ctxBeforeActionVM) Action(wr http.ResponseWriter, req *http.Request) er
 
 // ---
 
+func TestInject(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("returns_value_when_key_and_type_match", func(t *testing.T) {
+		r := torque2.Provide(req, testCtxKey, "hello")
+		val, err := torque2.Inject[string](r, testCtxKey)
+		require.NoError(t, err)
+		require.Equal(t, "hello", val)
+	})
+
+	t.Run("errors_when_key_is_missing", func(t *testing.T) {
+		_, err := torque2.Inject[string](req, testCtxKey)
+		require.ErrorContains(t, err, "no value stored for key")
+	})
+
+	t.Run("errors_with_type_mismatch", func(t *testing.T) {
+		r := torque2.Provide(req, testCtxKey, 42)
+		_, err := torque2.Inject[string](r, testCtxKey)
+		require.ErrorContains(t, err, "expected string but got int")
+	})
+}
+
 func TestContext(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	t.Run("flat_struct_calls_context_on_itself", func(t *testing.T) {
 		vm := &selfContextProvider{}
 		result := torque2.Context(req, vm)
-		val, ok := torque2.Inject[string](result, testCtxKey)
-		require.True(t, ok)
+		val, err := torque2.Inject[string](result, testCtxKey)
+		require.NoError(t, err)
 		require.Equal(t, "self", val)
 	})
 

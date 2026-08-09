@@ -2,6 +2,7 @@ package torque
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"reflect"
 	"sync"
@@ -26,12 +27,16 @@ func Provide[T any](req *http.Request, key any, value T) *http.Request {
 	return req.WithContext(context.WithValue(req.Context(), key, value))
 }
 
-func Inject[T any](req *http.Request, key any) (T, bool) {
+func Inject[T any](req *http.Request, key any) (T, error) {
 	var noop T
-	if value, ok := req.Context().Value(key).(T); ok {
-		return value, true
+	raw := req.Context().Value(key)
+	if raw == nil {
+		return noop, fmt.Errorf("inject: no value stored for key %v", key)
 	}
-	return noop, false
+	if value, ok := raw.(T); ok {
+		return value, nil
+	}
+	return noop, fmt.Errorf("inject: expected %T but got %T", noop, raw)
 }
 
 func withError(req *http.Request, err error) *http.Request {
@@ -39,8 +44,8 @@ func withError(req *http.Request, err error) *http.Request {
 }
 
 func UseError(req *http.Request) error {
-	err, ok := Inject[error](req, errorKey)
-	if !ok {
+	err, injectErr := Inject[error](req, errorKey)
+	if injectErr != nil {
 		return nil
 	}
 	return err
@@ -138,10 +143,7 @@ func executeContextPlan(req *http.Request, v reflect.Value, visitor *visitorStac
 	return req
 }
 
-func withDecoder(ctx context.Context, d *schema.Decoder) context.Context {
-	return context.WithValue(ctx, decoderKey, d)
-}
-
-func UseDecoder(req *http.Request) (*schema.Decoder, bool) {
-	return Inject[*schema.Decoder](req, decoderKey)
+func InjectDecoder(req *http.Request) (*schema.Decoder, bool) {
+	d, err := Inject[*schema.Decoder](req, decoderKey)
+	return d, err == nil
 }

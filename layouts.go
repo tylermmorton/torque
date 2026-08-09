@@ -54,8 +54,8 @@ func ProvideStylesheets(req *http.Request, tags ...html.LinkTag) *http.Request {
 }
 
 func InjectStylesheets(req *http.Request) []html.LinkTag {
-	tags, ok := Inject[[]html.LinkTag](req, contextKeyLinkTags)
-	if !ok {
+	tags, err := Inject[[]html.LinkTag](req, contextKeyLinkTags)
+	if err != nil {
 		tags = make([]html.LinkTag, 0)
 	}
 	return tags
@@ -70,8 +70,8 @@ func ProvideInlineStyles(req *http.Request, tags ...html.StyleTag) *http.Request
 }
 
 func InjectInlineStyles(req *http.Request) []html.StyleTag {
-	tags, ok := Inject[[]html.StyleTag](req, contextKeyStyleTags)
-	if !ok {
+	tags, err := Inject[[]html.StyleTag](req, contextKeyStyleTags)
+	if err != nil {
 		tags = make([]html.StyleTag, 0)
 	}
 	return tags
@@ -86,8 +86,8 @@ func ProvideScriptTags(req *http.Request, scriptTags ...html.ScriptTag) *http.Re
 }
 
 func InjectScriptTags(req *http.Request) []html.ScriptTag {
-	scriptTags, ok := Inject[[]html.ScriptTag](req, contextKeyScriptTags)
-	if !ok {
+	scriptTags, err := Inject[[]html.ScriptTag](req, contextKeyScriptTags)
+	if err != nil {
 		scriptTags = make([]html.ScriptTag, 0)
 	}
 	return scriptTags

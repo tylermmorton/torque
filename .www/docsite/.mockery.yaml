@@ -1,0 +1,10 @@
+template: matryer
+dir: testutils/mocks
+filename: "{{.InterfaceName | snakecase}}_mock.gen.go"
+packages:
+  github.com/tylermmorton/torque/.www/docsite/services:
+    interfaces:
+      DocumentService:
+      GitHubService:
+        config:
+          filename: "github_service_mock.gen.go"

@@ -65,9 +65,9 @@ func (*Document) Layout() torque.Handler {
 }
 
 func (d *Document) Load(req *http.Request) error {
-	svc, ok := torque.Inject[services.Services](req, viewmodel.ContextKeyServices)
-	if !ok {
-		return fmt.Errorf("failed to load dependency: services.Services")
+	svc, err := torque.Inject[*services.Services](req, viewmodel.ContextKeyServices)
+	if err != nil {
+		return fmt.Errorf("failed to load dependency: %w", err)
 	}
 
 	params, err := torque.DecodePathParams[viewmodel.DocumentPathParams](req)

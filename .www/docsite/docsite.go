@@ -11,6 +11,8 @@ import (
 	"github.com/tylermmorton/torque/.www/docsite/viewmodel"
 )
 
+//go:generate mockery
+
 //go:embed static
 var staticFS embed.FS
 
@@ -20,11 +22,13 @@ func NewDocSite() (torque.Router, error) {
 		return nil, fmt.Errorf("failed to create document service: %w", err)
 	}
 
-	svc := &services.Services{
+	return NewDocSiteWithServices(&services.Services{
 		DocumentService: documentService,
 		GitHubService:   services.NewGitHubService(),
-	}
+	})
+}
 
+func NewDocSiteWithServices(svc *services.Services) (torque.Router, error) {
 	r := torque.NewRouter()
 	r.ProvideContext(viewmodel.ContextKeyServices, svc)
 

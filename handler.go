@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+
+	"github.com/gorilla/schema"
 )
 
 type Handler interface {
@@ -28,6 +30,8 @@ type handlerImpl[T ViewModel] struct {
 	parent Handler
 	// router is the internal router for this handler
 	router *routerImpl
+	// decoder
+	decoder *schema.Decoder
 	// template is the internal template, set if the underlying view model type
 	// implements the TemplateProvider interface.
 	template Template[TemplateProvider]
@@ -75,6 +79,10 @@ func NewHandler[T ViewModel]() (Handler, error) {
 
 	vmTyp := any(new(T))
 	handler := &handlerImpl[T]{}
+
+	decoder := schema.NewDecoder()
+	decoder.SetAliasTag("json")
+	handler.decoder = decoder
 
 	if rp, ok := vmTyp.(RouterProvider); ok {
 		handler.router = &routerImpl{
@@ -188,7 +196,13 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 }
 
 func (h *handlerImpl[T]) handleContext(wr http.ResponseWriter, req *http.Request, vm ViewModel) *http.Request {
-	return Context(req, vm)
+	// Add any torque framework specific context
+	req = Provide(req, decoderKey, h.decoder)
+
+	// Resolve the ContextProvider plan
+	req = Context(req, vm)
+
+	return req
 }
 
 func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {

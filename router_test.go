@@ -121,8 +121,8 @@ func TestRouter_Provide(t *testing.T) {
 		r := torque.NewRouter(torque.DisableRootLayout())
 		r.Handle("/child", torque.MustNewHandler[provideChildVM]())
 		r.Handle("/sibling", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			_, ok := torque.Inject[string](req, provideKey("role"))
-			if ok {
+			_, err := torque.Inject[string](req, provideKey("role"))
+			if err == nil {
 				_, _ = w.Write([]byte("has-value"))
 			} else {
 				_, _ = w.Write([]byte("no-value"))

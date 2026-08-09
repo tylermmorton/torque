@@ -27,7 +27,7 @@ func GetPathParam(req *http.Request, key string) string {
 }
 
 func DecodePathParams[T any](req *http.Request) (*T, error) {
-	d, ok := UseDecoder(req)
+	d, ok := InjectDecoder(req)
 	if !ok {
 		return nil, ErrDecoderUndefined
 	}

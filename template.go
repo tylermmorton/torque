@@ -6,6 +6,8 @@ import (
 	"io"
 	"reflect"
 	"strings"
+
+	"github.com/Masterminds/sprig/v3"
 )
 
 type Template[T TemplateProvider] interface {
@@ -73,7 +75,7 @@ func CompileTemplate[T TemplateProvider](tp T, opts ...TemplateCompilerOption) (
 	compilerOptions := &templateCompilerOptions{
 		LeftDelim:  "{{",
 		RightDelim: "}}",
-		FuncMap:    make(FuncMap),
+		FuncMap:    FuncMap(sprig.HtmlFuncMap()),
 		Analyzers:  make([]TemplateAnalyzer, 0),
 		Templates:  make(map[string]TemplateProvider),
 		SkipChecks: false,
@@ -87,17 +89,18 @@ func CompileTemplate[T TemplateProvider](tp T, opts ...TemplateCompilerOption) (
 
 type templateImpl[T TemplateProvider] struct {
 	template   *template.Template
+	funcMap    FuncMap
 	leftDelim  string
 	rightDelim string
 }
 
 func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateCompilerOptions) (*templateImpl[T], error) {
 	var (
-		err     error
-		funcMap = opts.FuncMap
-		result  = &templateImpl[T]{
+		err    error
+		result = &templateImpl[T]{
 			leftDelim:  opts.LeftDelim,
 			rightDelim: opts.RightDelim,
+			funcMap:    opts.FuncMap,
 		}
 	)
 
@@ -120,16 +123,16 @@ func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateComp
 				"\n%s", strings.Join(analysis.Errors, "\n"))
 		}
 
-		for _, result := range analysis.Results {
-			if result, ok := result.(*templateAnalyzerResultFuncMapEntry); ok {
-				funcMap[result.Key] = result.Value
+		for _, r := range analysis.Results {
+			if entry, ok := r.(*templateAnalyzerResultFuncMapEntry); ok {
+				result.funcMap[entry.Key] = entry.Value
 			}
 		}
 	}
 
 	err = recurseFieldsImplementing[FuncMapProvider](tp, func(val FuncMapProvider, field reflect.StructField) error {
 		for key, value := range val.FuncMap() {
-			funcMap[key] = value
+			result.funcMap[key] = value
 		}
 		return nil
 	})
@@ -148,25 +151,17 @@ func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateComp
 		}
 
 		if result.template == nil {
-			// t == nil is the recursive entrypoint so
+			// result.template == nil is the recursive entrypoint so
 			// some setup needs to happen.
-			result.template = template.New(templateName)
-			result.template = result.template.Delims(opts.LeftDelim, opts.RightDelim)
-			result.template = result.template.Funcs(funcMap)
-
-			templateText := val.Template()
-
-			result.template, err = result.template.Parse(templateText)
+			result.template, err = template.New(templateName).
+				Delims(opts.LeftDelim, opts.RightDelim).
+				Funcs(result.funcMap).
+				Parse(val.Template())
 			if err != nil {
 				return fmt.Errorf("failed to parse template '%s': %w", templateName, err)
 			}
 		} else {
-			// if this is a nested template wrap its text in a {{ define }}
-			// statement, so it may be referenced by the "parent" template
-			templateText := result.wrapTemplateDefinition(templateName, val.Template())
-
-			result.template, err = result.template.Parse(templateText)
-			if err != nil {
+			if err := result.addTemplate(templateName, val.Template()); err != nil {
 				return fmt.Errorf("failed to parse template '%s': %w", templateName, err)
 			}
 		}
@@ -187,12 +182,23 @@ func compileTemplate[T TemplateProvider](tp TemplateProvider, opts *templateComp
 	return result, nil
 }
 
-func (t *templateImpl[T]) wrapTemplateDefinition(name, templateText string) string {
-	// TODO: Any templates added via {{define}} will break here. This function should return
-	//  a slice of strings containing all of the individual {{define}} calls
-
-	// ex: {{define %q -}}\n%s{{end}}
-	return fmt.Sprintf("%[1]sdefine %[3]q -%[2]s\n%[4]s%[1]send%[2]s\n", t.leftDelim, t.rightDelim, name, templateText)
+func (t *templateImpl[T]) addTemplate(name, templateText string) error {
+	// A temporary template is created here instead of using
+	// the parse package directly, because the parse package
+	// does not add the built-in template functions.
+	tmp, err := template.New(name).
+		Delims(t.leftDelim, t.rightDelim).
+		Funcs(t.funcMap).
+		Parse(templateText)
+	if err != nil {
+		return err
+	}
+	for _, sub := range tmp.Templates() {
+		if _, err := t.template.AddParseTree(sub.Name(), sub.Tree); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t *templateImpl[T]) ProvideTemplate(name string, tp TemplateProvider) error {
@@ -200,8 +206,7 @@ func (t *templateImpl[T]) ProvideTemplate(name string, tp TemplateProvider) erro
 		return fmt.Errorf("template with name '%s' already defined on template provided by %T", name, new(T))
 	}
 
-	templateText := t.wrapTemplateDefinition(name, tp.Template())
-	if _, err := t.template.Parse(templateText); err != nil {
+	if err := t.addTemplate(name, tp.Template()); err != nil {
 		return fmt.Errorf("failed to parse provided template %q: %w", name, err)
 	}
 

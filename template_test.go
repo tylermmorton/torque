@@ -9,6 +9,22 @@ import (
 	torque2 "github.com/tylermmorton/torque"
 )
 
+// ---- Inner-define fixtures ----
+
+type tmplWithInnerDefine struct{}
+
+func (*tmplWithInnerDefine) Template() string {
+	return `<outer>{{template "inner" .}}</outer>{{define "inner"}}<inner/>{{end}}`
+}
+
+type tmplParentOfInnerDefine struct {
+	Child tmplWithInnerDefine `template:"with-inner-define"`
+}
+
+func (*tmplParentOfInnerDefine) Template() string {
+	return `<parent>{{template "with-inner-define" .}}</parent>`
+}
+
 // ---- ProvideTemplate fixtures ----
 
 type tmplProvidedIcon struct{}
@@ -170,6 +186,11 @@ func TestCompileTemplate(t *testing.T) {
 		require.Equal(t, `hello, world`, buf.String())
 	})
 
+	t.Run("nested_provider_with_inner_define_compiles", func(t *testing.T) {
+		_, err := torque2.CompileTemplate(&tmplParentOfInnerDefine{})
+		require.NoError(t, err)
+	})
+
 	t.Run("invalid_syntax_returns_error", func(t *testing.T) {
 		_, err := torque2.CompileTemplate(&tmplInvalid{})
 		require.Error(t, err)
@@ -249,6 +270,30 @@ func TestRender(t *testing.T) {
 		var buf bytes.Buffer
 		err = tmpl.Render(&buf, nil, torque2.TemplateRenderOptionTargets("does-not-exist"))
 		require.Error(t, err)
+	})
+
+	t.Run("inner_define_targeted_by_struct_name_renders_outer_body", func(t *testing.T) {
+		tmpl, err := torque2.CompileTemplate(&tmplParentOfInnerDefine{})
+		require.NoError(t, err)
+		var buf bytes.Buffer
+		require.NoError(t, tmpl.Render(&buf, nil, torque2.TemplateRenderOptionTargets("with-inner-define")))
+		require.Equal(t, `<outer><inner/></outer>`, buf.String())
+	})
+
+	t.Run("inner_define_targeted_by_define_name_renders_inner_body", func(t *testing.T) {
+		tmpl, err := torque2.CompileTemplate(&tmplParentOfInnerDefine{})
+		require.NoError(t, err)
+		var buf bytes.Buffer
+		require.NoError(t, tmpl.Render(&buf, nil, torque2.TemplateRenderOptionTargets("inner")))
+		require.Equal(t, `<inner/>`, buf.String())
+	})
+
+	t.Run("inner_define_both_targets_concatenated_in_order", func(t *testing.T) {
+		tmpl, err := torque2.CompileTemplate(&tmplParentOfInnerDefine{})
+		require.NoError(t, err)
+		var buf bytes.Buffer
+		require.NoError(t, tmpl.Render(&buf, nil, torque2.TemplateRenderOptionTargets("with-inner-define", "inner")))
+		require.Equal(t, `<outer><inner/></outer><inner/>`, buf.String())
 	})
 
 	t.Run("concurrent_renders_produce_consistent_output", func(t *testing.T) {

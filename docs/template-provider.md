@@ -81,6 +81,52 @@ func (*PageViewModel) Template() string {
 
 Nesting works to any depth. torque recurses through the full struct tree at compile time, so intermediate structs that do not implement `TemplateProvider` are still traversed to find nested providers.
 
+## Inline sub-templates with `{{define}}`
+
+You can also define named sub-templates directly inside a template string using the standard `{{define "name"}}...{{end}}` action. torque registers these alongside struct-field-based nested templates, so they are available by name for rendering and for targeting with `TemplateRenderOptionTargets`.
+
+```go
+type PageViewModel struct{}
+
+func (*PageViewModel) Template() string {
+    return `<outer>{{template "inner" .}}</outer>{{define "inner"}}<inner/>{{end}}`
+}
+```
+
+Here `"inner"` is an inline sub-template defined within `PageViewModel`'s template string. It can be targeted directly:
+
+```go
+tmpl, err := torque.CompileTemplate(&PageViewModel{})
+if err != nil {
+    log.Fatal(err)
+}
+
+// Render only the inline sub-template
+var buf bytes.Buffer
+err = tmpl.Render(&buf, nil, torque.TemplateRenderOptionTargets("inner"))
+// buf contains: <inner/>
+```
+
+Inline defines and struct-field-based nested templates can coexist. A struct field's template can itself contain `{{define}}` blocks; those blocks are registered under their defined names and are available for targeting across the full compiled template set.
+
+```go
+type SectionViewModel struct{}
+
+func (*SectionViewModel) Template() string {
+    return `<section>{{template "badge" .}}</section>{{define "badge"}}<span class="badge"/>{{end}}`
+}
+
+type PageViewModel struct {
+    Section SectionViewModel `template:"section"`
+}
+
+func (*PageViewModel) Template() string {
+    return `<page>{{template "section" .}}</page>`
+}
+```
+
+In this example, compiling `PageViewModel` registers three named templates: `"section"`, `"badge"`, and the root template itself.
+
 ## Template functions with FuncMapProvider
 
 Implement `FuncMapProvider` on any struct in the template tree to register custom template functions:

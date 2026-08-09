@@ -55,7 +55,7 @@ err := tmpl.Render(&buf, data, torque.TemplateRenderOptionTargets("header"))
 err := tmpl.Render(&buf, data, torque.TemplateRenderOptionTargets("header", "footer"))
 ```
 
-Sub-template names come from the `template` struct tag on nested `TemplateProvider` fields, or the field name when no tag is present. See [template provider](template-provider.md) for how nested templates are defined.
+Sub-template names come from three sources: the `template` struct tag on nested `TemplateProvider` fields, the field name when no tag is present, or the name given to a `{{define "name"}}` block inside any template string. See [template provider](template-provider.md) for how nested templates are defined.
 
 This is useful for partial updates — for example, returning a fragment in response to an HTMX request.
 
@@ -68,6 +68,27 @@ err := tmpl.Render(&buf, data, torque.TemplateRenderOptionFuncMap(torque.FuncMap
     "greet": func(name string) string { return "Goodbye, " + name },
 }))
 ```
+
+## Built-in template functions
+
+All templates compiled by torque have access to the full [Sprig](https://masterminds.github.io/sprig/) function library in addition to Go's standard template functions. Sprig provides over 100 utility functions for strings, math, dates, lists, dicts, encoding, and more.
+
+```go
+// String manipulation
+{{ .Name | upper }}
+{{ .Name | trunc 20 | trimSuffix "-" }}
+
+// Default values
+{{ .Count | default 0 }}
+
+// List and dict operations
+{{ list "a" "b" "c" | join ", " }}
+
+// Date formatting
+{{ now | date "2006-01-02" }}
+```
+
+The HTML-safe variants of Sprig's functions are used — functions that produce HTML output are appropriately escaped.
 
 ## Compiler options
 

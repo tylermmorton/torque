@@ -21,6 +21,22 @@ type Document struct {
 	Document *viewmodel.Document
 }
 
+func (*Document) Template() string {
+	//language=html
+	return `
+<div id="doc-content">
+  {{if .Document.Title}}
+  <h1 id="doc-title">{{.Document.Title}}</h1>
+  {{end}}
+  {{if .Document.Content}}
+  <div id="doc-body">{{.Document.Content}}</div>
+  {{else}}
+  <p id="doc-placeholder">This page is under construction.</p>
+  {{end}}
+</div>
+`
+}
+
 func (*Document) StyleSheet() string {
 	//language=css
 	return `
@@ -44,21 +60,8 @@ func (*Document) StyleSheet() string {
 `
 }
 
-func (*Document) Template() string {
-	//language=html
-	return `
-<div id="doc-content">
-  {{if .Document.Title}}
-  <h1 id="doc-title">{{.Document.Title}}</h1>
-  {{end}}
-  {{if .Document.Content}}
-  <div id="doc-body">{{.Document.Content}}</div>
-  {{else}}
-  <p id="doc-placeholder">This page is under construction.</p>
-  {{end}}
-</div>
-{{template "toc" .Document.TOC}}
-`
+func (*Document) Layout() torque.Handler {
+	return torque.MustNewHandler[layouts.DocsLayout]()
 }
 
 func (d *Document) Load(req *http.Request) error {
@@ -72,14 +75,18 @@ func (d *Document) Load(req *http.Request) error {
 		return err
 	}
 
-	d.Document, err = svc.DocumentService.GetByName(req.Context(), params.DocumentName)
+	document, err := svc.DocumentService.GetByName(req.Context(), params.DocumentName)
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
+	d.Document = &viewmodel.Document{
+		Name:    document.Name,
+		Slug:    document.Slug,
+		Title:   document.Title,
+		Content: document.Content,
+		TOC:     viewmodel.TableOfContents{},
+	}
 
-func (*Document) Layout() torque.Handler {
-	return torque.MustNewHandler[layouts.DocsLayout]()
+	return nil
 }

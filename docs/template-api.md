@@ -80,3 +80,55 @@ tmpl, err := torque.CompileTemplate(&PageViewModel{},
     torque.TemplateCompilerOptionDelims("[[", "]]"),
 )
 ```
+
+### Providing additional templates at compile time
+
+Use `TemplateCompilerOptionProvideTemplate` to supply named sub-templates that the primary template references but that are not embedded as struct fields. The named template is included in static analysis so references to it do not produce errors, and it is parsed into the compiled template for rendering.
+
+```go
+type IconTP struct{}
+
+func (*IconTP) Template() string { return `<svg viewBox="0 0 24 24"><!-- ... --></svg>` }
+
+tmpl, err := torque.CompileTemplate(&PageViewModel{},
+    torque.TemplateCompilerOptionProvideTemplate("icon", &IconTP{}),
+)
+```
+
+The primary template can then reference it by name:
+
+```go
+func (*PageViewModel) Template() string {
+    return `<div>{{template "icon" .}}</div>`
+}
+```
+
+Provide multiple templates by passing the option more than once:
+
+```go
+tmpl, err := torque.CompileTemplate(&PageViewModel{},
+    torque.TemplateCompilerOptionProvideTemplate("icon", &IconTP{}),
+    torque.TemplateCompilerOptionProvideTemplate("badge", &BadgeTP{}),
+)
+```
+
+## Adding templates after compilation
+
+`Template[T].ProvideTemplate` adds a named template to an already-compiled `Template[T]`. It wraps the template text in a `{{define "name"}}...{{end}}` block and parses it into the existing template set.
+
+```go
+tmpl, err := torque.CompileTemplate(&PageViewModel{},
+    torque.TemplateCompilerOptionSkipChecks(),
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+if err := tmpl.ProvideTemplate("icon", &IconTP{}); err != nil {
+    log.Fatal(err)
+}
+```
+
+`ProvideTemplate` returns an error if a template with that name is already defined on the compiled template.
+
+**Note:** Static analysis runs only at `CompileTemplate` time. Templates added via `ProvideTemplate` after compilation are not statically analyzed. If the primary template contains `{{template "icon" .}}` and "icon" was not present during compilation, pass `TemplateCompilerOptionSkipChecks` or `TemplateCompilerOptionProvideTemplate` so the static checker does not reject the reference.

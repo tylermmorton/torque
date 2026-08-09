@@ -2,7 +2,9 @@ package torque
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -21,11 +23,9 @@ type Router interface {
 
 	Use(mw Middleware)
 	Provide(key any, value any)
+	ProvideTemplate(name string, tp TemplateProvider) error
 
 	Match(method, pattern string) (http.Handler, PathParams, bool)
-
-	// Add a global template shared with all templates within this router
-	//AddTemplate(name string, tp TemplateProvider)
 }
 
 type Middleware func(http.Handler) http.Handler
@@ -40,18 +40,20 @@ func DisableRootLayout() RouterOption {
 }
 
 type trieNode struct {
-	segment   string
-	parent    *trieNode
-	children  map[string]*trieNode
-	handlers  map[string]http.Handler
-	isParam   bool
-	paramName string
+	segment    string
+	parent     *trieNode
+	children   map[string]*trieNode
+	handlers   map[string]http.Handler
+	isParam    bool
+	paramName  string
+	contextMap map[any]any
 }
 
 type routerImpl struct {
 	h          Handler
 	rootLayout Handler
 	contextMap map[any]any
+	templates  map[string]TemplateProvider
 
 	root   *trieNode
 	prefix string
@@ -60,6 +62,8 @@ type routerImpl struct {
 func NewRouter(opts ...RouterOption) Router {
 	r := &routerImpl{
 		rootLayout: MustNewHandler[PageLayoutViewModel](),
+		contextMap: make(map[any]any),
+		templates:  make(map[string]TemplateProvider),
 		root: &trieNode{
 			children: make(map[string]*trieNode),
 			handlers: map[string]http.Handler{},
@@ -148,6 +152,7 @@ func (r *routerImpl) handleMethod(method, path string, h http.Handler) {
 		if rootParent == nil {
 			rootParent = r.h
 		}
+
 		if rootParent != nil {
 			var parentMostHandler = handler
 			for {
@@ -160,15 +165,24 @@ func (r *routerImpl) handleMethod(method, path string, h http.Handler) {
 			parentMostHandler.setParent(rootParent)
 		}
 
+		for name, tp := range r.templates {
+			if err := handler.provideTemplate(name, tp); err != nil {
+				// TODO: How can we prevent this scenario? Surface this error earlier
+				//  instead of when we're actually handling the request
+				log.Printf("torque: failed to inject supplemental template %q into handler: %s", name, err)
+			}
+		}
+
 		// "merge-up" the radix sub-trie from the child router. when this handler's internal
 		// router is ever executed it will need to know about its children during Router.Match.
 		if handler.getRouter() != nil {
-			var childRouter = handler.getRouter().root
-			for key, child := range childRouter.children {
+			var childRouter = handler.getRouter()
+			node.contextMap = childRouter.contextMap
+			for key, child := range childRouter.root.children {
 				node.children[key] = child
 			}
-			if len(childRouter.handlers) > 0 {
-				node.handlers[method] = childRouter.handlers[method]
+			if len(childRouter.root.handlers) > 0 {
+				node.handlers[method] = childRouter.root.handlers[method]
 			}
 		}
 	}
@@ -178,6 +192,12 @@ func (r *routerImpl) handleMethod(method, path string, h http.Handler) {
 func (r *routerImpl) Match(method, path string) (http.Handler, PathParams, bool) {
 	params := make(map[string]string)
 	segments := strings.Split(path, "/")
+
+	// Pre-seed with the root router's own context map.
+	var contextMaps []map[any]any
+	if len(r.contextMap) > 0 {
+		contextMaps = append(contextMaps, r.contextMap)
+	}
 
 	// Traverse the radix trie to find the matching handler
 	node := r.root
@@ -197,6 +217,10 @@ func (r *routerImpl) Match(method, path string) (http.Handler, PathParams, bool)
 		} else {
 			return nil, nil, false
 		}
+
+		if len(node.contextMap) > 0 {
+			contextMaps = append(contextMaps, node.contextMap)
+		}
 	}
 
 	// Return the handler if it exists for the given method or wildcard.
@@ -208,16 +232,43 @@ func (r *routerImpl) Match(method, path string) (http.Handler, PathParams, bool)
 	}
 
 	if handler != nil {
+		if len(contextMaps) > 0 {
+			handler = wrapWithContext(handler, contextMaps)
+		}
 		return handler, params, true
 	}
 
 	return nil, nil, false
 }
 
+func wrapWithContext(h http.Handler, maps []map[any]any) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		for _, m := range maps {
+			for k, v := range m {
+				ctx = context.WithValue(ctx, k, v)
+			}
+		}
+		h.ServeHTTP(w, req.WithContext(ctx))
+	})
+}
+
 func (r *routerImpl) HandleFileSystem(pattern string, fs fs.FS) {}
 
-func (r *routerImpl) Use(mw Middleware)          {}
-func (r *routerImpl) Provide(key any, value any) {}
+func (r *routerImpl) Use(mw Middleware) {}
+
+func (r *routerImpl) Provide(key any, value any) {
+	r.contextMap[key] = value
+}
+
+func (r *routerImpl) ProvideTemplate(name string, tp TemplateProvider) error {
+	if _, ok := r.templates[name]; ok {
+		return fmt.Errorf("template with name %q already defined", name)
+	}
+
+	r.templates[name] = tp
+	return nil
+}
 
 //func (r *router) HandleFileSystem(pattern string, fs fs.FS) {
 //	pattern = strings.TrimSuffix(pattern, "/*")

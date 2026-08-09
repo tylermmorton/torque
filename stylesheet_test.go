@@ -13,7 +13,7 @@ type styleSheetVM struct {
 	Color string
 }
 
-func (*styleSheetVM) Template() string { return `<p>content</p>` }
+func (*styleSheetVM) Template() string   { return `<p>content</p>` }
 func (*styleSheetVM) StyleSheet() string { return `p { color: {{ .Color }}; }` }
 func (v *styleSheetVM) Load(_ *http.Request) error {
 	v.Color = "red"

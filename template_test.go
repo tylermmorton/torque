@@ -9,6 +9,16 @@ import (
 	torque2 "github.com/tylermmorton/torque"
 )
 
+// ---- ProvideTemplate fixtures ----
+
+type tmplProvidedIcon struct{}
+
+func (*tmplProvidedIcon) Template() string { return `<svg>icon</svg>` }
+
+type tmplUsesProvidedIcon struct{}
+
+func (*tmplUsesProvidedIcon) Template() string { return `<div>{{template "icon" .}}</div>` }
+
 // ---- Level-1: single flat TemplateProvider ----
 
 type tmplL1 struct{}
@@ -264,5 +274,24 @@ func TestRender(t *testing.T) {
 		for _, result := range results {
 			require.Equal(t, expected, result)
 		}
+	})
+}
+
+func TestCompileTemplate_ProvideTemplate(t *testing.T) {
+	t.Run("provided_template_appears_in_output", func(t *testing.T) {
+		tmpl, err := torque2.CompileTemplate(&tmplUsesProvidedIcon{},
+			torque2.TemplateCompilerOptionProvideTemplate("icon", &tmplProvidedIcon{}),
+		)
+		require.NoError(t, err)
+		var buf bytes.Buffer
+		require.NoError(t, tmpl.Render(&buf, nil))
+		require.Equal(t, `<div><svg>icon</svg></div>`, buf.String())
+	})
+
+	t.Run("duplicate_name_returns_error", func(t *testing.T) {
+		tmpl, err := torque2.CompileTemplate(&tmplL1{})
+		require.NoError(t, err)
+		require.NoError(t, tmpl.ProvideTemplate("icon", &tmplProvidedIcon{}))
+		require.Error(t, tmpl.ProvideTemplate("icon", &tmplProvidedIcon{}))
 	})
 }

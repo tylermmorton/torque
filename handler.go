@@ -17,6 +17,7 @@ type Handler interface {
 	getRouter() *routerImpl
 
 	GetTemplate() Template[TemplateProvider]
+	provideTemplate(name string, tp TemplateProvider) error
 
 	setRenderOutlet(val bool)
 	HasRenderOutlet() bool
@@ -59,6 +60,14 @@ func (h *handlerImpl[T]) setRenderOutlet(val bool) {
 
 func (h *handlerImpl[T]) HasRenderOutlet() bool {
 	return h.hasOutlet
+}
+
+func (h *handlerImpl[T]) provideTemplate(name string, tp TemplateProvider) error {
+	if h.template == nil {
+		return nil
+	}
+
+	return h.template.ProvideTemplate(name, tp)
 }
 
 func NewHandler[T ViewModel]() (Handler, error) {

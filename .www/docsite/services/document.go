@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/tylermmorton/torque/.www/docsite/viewmodel"
+	"github.com/tylermmorton/torque/.www/docsite/services/model"
 )
 
 type DocumentService interface {
-	GetByName(ctx context.Context, documentName string) (*viewmodel.Document, error)
+	GetByName(ctx context.Context, documentName string) (*model.Document, error)
 }
 
 func NewDocumentService() (DocumentService, error) {
@@ -17,9 +17,9 @@ func NewDocumentService() (DocumentService, error) {
 
 type documentServiceImpl struct{}
 
-func (*documentServiceImpl) GetByName(_ context.Context, documentName string) (*viewmodel.Document, error) {
+func (*documentServiceImpl) GetByName(_ context.Context, documentName string) (*model.Document, error) {
 	title := toTitle(documentName)
-	return &viewmodel.Document{
+	return &model.Document{
 		Name:  documentName,
 		Slug:  documentName,
 		Title: title,

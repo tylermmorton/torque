@@ -89,10 +89,6 @@ func compileContextPlan(t reflect.Type) *contextPlan {
 	return actual.(*contextPlan)
 }
 
-// Context traverses vm in pre-order DFS, calling Context() on each node that
-// implements ContextProvider. Each node receives the req returned by its parent,
-// allowing children to read and override ancestor-provided values. Sibling
-// subtrees are isolated — one sibling's context does not affect another's.
 func Context(req *http.Request, vm any) *http.Request {
 	var vs visitorStack
 	return executeContextPlan(req, reflect.ValueOf(vm), &vs)

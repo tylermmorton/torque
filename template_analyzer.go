@@ -159,6 +159,28 @@ func AnalyzeTemplate(tp TemplateProvider, opts ...AnalyzeTemplateOption) (*Templ
 		return nil, err
 	}
 
+	// Seed the TreeSet with any externally provided templates so the static
+	// check treats forward-references to them as valid.
+	for name, provided := range analyzeOptions.compilerOptions.Templates {
+		parser := parse.New(name)
+		parser.Mode = parse.SkipFuncCheck | parse.ParseComments
+
+		treeSet := make(map[string]*parse.Tree)
+		if _, err := parser.Parse(
+			provided.Template(),
+			analyzeOptions.compilerOptions.LeftDelim,
+			analyzeOptions.compilerOptions.RightDelim,
+			treeSet,
+			nil,
+		); err != nil {
+			return nil, err
+		}
+
+		for k, v := range treeSet {
+			analysis.TreeSet[k] = v
+		}
+	}
+
 	analysis.Root = analysis.TreeSet[strings.TrimPrefix(fmt.Sprintf("%T", tp), "*")].Root
 
 	analysis.TypeTree, err = createReflectedFieldTree(tp)

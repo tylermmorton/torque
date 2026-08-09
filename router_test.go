@@ -93,7 +93,7 @@ func TestRouter_Provide(t *testing.T) {
 
 	t.Run("child_shadows_parent_for_same_key", func(t *testing.T) {
 		r := torque.NewRouter(torque.DisableRootLayout())
-		r.Provide(provideKey("version"), "root-version")
+		r.ProvideContext(provideKey("version"), "root-version")
 		r.Handle("/child", torque.MustNewHandler[provideOverrideChildVM]())
 
 		req := httptest.NewRequest(http.MethodGet, "/child/version", nil)
@@ -144,8 +144,8 @@ func TestRouter_Provide(t *testing.T) {
 		r := torque.NewRouter(torque.DisableRootLayout())
 		r.Handle("/outer", torque.MustNewHandler[provideOuterVM]())
 
-		// provideOuterVM.Router() calls r.Provide("db", "postgres")
-		// provideInnerChildVM.Router() calls r.Provide("role", "admin")
+		// provideOuterVM.Router() calls r.ProvideContext("db", "postgres")
+		// provideInnerChildVM.Router() calls r.ProvideContext("role", "admin")
 		// Both are visible at the leaf route registered inside the inner child's callback.
 
 		req := httptest.NewRequest(http.MethodGet, "/outer/child/check-db", nil)
@@ -161,7 +161,7 @@ func TestRouter_Provide(t *testing.T) {
 
 	t.Run("root_provide_reaches_all_routes", func(t *testing.T) {
 		r := torque.NewRouter(torque.DisableRootLayout())
-		r.Provide(testKey("greeting"), "hello")
+		r.ProvideContext(testKey("greeting"), "hello")
 		r.Handle("/foo", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			val, _ := torque.Inject[string](req, testKey("greeting"))
 			_, _ = w.Write([]byte(val))
@@ -215,7 +215,7 @@ type provideChildVM struct{}
 func (*provideChildVM) Template() string { return `child` }
 
 func (*provideChildVM) Router(r torque.Router) error {
-	r.Provide(provideKey("role"), "admin")
+	r.ProvideContext(provideKey("role"), "admin")
 	r.Handle("/action", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		val, _ := torque.Inject[string](req, provideKey("role"))
 		_, _ = w.Write([]byte(val))
@@ -228,7 +228,7 @@ type provideInnerChildVM struct{}
 func (*provideInnerChildVM) Template() string { return `inner-child` }
 
 func (*provideInnerChildVM) Router(r torque.Router) error {
-	r.Provide(provideKey("role"), "admin")
+	r.ProvideContext(provideKey("role"), "admin")
 	r.Handle("/check-db", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		val, _ := torque.Inject[string](req, provideKey("db"))
 		_, _ = w.Write([]byte(val))
@@ -245,7 +245,7 @@ type provideOuterVM struct{}
 func (*provideOuterVM) Template() string { return `outer` }
 
 func (*provideOuterVM) Router(r torque.Router) error {
-	r.Provide(provideKey("db"), "postgres")
+	r.ProvideContext(provideKey("db"), "postgres")
 	r.Handle("/child", torque.MustNewHandler[provideInnerChildVM]())
 	return nil
 }
@@ -255,7 +255,7 @@ type provideOverrideChildVM struct{}
 func (*provideOverrideChildVM) Template() string { return `override-child` }
 
 func (*provideOverrideChildVM) Router(r torque.Router) error {
-	r.Provide(provideKey("version"), "child-version")
+	r.ProvideContext(provideKey("version"), "child-version")
 	r.Handle("/version", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		val, _ := torque.Inject[string](req, provideKey("version"))
 		_, _ = w.Write([]byte(val))

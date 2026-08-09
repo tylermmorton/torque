@@ -79,18 +79,18 @@ Method-specific matching is not yet supported; all handlers registered via `Hand
 
 ## Providing values
 
-`Router.Provide` injects key/value pairs into the HTTP request context for every route registered under that router. Use it to share infrastructure — database connections, service clients, configuration — across handlers without threading dependencies through function arguments.
+`Router.ProvideContext` injects key/value pairs into the HTTP request context for every route registered under that router. Use it to share infrastructure — database connections, service clients, configuration — across handlers without threading dependencies through function arguments.
 
 ```go
 r := torque.NewRouter()
-r.Provide(dbKey{}, db)
+r.ProvideContext(dbKey{}, db)
 r.Handle("/articles", torque.MustNewHandler[ArticleListViewModel]())
 r.Handle("/users", torque.MustNewHandler[UserListViewModel]())
 
 http.ListenAndServe(":8080", r)
 ```
 
-`Provide` is for use during router construction, before `http.ListenAndServe` is called. It is not concurrent-safe and must not be called after the server begins accepting requests.
+`ProvideContext` is for use during router construction, before `http.ListenAndServe` is called. It is not concurrent-safe and must not be called after the server begins accepting requests.
 
 ### Injecting values
 
@@ -126,10 +126,10 @@ When both a parent and child router provide the same key, the child's value take
 ```go
 type versionKey struct{}
 
-r.Provide(versionKey{}, "root-version")
+r.ProvideContext(versionKey{}, "root-version")
 
 func (*ChildViewModel) Router(r torque.Router) error {
-    r.Provide(versionKey{}, "child-version")
+    r.ProvideContext(versionKey{}, "child-version")
     r.Handle("/info", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
         val, _ := torque.Inject[string](req, versionKey{})
         fmt.Fprint(w, val) // "child-version"
@@ -142,13 +142,13 @@ Values accumulate as the router tree is traversed. A leaf route receives values 
 
 ```go
 func (*OuterViewModel) Router(r torque.Router) error {
-    r.Provide(dbKey{}, db)
+    r.ProvideContext(dbKey{}, db)
     r.Handle("/inner", torque.MustNewHandler[InnerViewModel]())
     return nil
 }
 
 func (*InnerViewModel) Router(r torque.Router) error {
-    r.Provide(roleKey{}, "admin")
+    r.ProvideContext(roleKey{}, "admin")
     r.Handle("/action", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
         db, _   := torque.Inject[*sql.DB](req, dbKey{})   // from OuterViewModel
         role, _ := torque.Inject[string](req, roleKey{})  // from InnerViewModel
@@ -159,12 +159,12 @@ func (*InnerViewModel) Router(r torque.Router) error {
 
 ### Composition with ContextProvider
 
-`Router.Provide` runs before a view model's `ContextProvider.Context` method is called. This ordering lets the router inject infrastructure and the view model use it to derive per-request data:
+`Router.ProvideContext` runs before a view model's `ContextProvider.Context` method is called. This ordering lets the router inject infrastructure and the view model use it to derive per-request data:
 
 ```go
 type servicesKey struct{}
 
-r.Provide(servicesKey{}, svc)
+r.ProvideContext(servicesKey{}, svc)
 r.Handle("/dashboard", torque.MustNewHandler[DashboardViewModel]())
 
 type DashboardViewModel struct {

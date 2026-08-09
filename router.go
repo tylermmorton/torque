@@ -22,7 +22,7 @@ type Router interface {
 	HandleRedirect(pattern string, location string, status int)
 
 	Use(mw Middleware)
-	Provide(key any, value any)
+	ProvideContext(key any, value any)
 	ProvideTemplate(name string, tp TemplateProvider) error
 
 	Match(method, pattern string) (http.Handler, PathParams, bool)
@@ -257,7 +257,7 @@ func (r *routerImpl) HandleFileSystem(pattern string, fs fs.FS) {}
 
 func (r *routerImpl) Use(mw Middleware) {}
 
-func (r *routerImpl) Provide(key any, value any) {
+func (r *routerImpl) ProvideContext(key any, value any) {
 	r.contextMap[key] = value
 }
 

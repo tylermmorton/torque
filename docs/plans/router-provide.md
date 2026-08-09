@@ -1,8 +1,8 @@
-# Router `Provide` Implementation Plan
+# Router `ProvideContext` Implementation Plan
 
 ## Problem
 
-The `Provide` method on `Router` is currently a no-op. The goal is to allow callers to inject arbitrary key/value pairs into the request context for all routes registered under a given router. The propagation semantics mirror the router tree:
+The `ProvideContext` method on `Router` is currently a no-op. The goal is to allow callers to inject arbitrary key/value pairs into the request context for all routes registered under a given router. The propagation semantics mirror the router tree:
 
 - Values provided on the root router reach every route.
 - Values provided on a child router reach only that child's routes and descendants, not its siblings.
@@ -44,10 +44,10 @@ type trieNode struct {
 contextMap: make(map[any]any),
 ```
 
-### `Provide` — populate the map
+### `ProvideContext` — populate the map
 
 ```go
-func (r *routerImpl) Provide(key any, value any) {
+func (r *routerImpl) ProvideContext(key any, value any) {
     r.contextMap[key] = value
 }
 ```
@@ -60,7 +60,7 @@ When merging a child `Handler`'s router into the trie, store a live reference to
 node.contextMap = handler.getRouter().contextMap
 ```
 
-Because Go maps are reference types, calls to `Provide` on the child router after `Handle` returns are reflected automatically — no re-registration needed.
+Because Go maps are reference types, calls to `ProvideContext` on the child router after `Handle` returns are reflected automatically — no re-registration needed.
 
 ### `Match` — accumulate and wrap
 
@@ -88,8 +88,8 @@ Lines 97-99 (the existing `r.contextMap` for-loop) are deleted. The wrapper now 
 
 | Scenario | Expected |
 |---|---|
-| Root `Provide` | All registered routes see the value |
-| Child router `Provide` | Only that child's routes see the value; siblings do not |
-| Deeply nested `RouterProvider` calling `Provide` | Grandchild routes see all ancestor values |
+| Root `ProvideContext` | All registered routes see the value |
+| Child router `ProvideContext` | Only that child's routes see the value; siblings do not |
+| Deeply nested `RouterProvider` calling `ProvideContext` | Grandchild routes see all ancestor values |
 | Key collision (root and child provide same key) | Child's value wins (applied last) |
-| `Provide` called inside `RouterProvider.Router()` callback | Works correctly at any depth |
+| `ProvideContext` called inside `RouterProvider.Router()` callback | Works correctly at any depth |

@@ -26,7 +26,7 @@ func NewDocSite() (torque.Router, error) {
 	}
 
 	r := torque.NewRouter()
-	r.Provide(viewmodel.ContextKeyServices, svc)
+	r.ProvideContext(viewmodel.ContextKeyServices, svc)
 
 	r.Handle("/static/*", torque.NoOutlet(http.FileServer(http.FS(staticFS))))
 	r.Handle("/docs/{document_name}", torque.MustNewHandler[routes.Document]())

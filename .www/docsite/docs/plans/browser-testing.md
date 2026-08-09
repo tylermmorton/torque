@@ -63,7 +63,7 @@ func NewDocSite() (torque.Router, error) {
 
 func NewDocSiteWithServices(svc *services.Services) (torque.Router, error) {
     r := torque.NewRouter()
-    r.ProvideContext(viewmodel.ContextKeyServices, svc)
+    r.ProvideContext(components.ContextKeyServices, svc)
     r.Handle("/static/*", http.FileServer(...))
     r.Handle("/docs/{document_name}", torque.MustNewHandler[routes.Document]())
     return r, nil

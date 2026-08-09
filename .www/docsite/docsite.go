@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/.www/docsite/components"
 	"github.com/tylermmorton/torque/.www/docsite/routes"
 	"github.com/tylermmorton/torque/.www/docsite/services"
-	"github.com/tylermmorton/torque/.www/docsite/viewmodel"
 )
 
 //go:generate mockery
@@ -30,7 +30,7 @@ func NewDocSite() (torque.Router, error) {
 
 func NewDocSiteWithServices(svc *services.Services) (torque.Router, error) {
 	r := torque.NewRouter()
-	r.ProvideContext(viewmodel.ContextKeyServices, svc)
+	r.ProvideContext(components.ContextKeyServices, svc)
 
 	r.Handle("/static/*", torque.NoOutlet(http.FileServer(http.FS(staticFS))))
 	r.Handle("/docs/{document_name}", torque.MustNewHandler[routes.Document]())

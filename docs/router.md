@@ -8,8 +8,8 @@ torque's router maps URL patterns to `http.Handler` instances. It implements `ht
 
 ```go
 r := torque.NewRouter()
-r.Handle("/", torque.MustNewHandler[HomeViewModel]())
-r.Handle("/articles/{id}", torque.MustNewHandler[ArticleViewModel]())
+r.Handle("/", torque.MustNewHandler[Home]())
+r.Handle("/articles/{id}", torque.MustNewHandler[Article]())
 
 http.ListenAndServe(":8080", r)
 ```
@@ -21,7 +21,7 @@ http.ListenAndServe(":8080", r)
 `Handle` registers an `http.Handler` for all HTTP methods at the given pattern.
 
 ```go
-r.Handle("/articles", torque.MustNewHandler[ArticleListViewModel]())
+r.Handle("/articles", torque.MustNewHandler[ArticleList]())
 ```
 
 ### Redirect
@@ -45,14 +45,14 @@ r.Handle("/static/*", torque.NoOutlet(http.FileServer(http.FS(staticFiles))))
 Segments wrapped in `{}` are captured as path parameters:
 
 ```go
-r.Handle("/articles/{id}", torque.MustNewHandler[ArticleViewModel]())
-r.Handle("/users/{userID}/posts/{postID}", torque.MustNewHandler[PostViewModel]())
+r.Handle("/articles/{id}", torque.MustNewHandler[Article]())
+r.Handle("/users/{userID}/posts/{postID}", torque.MustNewHandler[Post]())
 ```
 
 Retrieve a captured value with `GetPathParam`:
 
 ```go
-func (vm *ArticleViewModel) Load(req *http.Request) error {
+func (c *Article) Load(req *http.Request) error {
     id := torque.GetPathParam(req, "id")
     // use id...
     return nil
@@ -84,8 +84,8 @@ Method-specific matching is not yet supported; all handlers registered via `Hand
 ```go
 r := torque.NewRouter()
 r.ProvideContext(dbKey{}, db)
-r.Handle("/articles", torque.MustNewHandler[ArticleListViewModel]())
-r.Handle("/users", torque.MustNewHandler[UserListViewModel]())
+r.Handle("/articles", torque.MustNewHandler[ArticleList]())
+r.Handle("/users", torque.MustNewHandler[UserList]())
 
 http.ListenAndServe(":8080", r)
 ```
@@ -105,7 +105,7 @@ func Inject[T any](req *http.Request, key any) (T, bool)
 ```go
 type dbKey struct{}
 
-func (vm *ArticleListViewModel) Load(req *http.Request) error {
+func (c *ArticleList) Load(req *http.Request) error {
     db, ok := torque.Inject[*sql.DB](req, dbKey{})
     if !ok {
         return fmt.Errorf("db not provided")
@@ -128,7 +128,7 @@ type versionKey struct{}
 
 r.ProvideContext(versionKey{}, "root-version")
 
-func (*ChildViewModel) Router(r torque.Router) error {
+func (*Child) Router(r torque.Router) error {
     r.ProvideContext(versionKey{}, "child-version")
     r.Handle("/info", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
         val, _ := torque.Inject[string](req, versionKey{})
@@ -141,17 +141,17 @@ func (*ChildViewModel) Router(r torque.Router) error {
 Values accumulate as the router tree is traversed. A leaf route receives values from every ancestor:
 
 ```go
-func (*OuterViewModel) Router(r torque.Router) error {
+func (*Outer) Router(r torque.Router) error {
     r.ProvideContext(dbKey{}, db)
-    r.Handle("/inner", torque.MustNewHandler[InnerViewModel]())
+    r.Handle("/inner", torque.MustNewHandler[Inner]())
     return nil
 }
 
-func (*InnerViewModel) Router(r torque.Router) error {
+func (*Inner) Router(r torque.Router) error {
     r.ProvideContext(roleKey{}, "admin")
     r.Handle("/action", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-        db, _   := torque.Inject[*sql.DB](req, dbKey{})   // from OuterViewModel
-        role, _ := torque.Inject[string](req, roleKey{})  // from InnerViewModel
+        db, _   := torque.Inject[*sql.DB](req, dbKey{})   // from Outer
+        role, _ := torque.Inject[string](req, roleKey{})  // from Inner
     }))
     return nil
 }
@@ -159,19 +159,19 @@ func (*InnerViewModel) Router(r torque.Router) error {
 
 ### Composition with ContextProvider
 
-`Router.ProvideContext` runs before a view model's `ContextProvider.Context` method is called. This ordering lets the router inject infrastructure and the view model use it to derive per-request data:
+`Router.ProvideContext` runs before a component's `ContextProvider.Context` method is called. This ordering lets the router inject infrastructure and the component use it to derive per-request data:
 
 ```go
 type servicesKey struct{}
 
 r.ProvideContext(servicesKey{}, svc)
-r.Handle("/dashboard", torque.MustNewHandler[DashboardViewModel]())
+r.Handle("/dashboard", torque.MustNewHandler[Dashboard]())
 
-type DashboardViewModel struct {
+type Dashboard struct {
     User *User
 }
 
-func (vm *DashboardViewModel) Context(req *http.Request) *http.Request {
+func (c *Dashboard) Context(req *http.Request) *http.Request {
     svc, ok := torque.Inject[*Services](req, servicesKey{})
     if !ok {
         return req
@@ -183,15 +183,15 @@ func (vm *DashboardViewModel) Context(req *http.Request) *http.Request {
     return torque.Provide(req, currentUserKey{}, user)
 }
 
-func (vm *DashboardViewModel) Load(req *http.Request) error {
-    vm.User, _ = torque.Inject[*User](req, currentUserKey{})
+func (c *Dashboard) Load(req *http.Request) error {
+    c.User, _ = torque.Inject[*User](req, currentUserKey{})
     return nil
 }
 ```
 
 ## Providing templates
 
-`Router.ProvideTemplate` registers a named template that is injected into every torque `Handler` registered on that router. Use it to share reusable template fragments — icons, buttons, or alert components — across multiple pages without duplicating markup in each view model.
+`Router.ProvideTemplate` registers a named template that is injected into every torque `Handler` registered on that router. Use it to share reusable template fragments — icons, buttons, or alert components — across multiple pages without duplicating markup in each component.
 
 ```go
 type IconTP struct{}
@@ -204,14 +204,14 @@ r := torque.NewRouter()
 if err := r.ProvideTemplate("icon", &IconTP{}); err != nil {
     log.Fatal(err)
 }
-r.Handle("/page1", torque.MustNewHandler[Page1ViewModel]())
-r.Handle("/page2", torque.MustNewHandler[Page2ViewModel]())
+r.Handle("/page1", torque.MustNewHandler[Page1]())
+r.Handle("/page2", torque.MustNewHandler[Page2]())
 ```
 
 Any handler registered after the call can reference the template by name:
 
 ```go
-func (*Page1ViewModel) Template() string {
+func (*Page1) Template() string {
     return `<div>{{template "icon" .}}</div>`
 }
 ```
@@ -220,22 +220,22 @@ func (*Page1ViewModel) Template() string {
 
 ### Name conflicts
 
-When a handler's own view model already defines a template field with the same name as a router-provided template, the handler's local definition takes precedence. The router-provided template is skipped for that handler.
+When a handler's own component already defines a template field with the same name as a router-provided template, the handler's local definition takes precedence. The router-provided template is skipped for that handler.
 
 ```go
 type LocalIconTP struct{}
 
 func (*LocalIconTP) Template() string { return `local-icon` }
 
-type PageViewModel struct {
+type Page struct {
     Icon LocalIconTP `template:"icon"` // local definition wins
 }
 
-func (*PageViewModel) Template() string { return `{{template "icon" .}}` }
+func (*Page) Template() string { return `{{template "icon" .}}` }
 
 r := torque.NewRouter()
 r.ProvideTemplate("icon", &GlobalIconTP{})  // registered globally
-r.Handle("/page", torque.MustNewHandler[PageViewModel]())
+r.Handle("/page", torque.MustNewHandler[Page]())
 // /page renders the local icon, not the global one
 ```
 

@@ -25,17 +25,17 @@ type Handler interface {
 	HasRenderOutlet() bool
 }
 
-type handlerImpl[T ViewModel] struct {
+type handlerImpl[T Component] struct {
 	// parent is the handler that wraps this handler
 	parent Handler
 	// router is the internal router for this handler
 	router *routerImpl
 	// decoder
 	decoder *schema.Decoder
-	// template is the internal template, set if the underlying view model type
+	// template is the internal template, set if the underlying component type
 	// implements the TemplateProvider interface.
 	template Template[TemplateProvider]
-	// hasStylesheet indicates the view model type (or a field on it) implements
+	// hasStylesheet indicates the component type (or a field on it) implements
 	// StyleSheetProvider, enabling the handleStylesheet step on each GET request.
 	hasStylesheet bool
 	// hasOutlet is a flag indicating the internal template defines an outlet
@@ -74,7 +74,7 @@ func (h *handlerImpl[T]) provideTemplate(name string, tp TemplateProvider) error
 	return h.template.ProvideTemplate(name, tp)
 }
 
-func NewHandler[T ViewModel]() (Handler, error) {
+func NewHandler[T Component]() (Handler, error) {
 	var err error
 
 	vmTyp := any(new(T))
@@ -132,7 +132,7 @@ func NewHandler[T ViewModel]() (Handler, error) {
 	return handler, nil
 }
 
-func MustNewHandler[T ViewModel]() Handler {
+func MustNewHandler[T Component]() Handler {
 	h, err := NewHandler[T]()
 	if err != nil {
 		panic(fmt.Sprintf("failed to create new handler: %s", err))
@@ -161,31 +161,31 @@ func (h *handlerImpl[T]) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 }
 
 func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request) *http.Request {
-	var vm any = new(T)
+	var c any = new(T)
 
-	req = h.handleContext(wr, req, vm)
+	req = h.handleContext(wr, req, c)
 
 	switch req.Method {
 	case http.MethodGet:
-		err := h.handleLoader(wr, req, vm)
+		err := h.handleLoader(wr, req, c)
 		if err != nil {
 			h.handleError(wr, req, err)
 			return req
 		}
 
-		req, err = h.handleStylesheet(wr, req, vm)
+		req, err = h.handleStylesheet(wr, req, c)
 		if err != nil {
 			h.handleError(wr, req, err)
 			return req
 		}
 
-		err = h.handleRender(wr, req, vm)
+		err = h.handleRender(wr, req, c)
 		if err != nil {
 			h.handleError(wr, req, err)
 			return req
 		}
 	case http.MethodPut, http.MethodPost, http.MethodPatch, http.MethodDelete:
-		err := h.handleAction(wr, req, vm)
+		err := h.handleAction(wr, req, c)
 		if err != nil {
 			h.handleError(wr, req, err)
 			return req
@@ -195,18 +195,18 @@ func (h *handlerImpl[T]) serveRequest(wr http.ResponseWriter, req *http.Request)
 	return req
 }
 
-func (h *handlerImpl[T]) handleContext(wr http.ResponseWriter, req *http.Request, vm ViewModel) *http.Request {
+func (h *handlerImpl[T]) handleContext(wr http.ResponseWriter, req *http.Request, c Component) *http.Request {
 	// Add any torque framework specific context
 	req = Provide(req, decoderKey, h.decoder)
 
 	// Resolve the ContextProvider plan
-	req = Context(req, vm)
+	req = Context(req, c)
 
 	return req
 }
 
-func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {
-	if action, ok := vm.(Action); ok {
+func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request, c Component) error {
+	if action, ok := c.(Action); ok {
 		err := action.Action(wr, req)
 		if err != nil {
 			return err
@@ -217,15 +217,15 @@ func (h *handlerImpl[T]) handleAction(wr http.ResponseWriter, req *http.Request,
 	return fmt.Errorf("failed to handle %s action: %w", req.Method, errNotImplemented)
 }
 
-func (h *handlerImpl[T]) handleStylesheet(wr http.ResponseWriter, req *http.Request, vm ViewModel) (*http.Request, error) {
+func (h *handlerImpl[T]) handleStylesheet(wr http.ResponseWriter, req *http.Request, c Component) (*http.Request, error) {
 	if !h.hasStylesheet {
 		return req, nil
 	}
-	return ApplyStyleSheets(req, vm)
+	return ApplyStyleSheets(req, c)
 }
 
-func (h *handlerImpl[T]) handleLoader(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {
-	err := Load(req, vm)
+func (h *handlerImpl[T]) handleLoader(wr http.ResponseWriter, req *http.Request, c Component) error {
+	err := Load(req, c)
 	if err != nil {
 		return err
 	}
@@ -233,11 +233,11 @@ func (h *handlerImpl[T]) handleLoader(wr http.ResponseWriter, req *http.Request,
 	return nil
 }
 
-func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request, vm ViewModel) error {
-	if r, ok := vm.(Renderer); ok {
+func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request, c Component) error {
+	if r, ok := c.(Renderer); ok {
 		return r.Render(wr, req)
 	} else if req.Header.Get("Content-Type") == "application/json" {
-		byt, err := json.Marshal(vm)
+		byt, err := json.Marshal(c)
 		if err != nil {
 			return err
 		}
@@ -245,11 +245,11 @@ func (h *handlerImpl[T]) handleRender(wr http.ResponseWriter, req *http.Request,
 		return err
 	} else if h.template != nil {
 		if h.hasOutlet {
-			return h.template.Render(wr, vm, TemplateRenderOptionFuncMap(FuncMap{
+			return h.template.Render(wr, c, TemplateRenderOptionFuncMap(FuncMap{
 				"outlet": h.buildOutletFunc(req),
 			}))
 		}
-		return h.template.Render(wr, vm)
+		return h.template.Render(wr, c)
 	}
 
 	return nil

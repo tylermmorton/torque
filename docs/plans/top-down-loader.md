@@ -62,7 +62,7 @@ Update ordering assertions:
 - `depth_first_post_order_across_three_levels` → rename and flip to `["orderRoot", "orderMid", "orderLeaf"]`
 - `loader_error_propagates_wrapped_with_type_name` → parent now runs before child, so `vm.Loaded` is `true` when the child errors; flip `require.False` to `require.True`
 
-### `.www/docsite/viewmodel/navbar.go`
+### `.www/docsite/components/navbar.go`
 
 Add `Load()` to `NavBar` that copies `GitHubURL → Stars.RepositoryURL`.
 

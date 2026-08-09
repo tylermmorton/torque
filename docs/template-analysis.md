@@ -15,7 +15,7 @@ func AnalyzeTemplate(tp TemplateProvider, opts ...AnalyzeTemplateOption) (*Templ
 ```
 
 ```go
-analysis, err := torque.AnalyzeTemplate(&PageViewModel{})
+analysis, err := torque.AnalyzeTemplate(&Page{})
 if err != nil {
     log.Fatal(err)
 }
@@ -96,7 +96,7 @@ var checkNoInlineStyles torque.TemplateAnalyzer = func(analysis *torque.Template
 Register analyzers with `AnalyzeTemplateOptionAnalyzers`:
 
 ```go
-analysis, err := torque.AnalyzeTemplate(&PageViewModel{},
+analysis, err := torque.AnalyzeTemplate(&Page{},
     torque.AnalyzeTemplateOptionAnalyzers(checkNoInlineStyles),
 )
 ```
@@ -124,7 +124,7 @@ type TemplateAnalyzerStaticCheckOptions struct {
 To use it directly in your own analysis:
 
 ```go
-analysis, err := torque.AnalyzeTemplate(&PageViewModel{},
+analysis, err := torque.AnalyzeTemplate(&Page{},
     torque.AnalyzeTemplateOptionAnalyzers(
         torque.TemplateAnalyzerStaticCheck(torque.TemplateAnalyzerStaticCheckOptions{}),
     ),
@@ -162,7 +162,7 @@ Multiple visitors can be passed; each is called for every node in the same trave
 `AnalyzeTemplateOptionAnalyzers` registers one or more analyzers to run during `AnalyzeTemplate`:
 
 ```go
-analysis, err := torque.AnalyzeTemplate(&PageViewModel{},
+analysis, err := torque.AnalyzeTemplate(&Page{},
     torque.AnalyzeTemplateOptionAnalyzers(myAnalyzer, anotherAnalyzer),
 )
 ```
@@ -172,7 +172,7 @@ analysis, err := torque.AnalyzeTemplate(&PageViewModel{},
 `AnalyzeTemplateOptionCompiler` passes `TemplateCompilerOption` values through to the underlying compiler configuration used during analysis. Use this to set custom delimiters or inject a `FuncMap` when analyzing templates that require them:
 
 ```go
-analysis, err := torque.AnalyzeTemplate(&PageViewModel{},
+analysis, err := torque.AnalyzeTemplate(&Page{},
     torque.AnalyzeTemplateOptionCompiler(
         torque.TemplateCompilerOptionDelims("[[", "]]"),
     ),
@@ -184,7 +184,7 @@ analysis, err := torque.AnalyzeTemplate(&PageViewModel{},
 By default, `CompileTemplate` runs `TemplateAnalyzerStaticCheck` and returns an error if any problems are found. Pass `TemplateCompilerOptionSkipChecks` to disable all static analysis during compilation:
 
 ```go
-tmpl, err := torque.CompileTemplate(&PageViewModel{},
+tmpl, err := torque.CompileTemplate(&Page{},
     torque.TemplateCompilerOptionSkipChecks(),
 )
 ```

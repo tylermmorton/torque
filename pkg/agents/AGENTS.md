@@ -59,11 +59,11 @@ The top of each SKILL.md pays context load on every invocation. Keep it tight:
 
 These 6 terms appear in every task and have no obvious analog in standard Go:
 
-- **ViewModel** — plain Go struct that acts as both HTTP response data and handler configuration via interface implementation
-- **Loader** — interface that populates ViewModel fields during a request; runs before rendering
+- **Component** — plain Go struct that acts as both HTTP response data and handler configuration via interface implementation
+- **Loader** — interface that populates Component fields during a request; runs before rendering
 - **Outlet** — template function (`{{outlet}}`) that places child route content into a parent template slot
-- **RouterProvider** — interface a ViewModel implements to declare its child routes
-- **LayoutProvider** — interface a ViewModel implements to declare its own layout wrapper
+- **RouterProvider** — interface a Component implements to declare its child routes
+- **LayoutProvider** — interface a Component implements to declare its own layout wrapper
 - **ContextProvider** — interface that runs before Loader to inject request-scoped values into context
 
 ### Request lifecycle (inlined)
@@ -72,7 +72,7 @@ Bottom-up composition: child renders first, output propagates up through the par
 
 1. Router matches request to handler
 2. ContextProvider runs (pre-Loader context injection)
-3. Loader runs on ViewModel and all nested loaders (depth-first post-order: children before parents)
+3. Loader runs on Component and all nested loaders (depth-first post-order: children before parents)
 4. Child route renders and stores output in context
 5. Parent template renders; `{{outlet}}` returns child's buffered output
 6. Chain repeats upward; Page Layout wraps the final result
@@ -81,7 +81,7 @@ Bottom-up composition: child renders first, output propagates up through the par
 
 Five canonical patterns for v1, ordered by frequency in real applications:
 
-1. **Basic handler** — ViewModel + Loader + TemplateProvider wired to a route
+1. **Basic handler** — Component + Loader + TemplateProvider wired to a route
 2. **Outlet routing** — parent with RouterProvider, child rendered via `{{outlet}}`
 3. **Form handling** — DecodeAndValidateForm + SelfValidator + error display in template
 4. **LayoutProvider** — child declaring its layout, layout chain composition

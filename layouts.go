@@ -6,7 +6,7 @@ import (
 	"github.com/tylermmorton/torque/pkg/templates/html"
 )
 
-func (vm *PageLayoutViewModel) Template() string {
+func (pl *PageLayout) Template() string {
 	//language=html
 	return `<!DOCTYPE html>
 <html lang="en">
@@ -30,7 +30,7 @@ func (vm *PageLayoutViewModel) Template() string {
 </html>`
 }
 
-type PageLayoutViewModel struct {
+type PageLayout struct {
 	Title string `json:"title"`
 
 	Styles       []html.LinkTag   `json:"styles"        template:"link-tag"`
@@ -38,10 +38,10 @@ type PageLayoutViewModel struct {
 	InlineStyles []html.StyleTag  `json:"inline_styles" template:"style-tag"`
 }
 
-func (vm *PageLayoutViewModel) Load(req *http.Request) error {
-	vm.Styles = InjectStylesheets(req)
-	vm.Scripts = InjectScriptTags(req)
-	vm.InlineStyles = InjectInlineStyles(req)
+func (pl *PageLayout) Load(req *http.Request) error {
+	pl.Styles = InjectStylesheets(req)
+	pl.Scripts = InjectScriptTags(req)
+	pl.InlineStyles = InjectInlineStyles(req)
 	return nil
 }
 

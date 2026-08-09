@@ -37,7 +37,7 @@ Fully implement the named outlet variants for the `{{outlet}}` template function
 
 ```
 // relative path, no RouterProvider
-outlet with relative path "./foo" requires the ViewModel to implement RouterProvider
+outlet with relative path "./foo" requires the Component to implement RouterProvider
 
 // relative path, route doesn't exist
 outlet with relative path "./foo" does not match any route registered by RouterProvider

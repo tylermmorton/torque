@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-type ViewModel = any
+type Component = any
 
 type TemplateProvider interface {
 	Template() string

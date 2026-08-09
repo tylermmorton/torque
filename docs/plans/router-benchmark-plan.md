@@ -291,7 +291,7 @@ File: router_bench_test.go
 Package: torque_test
 ```
 
-1. Define view model types for each chain level using `RouterProvider` and
+1. Define component types for each chain level using `RouterProvider` and
    `TemplateProvider`. The outlet templates must contain `{{outlet}}`:
 
    ```go
@@ -394,7 +394,7 @@ Package: torque_test
    func (*benchNavVM) Template() string { return `<nav>nav</nav>` }
    ```
 
-2. Define three root view models — one for each sub-case — with the appropriate
+2. Define three root components — one for each sub-case — with the appropriate
    number of `{{outlet "/nav"}}` calls in their template strings. These will not
    compile until the variadic outlet func is implemented, so wrap the body in
    `b.Skip`:

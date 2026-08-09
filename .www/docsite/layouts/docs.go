@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/tylermmorton/torque"
-	"github.com/tylermmorton/torque/.www/docsite/viewmodel"
+	"github.com/tylermmorton/torque/.www/docsite/components"
 	"github.com/tylermmorton/torque/pkg/templates/html"
 )
 
@@ -15,9 +15,9 @@ var _ interface {
 } = (*DocsLayout)(nil)
 
 type DocsLayout struct {
-	NavBar  viewmodel.NavBar
-	Sidebar viewmodel.Sidebar
-	Search  viewmodel.SearchDialog `template:"search-dialog"`
+	NavBar  components.NavBar
+	Sidebar components.Sidebar
+	Search  components.SearchDialog `template:"search-dialog"`
 }
 
 func (*DocsLayout) Template() string {
@@ -77,11 +77,11 @@ func (*DocsLayout) Template() string {
 }
 
 func (l *DocsLayout) Load(req *http.Request) error {
-	l.NavBar = viewmodel.NavBar{
+	l.NavBar = components.NavBar{
 		GitHubURL: "https://github.com/tylermmorton/torque",
 	}
-	l.Sidebar = viewmodel.NewSidebar(req.URL.Path)
-	l.Search = viewmodel.SearchDialog{Placeholder: "Search Torque docs…"}
+	l.Sidebar = components.NewSidebar(req.URL.Path)
+	l.Search = components.SearchDialog{Placeholder: "Search Torque docs…"}
 	return nil
 }
 

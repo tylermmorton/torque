@@ -8,15 +8,15 @@ Errors in torque propagate through the loading and rendering pipeline and are wr
 
 ## Errors in Load
 
-Return a non-nil error from `Load` to signal a failure. torque wraps the error with the ViewModel type name before propagating it:
+Return a non-nil error from `Load` to signal a failure. torque wraps the error with the Component type name before propagating it:
 
 ```go
-func (vm *ArticleViewModel) Load(req *http.Request) error {
+func (c *Article) Load(req *http.Request) error {
     article, err := db.GetArticle(id)
     if err != nil {
-        return err // wrapped as: "loading ArticleViewModel: ..."
+        return err // wrapped as: "loading Article: ..."
     }
-    vm.Title = article.Title
+    c.Title = article.Title
     return nil
 }
 ```
@@ -47,7 +47,7 @@ Use standard Go error patterns for sentinel errors and error inspection:
 ```go
 var ErrNotFound = errors.New("not found")
 
-func (vm *ArticleViewModel) Load(req *http.Request) error {
+func (c *Article) Load(req *http.Request) error {
     article, err := db.GetArticle(id)
     if errors.Is(err, sql.ErrNoRows) {
         return fmt.Errorf("%w: article %s", ErrNotFound, id)

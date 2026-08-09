@@ -2,11 +2,11 @@
 
 ## Propagation rules
 
-Errors from `Load` or `Render` are wrapped with the ViewModel type name before propagating:
+Errors from `Load` or `Render` are wrapped with the Component type name before propagating:
 
 ```
-loading ArticleViewModel: record not found
-rendering ArticleViewModel: template: ...
+loading Article: record not found
+rendering Article: template: ...
 ```
 
 When a nested loader returns an error, its parent's `Load` is **not called**. The error propagates up immediately — no partial loading.

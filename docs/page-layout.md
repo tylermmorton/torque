@@ -4,14 +4,14 @@ title: Page Layout API
 
 # Page Layout API
 
-Every `torque.NewRouter()` automatically wraps all rendered responses in a valid HTML document shell. This shell is called the **Page Layout** and is backed by `PageLayoutViewModel`.
+Every `torque.NewRouter()` automatically wraps all rendered responses in a valid HTML document shell. This shell is called the **Page Layout** and is backed by `PageLayout`.
 
 ```go
 r := torque.NewRouter()
-r.Handle("/", torque.MustNewHandler[GreetingViewModel]())
+r.Handle("/", torque.MustNewHandler[Greeting]())
 ```
 
-A `GET /` request renders `GreetingViewModel`, then passes its output into the Page Layout. The browser receives a complete document:
+A `GET /` request renders `Greeting`, then passes its output into the Page Layout. The browser receives a complete document:
 
 ```html
 <!DOCTYPE html>
@@ -22,7 +22,7 @@ A `GET /` request renders `GreetingViewModel`, then passes its output into the P
     <title></title>
   </head>
   <body>
-    <!-- GreetingViewModel output here -->
+    <!-- Greeting output here -->
   </body>
 </html>
 ```
@@ -36,7 +36,7 @@ Call `ProvideStylesheets` from a `ContextProvider` to inject `<link>` tags into 
 ```go
 import "github.com/tylermmorton/torque/pkg/templates/html"
 
-func (vm *PageViewModel) Context(req *http.Request) *http.Request {
+func (c *Page) Context(req *http.Request) *http.Request {
     return torque.ProvideStylesheets(req,
         html.LinkTag{Rel: "stylesheet", Href: "/static/app.css"},
         html.LinkTag{Rel: "stylesheet", Href: "/static/theme.css"},
@@ -58,7 +58,7 @@ func (vm *PageViewModel) Context(req *http.Request) *http.Request {
 Call `ProvideScriptTags` from a `ContextProvider` to inject `<script>` tags into the document `<head>`:
 
 ```go
-func (vm *PageViewModel) Context(req *http.Request) *http.Request {
+func (c *Page) Context(req *http.Request) *http.Request {
     return torque.ProvideScriptTags(req,
         html.ScriptTag{Src: "/static/htmx.min.js", Defer: true},
         html.ScriptTag{Type: "module", Src: "/static/app.js"},
@@ -80,21 +80,21 @@ func (vm *PageViewModel) Context(req *http.Request) *http.Request {
 
 ## Adding inline styles
 
-Implement `StyleSheetProvider` on a ViewModel to generate CSS from template data and inject it as an inline `<style>` block in the document `<head>`:
+Implement `StyleSheetProvider` on a Component to generate CSS from template data and inject it as an inline `<style>` block in the document `<head>`:
 
 ```go
-type ButtonViewModel struct {
+type Button struct {
     Color string
 }
 
-func (*ButtonViewModel) StyleSheet() string {
+func (*Button) StyleSheet() string {
     return `button { color: {{ .Color }}; }`
 }
 ```
 
 The CSS template is executed after `Load` completes, so dynamic values (colors, sizes, theme tokens) work naturally. If the template produces an empty string, no `<style>` tag is emitted.
 
-Struct fields that also implement `StyleSheetProvider` are discovered automatically — their CSS is collected alongside the root ViewModel's CSS, enabling component-scoped styles without manual wiring.
+Struct fields that also implement `StyleSheetProvider` are discovered automatically — their CSS is collected alongside the root Component's CSS, enabling component-scoped styles without manual wiring.
 
 See [stylesheet provider](stylesheet-provider.md) for the full reference.
 
@@ -102,14 +102,14 @@ See [stylesheet provider](stylesheet-provider.md) for the full reference.
 
 `ProvideStylesheets` and `ProvideScriptTags` must be called from `Context`, not `Load`.
 
-The render chain runs bottom-up: the innermost handler renders first, then each parent wraps the result. `Context` runs during a top-down pre-order traversal that happens before rendering begins, so values set in `Context` are available to every handler in the chain — including `PageLayoutViewModel.Load`, which reads them to populate `Styles` and `Scripts`.
+The render chain runs bottom-up: the innermost handler renders first, then each parent wraps the result. `Context` runs during a top-down pre-order traversal that happens before rendering begins, so values set in `Context` are available to every handler in the chain — including `PageLayout.Load`, which reads them to populate `Styles` and `Scripts`.
 
-`Load` runs per-handler, and by the time `PageLayoutViewModel.Load` executes, child `Load` calls have already completed. Values written to the context in `Load` do not propagate upward.
+`Load` runs per-handler, and by the time `PageLayout.Load` executes, child `Load` calls have already completed. Values written to the context in `Load` do not propagate upward.
 
 **Correct:**
 
 ```go
-func (vm *PageViewModel) Context(req *http.Request) *http.Request {
+func (c *Page) Context(req *http.Request) *http.Request {
     return torque.ProvideStylesheets(req, html.LinkTag{Rel: "stylesheet", Href: "/app.css"})
 }
 ```
@@ -117,7 +117,7 @@ func (vm *PageViewModel) Context(req *http.Request) *http.Request {
 **Incorrect — the Page Layout will not see this stylesheet:**
 
 ```go
-func (vm *PageViewModel) Load(req *http.Request) error {
+func (c *Page) Load(req *http.Request) error {
     // Do not call ProvideStylesheets here; changes to req are not propagated upward.
     return nil
 }
@@ -132,7 +132,7 @@ stylesheets := torque.InjectStylesheets(req)  // []html.LinkTag
 scripts     := torque.InjectScriptTags(req)   // []html.ScriptTag
 ```
 
-Both return an empty slice when no values have been provided. `PageLayoutViewModel.Load` calls these internally to populate its fields before rendering.
+Both return an empty slice when no values have been provided. `PageLayout.Load` calls these internally to populate its fields before rendering.
 
 ## Disabling the Page Layout
 

@@ -11,9 +11,9 @@ The `{{outlet}}` template function lets a parent handler's template wrap its chi
 A parent handler uses `{{outlet}}` in its template to mark where child content should appear. The parent also implements `RouterProvider` to declare which child routes it owns.
 
 ```go
-type LayoutViewModel struct{}
+type Layout struct{}
 
-func (*LayoutViewModel) Template() string {
+func (*Layout) Template() string {
     return `<!DOCTYPE html>
 <html>
   <body>
@@ -23,9 +23,9 @@ func (*LayoutViewModel) Template() string {
 </html>`
 }
 
-func (*LayoutViewModel) Router(r torque.Router) error {
-    r.Handle("/dashboard", torque.MustNewHandler[DashboardViewModel]())
-    r.Handle("/settings", torque.MustNewHandler[SettingsViewModel]())
+func (*Layout) Router(r torque.Router) error {
+    r.Handle("/dashboard", torque.MustNewHandler[Dashboard]())
+    r.Handle("/settings", torque.MustNewHandler[Settings]())
     return nil
 }
 ```
@@ -34,12 +34,12 @@ Register the parent with an outer router:
 
 ```go
 r := torque.NewRouter()
-r.Handle("/", torque.MustNewHandler[LayoutViewModel]())
+r.Handle("/", torque.MustNewHandler[Layout]())
 
 http.ListenAndServe(":8080", r)
 ```
 
-A `GET /dashboard` request renders `DashboardViewModel` first, then injects that output into the layout's `<main>` slot. The browser receives the full page — layout and child content together.
+A `GET /dashboard` request renders `Dashboard` first, then injects that output into the layout's `<main>` slot. The browser receives the full page — layout and child content together.
 
 When the request matches no child route, `{{outlet}}` renders as an empty string and the parent template renders normally.
 
@@ -63,7 +63,7 @@ Each level in the chain renders exactly once per request.
 A path starting with `/` dispatches against the root router:
 
 ```go
-func (*PageViewModel) Template() string {
+func (*Page) Template() string {
     return `<div class="layout">
   <aside>{{outlet "/nav"}}</aside>
   <main>{{outlet}}</main>
@@ -76,7 +76,7 @@ func (*PageViewModel) Template() string {
 A path starting with `./` dispatches against the handler's own embedded router (registered via `RouterProvider`):
 
 ```go
-func (*PageViewModel) Template() string {
+func (*Page) Template() string {
     return `<section>
   {{outlet "./sidebar"}}
   {{outlet}}
@@ -89,7 +89,7 @@ func (*PageViewModel) Template() string {
 A path with `{placeholder}` tokens is expanded at render time using positional arguments:
 
 ```go
-func (*PageViewModel) Template() string {
+func (*Page) Template() string {
     return `<section>
   {{outlet "/users/{id}/profile" .UserID}}
   {{outlet "/teams/{id}/members/{page}" .TeamID .CurrentPage}}
@@ -110,7 +110,7 @@ Each unique path argument is dispatched at most once per request. Subsequent cal
 Standard `http.Handler` instances registered via `Handle` are wrapped by a parent's outlet automatically. Use `NoOutlet` to bypass wrapping:
 
 ```go
-func (*LayoutViewModel) Router(r torque.Router) error {
+func (*Layout) Router(r torque.Router) error {
     // this handler's output will NOT appear in the parent's {{outlet}}
     r.Handle("/static/*", torque.NoOutlet(http.FileServer(http.FS(staticFiles))))
     return nil
@@ -123,7 +123,7 @@ func (*LayoutViewModel) Router(r torque.Router) error {
 
 | Condition | Error message |
 |-----------|---------------|
-| `{{outlet "./rel"}}` used without `RouterProvider` | `relative path in {{ outlet "./rel" }} requires the ViewModel to implement RouterProvider` |
+| `{{outlet "./rel"}}` used without `RouterProvider` | `relative path in {{ outlet "./rel" }} requires the Component to implement RouterProvider` |
 | `{{outlet "./rel"}}` path not registered by `RouterProvider` | `path in {{ outlet "./rel" }} does not match any route registered by RouterProvider` |
 | Placeholder count does not match argument count | `{{ outlet "/path/{a}/{b}" }} has 2 placeholder(s) but 1 argument(s) were provided` |
 

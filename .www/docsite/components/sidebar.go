@@ -1,4 +1,4 @@
-package viewmodel
+package components
 
 type SidebarLink struct {
 	Label  string
@@ -28,7 +28,7 @@ func NewSidebar(currentPath string) Sidebar {
 			title: "Introduction",
 			links: []linkDef{
 				{"Getting Started", "getting-started"},
-				{"View Model", "view-model"},
+				{"Component", "component"},
 			},
 		},
 		{

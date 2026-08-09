@@ -13,7 +13,7 @@ The simplest strategy. Struct fields that implement `TemplateProvider` are autom
 Use nested templates when:
 
 - The component is always rendered as part of this specific parent.
-- The component's data comes from the parent's ViewModel tree.
+- The component's data comes from the parent's Component tree.
 - The component does not need to be fetched or cached independently.
 - You want compile-time composition with no runtime overhead.
 
@@ -55,6 +55,6 @@ See [layout](layout.md) for full usage.
 
 | Strategy | Component has its own URL | Data lifecycle | Who declares the relationship | Supports routing to child URLs |
 |---|---|---|---|---|
-| Nested templates (`{{template}}`) | No | Shared parent ViewModel | Parent (struct field) | No |
+| Nested templates (`{{template}}`) | No | Shared parent Component | Parent (struct field) | No |
 | `RouterProvider` + `{{outlet}}` | Yes | Independent per handler | Parent | Yes |
 | `LayoutProvider` | No | Independent per handler | Child | No |

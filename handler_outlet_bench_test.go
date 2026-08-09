@@ -10,7 +10,7 @@ import (
 var Sink any
 
 func BenchmarkBuildOutletFunc_bare_outlet(b *testing.B) {
-	h := &handlerImpl[struct{ ViewModel }]{}
+	h := &handlerImpl[struct{ Component }]{}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	b.ResetTimer()
 	for b.Loop() {
@@ -26,7 +26,7 @@ func BenchmarkBuildOutletFunc_single_named_outlet(b *testing.B) {
 		_, _ = w.Write([]byte("<nav>menu</nav>"))
 	}))
 
-	h := &handlerImpl[struct{ ViewModel }]{}
+	h := &handlerImpl[struct{ Component }]{}
 	req := httptest.NewRequest(http.MethodGet, "/page", nil)
 	ctx := context.WithValue(req.Context(), rootRouterKey, router)
 	req = req.WithContext(ctx)
@@ -51,7 +51,7 @@ func BenchmarkBuildOutletFunc_multiple_named_outlets(b *testing.B) {
 		_, _ = w.Write([]byte("<aside>sidebar</aside>"))
 	}))
 
-	h := &handlerImpl[struct{ ViewModel }]{}
+	h := &handlerImpl[struct{ Component }]{}
 	req := httptest.NewRequest(http.MethodGet, "/page", nil)
 	ctx := context.WithValue(req.Context(), rootRouterKey, router)
 	req = req.WithContext(ctx)
@@ -72,7 +72,7 @@ func BenchmarkBuildOutletFunc_cache_hit(b *testing.B) {
 		_, _ = w.Write([]byte("<nav>menu</nav>"))
 	}))
 
-	h := &handlerImpl[struct{ ViewModel }]{}
+	h := &handlerImpl[struct{ Component }]{}
 	req := httptest.NewRequest(http.MethodGet, "/page", nil)
 	ctx := context.WithValue(req.Context(), rootRouterKey, router)
 	req = req.WithContext(ctx)

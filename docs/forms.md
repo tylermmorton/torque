@@ -17,12 +17,12 @@ type ContactForm struct {
     Message string `schema:"message"`
 }
 
-func (vm *ContactViewModel) Load(req *http.Request) error {
+func (c *Contact) Load(req *http.Request) error {
     form, err := torque.DecodeForm[ContactForm](req)
     if err != nil {
         return err
     }
-    vm.Name = form.Name
+    c.Name = form.Name
     return nil
 }
 ```
@@ -57,12 +57,12 @@ func (f *ContactForm) Validate(ctx context.Context) error {
     return nil
 }
 
-func (vm *ContactViewModel) Load(req *http.Request) error {
+func (c *Contact) Load(req *http.Request) error {
     form, err := torque.DecodeAndValidateForm[ContactForm](req)
     if err != nil {
         return err // wraps the validation error
     }
-    vm.Name = form.Name
+    c.Name = form.Name
     return nil
 }
 ```
@@ -87,7 +87,7 @@ When a page contains multiple forms, use a hidden `action` field on the submit b
 ```
 
 ```go
-func (vm *EditorViewModel) Load(req *http.Request) error {
+func (c *Editor) Load(req *http.Request) error {
     switch torque.DecodeFormAction(req) {
     case "save":
         // handle save

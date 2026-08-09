@@ -11,7 +11,7 @@ import (
 )
 
 func Test_buildOutletFunc_substitution(t *testing.T) {
-	h := &handlerImpl[struct{ ViewModel }]{}
+	h := &handlerImpl[struct{ Component }]{}
 
 	makeFunc := func() OutletFunc {
 		return h.buildOutletFunc(httptest.NewRequest(http.MethodGet, "/", nil))
@@ -109,7 +109,7 @@ func Test_buildOutletFunc_method(t *testing.T) {
 			w.Write([]byte("nav"))
 		}))
 
-		h := &handlerImpl[struct{ ViewModel }]{}
+		h := &handlerImpl[struct{ Component }]{}
 		req := httptest.NewRequest(http.MethodPost, "/form", nil)
 		ctx := context.WithValue(req.Context(), rootRouterKey, router)
 		req = req.WithContext(ctx)

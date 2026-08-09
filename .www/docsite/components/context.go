@@ -1,4 +1,4 @@
-package viewmodel
+package components
 
 type contextKey string
 

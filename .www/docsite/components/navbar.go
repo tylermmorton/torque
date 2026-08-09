@@ -1,4 +1,4 @@
-package viewmodel
+package components
 
 import (
 	"fmt"
@@ -32,11 +32,11 @@ func (*Stargazers) StyleSheet() string {
 
 func (*Stargazers) Template() string {
 	//language=html
-	return `{{if .Stars}}<span id="gh-stars"><i class="ph ph-star"></i>{{.Stars}}</span>{{end}}`
+	return `{{if .Stars}}<span id="gh-stars" data-test-id="stars-container"><i class="ph ph-star"></i><span data-test-id="star-count">{{.Stars}}</span></span>{{end}}`
 }
 
-func (vm *Stargazers) Load(req *http.Request) error {
-	if vm.RepositoryURL == "" {
+func (s *Stargazers) Load(req *http.Request) error {
+	if s.RepositoryURL == "" {
 		return nil
 	}
 
@@ -45,11 +45,11 @@ func (vm *Stargazers) Load(req *http.Request) error {
 		return fmt.Errorf("failed to load dependency: %w", err)
 	}
 
-	count, err := svc.GitHubService.GetStars(req.Context(), vm.RepositoryURL)
+	count, err := svc.GitHubService.GetStars(req.Context(), s.RepositoryURL)
 	if err != nil {
 		return err
 	}
-	vm.Stars = fmt.Sprintf("%d", count)
+	s.Stars = fmt.Sprintf("%d", count)
 
 	return nil
 }

@@ -7,7 +7,7 @@ title: Query params
 Query parameters are available on the request via the standard library. torque does not add a wrapper for query strings — use `req.URL.Query()` directly.
 
 ```go
-func (vm *SearchViewModel) Load(req *http.Request) error {
+func (c *Search) Load(req *http.Request) error {
     q := req.URL.Query().Get("q")
     page := req.URL.Query().Get("page")
     // use q and page...
@@ -26,7 +26,7 @@ type SearchQuery struct {
     Size int    `schema:"size"`
 }
 
-func (vm *SearchViewModel) Load(req *http.Request) error {
+func (c *Search) Load(req *http.Request) error {
     d, ok := torque.UseDecoder(req)
     if !ok {
         return errors.New("decoder not available")
@@ -37,7 +37,7 @@ func (vm *SearchViewModel) Load(req *http.Request) error {
         return err
     }
 
-    vm.Results = fetchResults(query.Q, query.Page, query.Size)
+    c.Results = fetchResults(query.Q, query.Page, query.Size)
     return nil
 }
 ```

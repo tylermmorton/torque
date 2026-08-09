@@ -14,7 +14,7 @@ go get github.com/tylermmorton/torque/v3
 
 ## Quick start
 
-A torque handler starts with a **ViewModel** — a plain Go struct that represents the data for an HTTP response.
+A torque handler starts with a **Component** — a plain Go struct that represents the data for an HTTP response.
 
 ```go
 package main
@@ -25,7 +25,7 @@ import (
     "github.com/tylermmorton/torque/v3"
 )
 
-type PageViewModel struct {
+type Page struct {
     Title   string
     Message string
 }
@@ -34,9 +34,9 @@ type PageViewModel struct {
 Implement the `Loader` interface to populate the struct during a GET request:
 
 ```go
-func (vm *PageViewModel) Load(req *http.Request) error {
-    vm.Title   = "torque"
-    vm.Message = "Hello, world!"
+func (c *Page) Load(req *http.Request) error {
+    c.Title   = "torque"
+    c.Message = "Hello, world!"
     return nil
 }
 ```
@@ -44,7 +44,7 @@ func (vm *PageViewModel) Load(req *http.Request) error {
 Implement `TemplateProvider` to render the struct as HTML:
 
 ```go
-func (*PageViewModel) Template() string {
+func (*Page) Template() string {
     return `<!DOCTYPE html>
 <html>
   <head><title>{{ .Title }}</title></head>
@@ -53,12 +53,12 @@ func (*PageViewModel) Template() string {
 }
 ```
 
-Create an `http.Handler` from the ViewModel type and register it with a router:
+Create an `http.Handler` from the Component type and register it with a router:
 
 ```go
 func main() {
     r := torque.NewRouter()
-    r.Handle("/", torque.MustNewHandler[PageViewModel]())
+    r.Handle("/", torque.MustNewHandler[Page]())
     http.ListenAndServe(":8080", r)
 }
 ```
@@ -67,7 +67,7 @@ Visit `http://localhost:8080` to see the rendered page.
 
 ## Next steps
 
-- [ViewModel](view-model.md) — understand the core concept
-- [Loader](loader.md) — fetch data and populate your ViewModel
+- [Component](component.md) — understand the core concept
+- [Loader](loader.md) — fetch data and populate your Component
 - [Template provider](template-provider.md) — render HTML responses
 - [Router](router.md) — register multiple handlers and path parameters

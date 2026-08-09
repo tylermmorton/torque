@@ -4,7 +4,7 @@ title: Template API
 
 # Template API
 
-The template API lets you compile and render templates independently of the HTTP handler lifecycle. It is the same engine the handler uses internally — `NewHandler` calls `CompileTemplate` for you when your ViewModel implements `TemplateProvider`.
+The template API lets you compile and render templates independently of the HTTP handler lifecycle. It is the same engine the handler uses internally — `NewHandler` calls `CompileTemplate` for you when your Component implements `TemplateProvider`.
 
 ## Compiling a template
 
@@ -15,7 +15,7 @@ func CompileTemplate[T TemplateProvider](tp T, opts ...TemplateCompilerOption) (
 ```
 
 ```go
-tmpl, err := torque.CompileTemplate(&PageViewModel{})
+tmpl, err := torque.CompileTemplate(&Page{})
 if err != nil {
     log.Fatal(err)
 }
@@ -38,7 +38,7 @@ type Template[T TemplateProvider] interface {
 
 ```go
 var buf bytes.Buffer
-err = tmpl.RenderT(&buf, &PageViewModel{Title: "Home", Message: "Hello"})
+err = tmpl.RenderT(&buf, &Page{Title: "Home", Message: "Hello"})
 ```
 
 ## Render options
@@ -97,7 +97,7 @@ The HTML-safe variants of Sprig's functions are used — functions that produce 
 Use `TemplateCompilerOptionDelims` to change the action delimiters. This is helpful when your template output contains `{{` and `}}` literals, such as when embedding JavaScript framework templates.
 
 ```go
-tmpl, err := torque.CompileTemplate(&PageViewModel{},
+tmpl, err := torque.CompileTemplate(&Page{},
     torque.TemplateCompilerOptionDelims("[[", "]]"),
 )
 ```
@@ -111,7 +111,7 @@ type IconTP struct{}
 
 func (*IconTP) Template() string { return `<svg viewBox="0 0 24 24"><!-- ... --></svg>` }
 
-tmpl, err := torque.CompileTemplate(&PageViewModel{},
+tmpl, err := torque.CompileTemplate(&Page{},
     torque.TemplateCompilerOptionProvideTemplate("icon", &IconTP{}),
 )
 ```
@@ -119,7 +119,7 @@ tmpl, err := torque.CompileTemplate(&PageViewModel{},
 The primary template can then reference it by name:
 
 ```go
-func (*PageViewModel) Template() string {
+func (*Page) Template() string {
     return `<div>{{template "icon" .}}</div>`
 }
 ```
@@ -127,7 +127,7 @@ func (*PageViewModel) Template() string {
 Provide multiple templates by passing the option more than once:
 
 ```go
-tmpl, err := torque.CompileTemplate(&PageViewModel{},
+tmpl, err := torque.CompileTemplate(&Page{},
     torque.TemplateCompilerOptionProvideTemplate("icon", &IconTP{}),
     torque.TemplateCompilerOptionProvideTemplate("badge", &BadgeTP{}),
 )
@@ -138,7 +138,7 @@ tmpl, err := torque.CompileTemplate(&PageViewModel{},
 `Template[T].ProvideTemplate` adds a named template to an already-compiled `Template[T]`. It wraps the template text in a `{{define "name"}}...{{end}}` block and parses it into the existing template set.
 
 ```go
-tmpl, err := torque.CompileTemplate(&PageViewModel{},
+tmpl, err := torque.CompileTemplate(&Page{},
     torque.TemplateCompilerOptionSkipChecks(),
 )
 if err != nil {

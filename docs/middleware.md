@@ -29,7 +29,7 @@ func RequireAuth(next http.Handler) http.Handler {
 }
 
 r := torque.NewRouter()
-r.Handle("/dashboard", RequireAuth(torque.MustNewHandler[DashboardViewModel]()))
+r.Handle("/dashboard", RequireAuth(torque.MustNewHandler[Dashboard]()))
 ```
 
 ## Passing data to loaders
@@ -47,12 +47,12 @@ func WithUser(next http.Handler) http.Handler {
     })
 }
 
-func (vm *DashboardViewModel) Load(req *http.Request) error {
+func (c *Dashboard) Load(req *http.Request) error {
     user, ok := torque.Use[*User](req, ctxKey("user"))
     if !ok {
         return errors.New("user not found in context")
     }
-    vm.UserName = user.Name
+    c.UserName = user.Name
     return nil
 }
 ```
@@ -62,7 +62,7 @@ func (vm *DashboardViewModel) Load(req *http.Request) error {
 Apply multiple middlewares using standard composition. Middlewares execute in the order they wrap the handler — outermost first:
 
 ```go
-handler := torque.MustNewHandler[DashboardViewModel]()
+handler := torque.MustNewHandler[Dashboard]()
 handler = RequireAuth(handler)
 handler = Logger(handler)
 

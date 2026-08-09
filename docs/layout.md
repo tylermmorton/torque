@@ -11,18 +11,18 @@ The `LayoutProvider` interface lets a handler declare its own wrapping layout. R
 Implement `LayoutProvider` on a handler to return the layout that should wrap it:
 
 ```go
-type LayoutViewModel struct{}
+type Layout struct{}
 
-func (*LayoutViewModel) Template() string {
+func (*Layout) Template() string {
     return `<section>{{outlet}}</section>`
 }
 
-type PageViewModel struct{}
+type Page struct{}
 
-func (*PageViewModel) Template() string { return `<p>page content</p>` }
+func (*Page) Template() string { return `<p>page content</p>` }
 
-func (*PageViewModel) Layout() torque.Handler {
-    return torque.MustNewHandler[LayoutViewModel]()
+func (*Page) Layout() torque.Handler {
+    return torque.MustNewHandler[Layout]()
 }
 ```
 
@@ -30,12 +30,12 @@ Register the handler normally:
 
 ```go
 r := torque.NewRouter()
-r.Handle("/page", torque.MustNewHandler[PageViewModel]())
+r.Handle("/page", torque.MustNewHandler[Page]())
 
 http.ListenAndServe(":8080", r)
 ```
 
-A `GET /page` request renders `PageViewModel` first, then passes its output to `LayoutViewModel`'s `{{outlet}}`. The browser receives `<section><p>page content</p></section>`.
+A `GET /page` request renders `Page` first, then passes its output to `Layout`'s `{{outlet}}`. The browser receives `<section><p>page content</p></section>`.
 
 ## How rendering works
 
@@ -51,28 +51,28 @@ Rendering flows bottom-up, the same as the `RouterProvider` outlet chain:
 A layout can itself implement `LayoutProvider` to build deeper nesting:
 
 ```go
-type OuterViewModel struct{}
+type OuterLayout struct{}
 
-func (*OuterViewModel) Template() string { return `<html>{{outlet}}</html>` }
+func (*OuterLayout) Template() string { return `<html>{{outlet}}</html>` }
 
-type ShellViewModel struct{}
+type Shell struct{}
 
-func (*ShellViewModel) Template() string { return `<body>{{outlet}}</body>` }
+func (*Shell) Template() string { return `<body>{{outlet}}</body>` }
 
-func (*ShellViewModel) Layout() torque.Handler {
-    return torque.MustNewHandler[OuterViewModel]()
+func (*Shell) Layout() torque.Handler {
+    return torque.MustNewHandler[OuterLayout]()
 }
 
-type PageViewModel struct{}
+type Page struct{}
 
-func (*PageViewModel) Template() string { return `<main>content</main>` }
+func (*Page) Template() string { return `<main>content</main>` }
 
-func (*PageViewModel) Layout() torque.Handler {
-    return torque.MustNewHandler[ShellViewModel]()
+func (*Page) Layout() torque.Handler {
+    return torque.MustNewHandler[Shell]()
 }
 ```
 
-A request to a handler registered with `PageViewModel` produces:
+A request to a handler registered with `Page` produces:
 `<html><body><main>content</main></body></html>`
 
 ## Combining with RouterProvider
@@ -80,20 +80,20 @@ A request to a handler registered with `PageViewModel` produces:
 A handler can implement both `LayoutProvider` and `RouterProvider`. The handler is wrapped by its own layout while still routing to its registered children:
 
 ```go
-type OuterViewModel struct{}
+type OuterLayout struct{}
 
-func (*OuterViewModel) Template() string { return `<html>{{outlet}}</html>` }
+func (*OuterLayout) Template() string { return `<html>{{outlet}}</html>` }
 
-type ShellViewModel struct{}
+type Shell struct{}
 
-func (*ShellViewModel) Template() string { return `<div>{{outlet}}</div>` }
+func (*Shell) Template() string { return `<div>{{outlet}}</div>` }
 
-func (*ShellViewModel) Layout() torque.Handler {
-    return torque.MustNewHandler[OuterViewModel]()
+func (*Shell) Layout() torque.Handler {
+    return torque.MustNewHandler[OuterLayout]()
 }
 
-func (*ShellViewModel) Router(r torque.Router) error {
-    r.Handle("/page", torque.MustNewHandler[PageViewModel]())
+func (*Shell) Router(r torque.Router) error {
+    r.Handle("/page", torque.MustNewHandler[Page]())
     return nil
 }
 ```
@@ -111,13 +111,13 @@ When the request `Content-Type` is `application/json`, layout wrapping is skippe
 **The layout must define `{{outlet}}`.**  A layout with no `{{outlet}}` has nowhere to place the handler's output:
 
 ```
-the Template for *torque.handlerImpl[...LayoutViewModel] must define an {{outlet}} to be used as a LayoutProvider
+the Template for *torque.handlerImpl[...Layout] must define an {{outlet}} to be used as a LayoutProvider
 ```
 
 **The layout cannot implement `RouterProvider`.** A layout that also manages its own child routes would create an ambiguous rendering chain:
 
 ```
-the LayoutProvider returned by *...PageViewModel cannot also implement RouterProvider
+the LayoutProvider returned by *...Page cannot also implement RouterProvider
 ```
 
 ## Comparison with RouterProvider

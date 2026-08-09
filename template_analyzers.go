@@ -72,7 +72,7 @@ var templateAnalyzerOutletProvider = func(h Handler) TemplateAnalyzer {
 				// Paths can be relative, but it requires this Handler to implement RouterProvider
 				if strings.HasPrefix(str.Text, "./") {
 					if h.getRouter() == nil {
-						analysis.AddError(node, fmt.Sprintf("relative path in {{ outlet %q }} requires the ViewModel to implement RouterProvider", str.Text))
+						analysis.AddError(node, fmt.Sprintf("relative path in {{ outlet %q }} requires the Component to implement RouterProvider", str.Text))
 					} else {
 						absPath := strings.TrimPrefix(str.Text, ".")
 						if _, _, ok := h.getRouter().Match("GET", absPath); !ok {

@@ -31,7 +31,7 @@ func TestHandler_StyleSheetProvider(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), "<style>p { color: red; }</style>")
 
-	t.Run("stylesheet_template_executes_with_viewmodel_data", func(t *testing.T) {
+	t.Run("stylesheet_template_executes_with_component_data", func(t *testing.T) {
 		require.Contains(t, rec.Body.String(), "color: red")
 	})
 }

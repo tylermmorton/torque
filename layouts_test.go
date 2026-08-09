@@ -9,7 +9,7 @@ import (
 	"github.com/tylermmorton/torque"
 )
 
-// pageWrap wraps content in the default PageLayoutViewModel shell for test assertions.
+// pageWrap wraps content in the default PageLayout shell for test assertions.
 func pageWrap(content string) string {
 	return "<!DOCTYPE html>\n<html lang=\"en\">\n\t<head>\n\t\t<meta charset=\"utf-8\"/>\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>\n\t\t<title></title>\n\t\t\n\t\t\n\t\t\n\t</head>\n\t<body>\n\t\t" + content + "\n\t</body>\n</html>"
 }
@@ -18,11 +18,11 @@ type rootLayoutContentVM struct{}
 
 func (*rootLayoutContentVM) Template() string { return `<p>hello</p>` }
 
-func Test_PageLayoutViewModel(t *testing.T) {
+func Test_PageLayout(t *testing.T) {
 	t.Run("compiles", func(t *testing.T) {
-		h := torque.MustNewHandler[torque.PageLayoutViewModel]()
+		h := torque.MustNewHandler[torque.PageLayout]()
 		if !h.HasRenderOutlet() {
-			t.Fatal("PageLayoutViewModel template must define an {{ outlet }}")
+			t.Fatal("PageLayout template must define an {{ outlet }}")
 		}
 	})
 }

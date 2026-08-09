@@ -12,21 +12,21 @@ type Renderer interface {
 }
 ```
 
-`Render` is called after `Load` completes. By the time it runs, the ViewModel's fields are fully populated.
+`Render` is called after `Load` completes. By the time it runs, the Component's fields are fully populated.
 
 ```go
-type FeedViewModel struct {
+type Feed struct {
     Items []FeedItem
 }
 
-func (vm *FeedViewModel) Load(req *http.Request) error {
-    // populate vm.Items...
+func (c *Feed) Load(req *http.Request) error {
+    // populate c.Items...
     return nil
 }
 
-func (vm *FeedViewModel) Render(wr http.ResponseWriter, req *http.Request) error {
+func (c *Feed) Render(wr http.ResponseWriter, req *http.Request) error {
     wr.Header().Set("Content-Type", "application/atom+xml")
-    return xml.NewEncoder(wr).Encode(vm.Items)
+    return xml.NewEncoder(wr).Encode(c.Items)
 }
 ```
 
@@ -36,7 +36,7 @@ torque checks for rendering capability in this order:
 
 1. `Renderer` — called if implemented
 2. `TemplateProvider` — used if `Renderer` is not implemented
-3. JSON fallback — if neither interface is implemented and the request `Content-Type` is `application/json`, the ViewModel is serialized with `encoding/json`
+3. JSON fallback — if neither interface is implemented and the request `Content-Type` is `application/json`, the Component is serialized with `encoding/json`
 
 ## Returning errors
 

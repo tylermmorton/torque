@@ -24,7 +24,7 @@ type SelfValidator interface {
 }
 ```
 
-Implement on the **input struct** (form, path params, query), not on the ViewModel. The `DecodeAndValidate*` functions call `Validate` after decoding; a validation error is returned as-is (not wrapped with a type name).
+Implement on the **input struct** (form, path params, query), not on the Component. The `DecodeAndValidate*` functions call `Validate` after decoding; a validation error is returned as-is (not wrapped with a type name).
 
 ## Form actions
 

@@ -36,12 +36,12 @@ func NewPlugin(serverBuild *Dist, browserBuild *Dist) *plugin {
 }
 
 func (p *plugin) Install(h torque.Handler) torque.InstallFn {
-	return func(ctl torque.Controller, vm torque.ViewModel) error {
+	return func(ctl torque.Controller, c torque.Component) error {
 		var (
 			err error
 		)
 
-		clientEntry, ok := vm.(ClientEntryProvider)
+		clientEntry, ok := c.(ClientEntryProvider)
 		if ok {
 			var fileName = clientEntry.ClientEntry()
 			var clientDist = p.Browser
@@ -54,11 +54,11 @@ func (p *plugin) Install(h torque.Handler) torque.InstallFn {
 			p.clientModule = &fileName
 		}
 
-		serverEntry, ok := vm.(ServerEntryProvider)
+		serverEntry, ok := c.(ServerEntryProvider)
 		if !ok {
-			return fmt.Errorf("ViewModel %T does not implement ServerEntryProvider", vm)
+			return fmt.Errorf("Component %T does not implement ServerEntryProvider", c)
 		} else if p.Server.Dist == nil {
-			return fmt.Errorf("ViewModel %T implements ServerEntryProvider but ServerDist is nil", vm)
+			return fmt.Errorf("Component %T implements ServerEntryProvider but ServerDist is nil", c)
 		} else {
 			var fileName = serverEntry.ServerEntry()
 			if p.Server.ResolverFn != nil {

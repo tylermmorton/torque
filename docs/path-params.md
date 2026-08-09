@@ -7,7 +7,7 @@ title: Path params
 When a route is registered with `{param}` segments, torque captures the matching URL segment and makes it available on the request.
 
 ```go
-r.Handle("/articles/{id}", torque.MustNewHandler[ArticleViewModel]())
+r.Handle("/articles/{id}", torque.MustNewHandler[Article]())
 ```
 
 ## Getting a single parameter
@@ -15,7 +15,7 @@ r.Handle("/articles/{id}", torque.MustNewHandler[ArticleViewModel]())
 `GetPathParam` returns the captured string value for a named parameter:
 
 ```go
-func (vm *ArticleViewModel) Load(req *http.Request) error {
+func (c *Article) Load(req *http.Request) error {
     id := torque.GetPathParam(req, "id")
     if id == "" {
         return errors.New("missing id")
@@ -37,7 +37,7 @@ type PostParams struct {
 
 // r.Handle("/users/{userID}/posts/{postID}", ...)
 
-func (vm *PostViewModel) Load(req *http.Request) error {
+func (c *Post) Load(req *http.Request) error {
     params, err := torque.DecodePathParams[PostParams](req)
     if err != nil {
         return err
@@ -64,7 +64,7 @@ func (p *PostParams) Validate(ctx context.Context) error {
     return nil
 }
 
-func (vm *PostViewModel) Load(req *http.Request) error {
+func (c *Post) Load(req *http.Request) error {
     params, err := torque.DecodeAndValidatePathParams[PostParams](req)
     if err != nil {
         return err // decode or validation error

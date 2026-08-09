@@ -2,7 +2,7 @@
 
 ## Context
 
-The browser-testing plan introduces Playwright-based integration tests for the docsite. This plan designs a companion abstraction: typed **Page Object Controllers** that wrap `playwright.Locator` and mirror ViewModel structure. The goal is to give tests a stable, typed API to interact with the DOM, with a generator that produces controllers automatically from `TemplateAnalyzer` output and `data-test-id` attributes.
+The browser-testing plan introduces Playwright-based integration tests for the docsite. This plan designs a companion abstraction: typed **Page Object Controllers** that wrap `playwright.Locator` and mirror Component structure. The goal is to give tests a stable, typed API to interact with the DOM, with a generator that produces controllers automatically from `TemplateAnalyzer` output and `data-test-id` attributes.
 
 ---
 
@@ -132,7 +132,7 @@ import (
     "log"
     "github.com/tylermmorton/torque/pkg/pageobjects"
     "github.com/tylermmorton/torque/.www/docsite/routes"
-    "github.com/tylermmorton/torque/.www/docsite/viewmodel"
+    "github.com/tylermmorton/torque/.www/docsite/components"
 )
 
 func main() {
@@ -141,7 +141,7 @@ func main() {
         Package:   "pageobjects",
     })
     gen.Generate[*routes.Document]()
-    gen.Generate[*viewmodel.NavBar]()
+    gen.Generate[*components.NavBar]()
     if err := gen.Run(); err != nil {
         log.Fatal(err)
     }
@@ -163,7 +163,7 @@ Add to `harness.go`:
 | `torque/pkg/pageobjects/generator.go` | New — `Generator` API (no build tag) |
 | `.www/docsite/cmd/generate-controllers/main.go` | New — generator program |
 | `.www/docsite/testutils/harness.go` | Add `//go:generate` comment |
-| `.www/docsite/testutils/pageobjects/*.gen.go` | Generated — one per registered ViewModel |
+| `.www/docsite/testutils/pageobjects/*.gen.go` | Generated — one per registered Component |
 
 ---
 

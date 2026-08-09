@@ -32,7 +32,7 @@ type Middleware func(http.Handler) http.Handler
 
 type RouterOption func(*routerImpl)
 
-// DisableRootLayout disables the default PageLayoutViewModel root layout.
+// DisableRootLayout disables the default PageLayout root layout.
 func DisableRootLayout() RouterOption {
 	return func(r *routerImpl) {
 		r.rootLayout = nil
@@ -61,7 +61,7 @@ type routerImpl struct {
 
 func NewRouter(opts ...RouterOption) Router {
 	r := &routerImpl{
-		rootLayout: MustNewHandler[PageLayoutViewModel](),
+		rootLayout: MustNewHandler[PageLayout](),
 		contextMap: make(map[any]any),
 		templates:  make(map[string]TemplateProvider),
 		root: &trieNode{

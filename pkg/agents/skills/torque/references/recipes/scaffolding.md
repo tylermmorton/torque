@@ -1,12 +1,8 @@
-# Project Structure
+# Torque Project Structure
 
-Use the following as the idiomatic way to structure a torque based web application.
+Use the following as the idiomatic way to structure a torque based web application. 
 
-Recognize that idioms are often stylistic choices and should be adapted to the codebase. If starting from scratch, use this outline as the canonical example. 
-
-Always check if the codebase uses docs/torque/STRUCTURE.md for documented preferences or idioms. 
-
-If you find that codebase patterns conflict with what is documented in this skill, present conflicts to the user and seek resolution. Always document the resolved conflicts as preferences within docs/torque/STRUCTURE.md
+Recognize that idioms are often stylistic choices and should be adapted to the codebase. If starting from scratch, use this outline as the canonical example. If patterns conflict, present conflicts to the user and seek resolution.
 
 ## Full Project Structure
 
@@ -115,9 +111,9 @@ Services have no real meaning in the torque framework and are used as a conceptu
 
 ## components/
 
-The `components` package should contain all of a project's `Component` implementations. Prefer a flat list of source files over separating `Component`s into sub packages.
+The `components` package should contain all of a project's `Component` implementations. Prefer a flat list of source files over separating `Component`s into sub packages. 
 
-There should be no more than one `Component` implementation per file. When decomposing a `Component` into multiple sub-components, create a new source file for each.
+There should be no more than one `Component` implementation per file. When decomposing a `Component` into multiple sub-components, create a new source file for each. 
 
 If a `Component` implements any torque Handler API interface beyond just `TemplateProvider`, such as `Action` or `Loader`, it must be accompanied by a unit test suite covering the behavior.
 

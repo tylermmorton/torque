@@ -40,18 +40,18 @@ A handler can implement both `LayoutProvider` and `RouterProvider` simultaneousl
 Child renders first. Output propagates upward via context. Each level in the chain renders exactly once per request.
 
 ```
-leaf → LayoutProvider chain → RouterProvider chain → PageLayoutViewModel
+leaf → LayoutProvider chain → RouterProvider chain → PageLayout
 ```
 
 ## JSON bypass
 
-When the request `Content-Type` is `application/json`, layout wrapping (both `LayoutProvider` and `PageLayoutViewModel`) is skipped. The handler writes its output directly.
+When the request `Content-Type` is `application/json`, layout wrapping (both `LayoutProvider` and `PageLayout`) is skipped. The handler writes its output directly.
 
 ## Compile-time validation errors
 
 | Condition | Error message |
 |-----------|---------------|
-| `{{outlet "./rel"}}` without `RouterProvider` | `relative path in {{ outlet "./rel" }} requires the ViewModel to implement RouterProvider` |
+| `{{outlet "./rel"}}` without `RouterProvider` | `relative path in {{ outlet "./rel" }} requires the Component to implement RouterProvider` |
 | `{{outlet "./rel"}}` path not registered | `path in {{ outlet "./rel" }} does not match any route registered by RouterProvider` |
 | Placeholder count mismatch | `{{ outlet "/path/{a}/{b}" }} has 2 placeholder(s) but 1 argument(s) were provided` |
 | Layout has no `{{outlet}}` | `the Template for %T must define an {{outlet}} to be used as a LayoutProvider` |
@@ -63,6 +63,6 @@ When the request `Content-Type` is `application/json`, layout wrapping (both `La
 
 | Strategy | Child has its own URL | Data lifecycle | Who declares relationship |
 |-----------|-----------------------|----------------|---------------------------|
-| Nested templates (`{{template}}`) | No | Shared parent ViewModel | Parent (struct field) |
+| Nested templates (`{{template}}`) | No | Shared parent Component | Parent (struct field) |
 | `RouterProvider` + `{{outlet}}` | Yes | Independent per handler | Parent |
 | `LayoutProvider` | No | Independent per handler | Child |

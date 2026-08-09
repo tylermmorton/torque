@@ -93,7 +93,7 @@ if rp, ok := vmTyp.(RouterProvider); ok {
 
 ### 9. `routerImpl.h` is `handlerInternal`
 
-Change the field type from the concrete `*handlerImpl[ViewModel]` to the interface
+Change the field type from the concrete `*handlerImpl[Component]` to the interface
 `handlerInternal`. It serves as the fallback when `Match` finds no sub-route:
 
 ```go

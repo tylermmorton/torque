@@ -12,24 +12,24 @@ type ContextProvider interface {
 }
 ```
 
-`Provide` receives the incoming request and returns a new request with an updated context. torque calls `Provide` before the loading phase, so any values you set are available to all `Loader` implementations in the ViewModel tree.
+`Provide` receives the incoming request and returns a new request with an updated context. torque calls `Provide` before the loading phase, so any values you set are available to all `Loader` implementations in the Component tree.
 
 ```go
-type PageViewModel struct {
+type Page struct {
     UserID string
 }
 
 type ctxKey string
 
-func (vm *PageViewModel) Provide(req *http.Request) *http.Request {
+func (c *Page) Provide(req *http.Request) *http.Request {
     userID := req.Header.Get("X-User-ID")
     return torque.With[string](req, ctxKey("userID"), userID)
 }
 
-func (vm *PageViewModel) Load(req *http.Request) error {
+func (c *Page) Load(req *http.Request) error {
     userID, ok := torque.Use[string](req, ctxKey("userID"))
     if ok {
-        vm.UserID = userID
+        c.UserID = userID
     }
     return nil
 }

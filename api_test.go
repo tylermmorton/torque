@@ -24,30 +24,30 @@ func (l *LayoutModel) Load(_ *http.Request) error {
 	return nil
 }
 
-func (*ViewModel) Template() string {
+func (*Page) Template() string {
 	//language=html
 	return `<div>Hello, {{ .FirstName }}</div>`
 }
 
-func (*ViewModel) StyleSheet() string {
+func (*Page) StyleSheet() string {
 	//language=css
 	return ``
 }
 
-type ViewModel struct {
+type Page struct {
 	FirstName string `json:"first_name"`
 }
 
-func (v *ViewModel) Load(_ *http.Request) error {
-	v.FirstName = "Tyler"
+func (p *Page) Load(_ *http.Request) error {
+	p.FirstName = "Tyler"
 	return nil
 }
 
-func (v *ViewModel) Layout() torque.Handler {
+func (p *Page) Layout() torque.Handler {
 	return torque.MustNewHandler[LayoutModel]()
 }
 
-func (v *ViewModel) Context(req *http.Request) *http.Request {
+func (p *Page) Context(req *http.Request) *http.Request {
 	req = torque.Provide(req, "hello", "value")
 
 	return req
@@ -55,7 +55,7 @@ func (v *ViewModel) Context(req *http.Request) *http.Request {
 
 func TestApp(t *testing.T) {
 	r := torque.NewRouter(torque.DisableRootLayout())
-	r.Handle("/", torque.MustNewHandler[ViewModel]())
+	r.Handle("/", torque.MustNewHandler[Page]())
 
 	t.Run("get_returns_rendered_html", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -74,10 +74,10 @@ func TestApp(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, rec.Code)
 
-		var vm ViewModel
-		err := json.NewDecoder(rec.Body).Decode(&vm)
+		var c Page
+		err := json.NewDecoder(rec.Body).Decode(&c)
 		require.NoError(t, err)
 
-		require.Equal(t, "Tyler", vm.FirstName)
+		require.Equal(t, "Tyler", c.FirstName)
 	})
 }

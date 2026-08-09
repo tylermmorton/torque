@@ -51,7 +51,7 @@ func newRenderer(scriptName, scriptBundle string, clientModule *string) torque.D
 	}
 }
 
-func (r renderer) Render(wr http.ResponseWriter, req *http.Request, vm torque.ViewModel) error {
+func (r renderer) Render(wr http.ResponseWriter, req *http.Request, c torque.Component) error {
 	iso := r.pool.Get()
 	defer r.pool.Put(iso)
 
@@ -67,7 +67,7 @@ func (r renderer) Render(wr http.ResponseWriter, req *http.Request, vm torque.Vi
 		return fmt.Errorf("function `Render(props: string): Promise<string>` is not defined on the global scope")
 	}
 
-	props, err := json.Marshal(vm)
+	props, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}

@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/.www/docsite/components"
 	"github.com/tylermmorton/torque/.www/docsite/layouts"
 	"github.com/tylermmorton/torque/.www/docsite/services"
-	"github.com/tylermmorton/torque/.www/docsite/viewmodel"
 )
 
 var _ interface {
@@ -18,7 +18,7 @@ var _ interface {
 } = (*Document)(nil)
 
 type Document struct {
-	Document *viewmodel.Document
+	Document *components.Document
 }
 
 func (*Document) Template() string {
@@ -65,12 +65,12 @@ func (*Document) Layout() torque.Handler {
 }
 
 func (d *Document) Load(req *http.Request) error {
-	svc, err := torque.Inject[*services.Services](req, viewmodel.ContextKeyServices)
+	svc, err := torque.Inject[*services.Services](req, components.ContextKeyServices)
 	if err != nil {
 		return fmt.Errorf("failed to load dependency: %w", err)
 	}
 
-	params, err := torque.DecodePathParams[viewmodel.DocumentPathParams](req)
+	params, err := torque.DecodePathParams[components.DocumentPathParams](req)
 	if err != nil {
 		return err
 	}
@@ -80,12 +80,12 @@ func (d *Document) Load(req *http.Request) error {
 		return err
 	}
 
-	d.Document = &viewmodel.Document{
+	d.Document = &components.Document{
 		Name:    document.Name,
 		Slug:    document.Slug,
 		Title:   document.Title,
 		Content: document.Content,
-		TOC:     viewmodel.TableOfContents{},
+		TOC:     components.TableOfContents{},
 	}
 
 	return nil

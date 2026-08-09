@@ -1,5 +1,7 @@
 //go:build browser
 
+//go:generate go run ../cmd/generate-controllers
+
 package testutils
 
 import (

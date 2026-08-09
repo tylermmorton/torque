@@ -2,12 +2,12 @@
 
 ## Goal
 
-Wire `PageLayoutViewModel` into `NewRouter()` as an automatic root layout, so every torque app gets a valid HTML page shell by default. Child routes render into the root layout's `{{ outlet }}` via the existing outlet chain. JSON requests bypass layout wrapping via the existing `!isJSON` guard.
+Wire `PageLayout` into `NewRouter()` as an automatic root layout, so every torque app gets a valid HTML page shell by default. Child routes render into the root layout's `{{ outlet }}` via the existing outlet chain. JSON requests bypass layout wrapping via the existing `!isJSON` guard.
 
 ## Decisions
 
-- **Always-on**: `NewRouter()` always creates a `PageLayoutViewModel` root — no opt-out, no functional options (for now)
-- **Infallible**: `NewRouter()` stays `func NewRouter() Router`; uses `MustNewHandler[PageLayoutViewModel]()` internally — template errors panic at startup
+- **Always-on**: `NewRouter()` always creates a `PageLayout` root — no opt-out, no functional options (for now)
+- **Infallible**: `NewRouter()` stays `func NewRouter() Router`; uses `MustNewHandler[PageLayout]()` internally — template errors panic at startup
 - **404 on no-match**: unmatched routes still 404; the root layout does not act as a catch-all fallback
 - **Separate field**: `routerImpl` gets a new `rootLayout Handler` field distinct from `r.h`; `r.h` keeps its existing role as the owning-handler fallback for `RouterProvider` sub-routers
 - **Parent-chain wiring**: `handleMethod` uses `rootLayout` (falling back to `r.h`) when walking the parent chain; `NoOutlet` handlers skip this entirely (they don't implement `Handler`)
@@ -35,11 +35,11 @@ Wire `PageLayoutViewModel` into `NewRouter()` as an automatic root layout, so ev
 
 ### `router.go`
 - Add `rootLayout Handler` field to `routerImpl`
-- `NewRouter()` sets `r.rootLayout = MustNewHandler[PageLayoutViewModel]()`
+- `NewRouter()` sets `r.rootLayout = MustNewHandler[PageLayout]()`
 - `handleMethod`: change parent-chain wiring to use `rootLayout` when non-nil, else `r.h`
 - `ServeHTTP`: no change — no-match path stays as explicit 404, `rootLayout` never touched
 
 ### Tests
-- Add a test file (or entries in an existing one) for `PageLayoutViewModel`:
-  - `MustNewHandler[PageLayoutViewModel]()` compiles without panic
+- Add a test file (or entries in an existing one) for `PageLayout`:
+  - `MustNewHandler[PageLayout]()` compiles without panic
   - The compiled handler reports `HasRenderOutlet() == true`

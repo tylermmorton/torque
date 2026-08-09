@@ -1,12 +1,12 @@
-# ViewModel Style Guide
+# Component Style Guide
 
-This document outlines the idiomatic way of writing ViewModels. Its important that ViewModels all share
+This document outlines the idiomatic way of writing Components. Its important that Components all share
 the same shape to make them easier to navigate.
 
 ## Ordering
 
 - Interface Type Assertions
-- ViewModel Struct Type
+- Component Struct Type
 
 - TemplateProvider
 - StyleSheetProvider

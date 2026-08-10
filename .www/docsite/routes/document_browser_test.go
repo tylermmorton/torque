@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tylermmorton/torque/.www/docsite/routes"
 	"github.com/tylermmorton/torque/.www/docsite/services/model"
 	"github.com/tylermmorton/torque/.www/docsite/testutils"
 )
@@ -29,9 +30,9 @@ func TestDocument_renders_title(t *testing.T) {
 	_, err := harness.Page.Goto(harness.URL + "/docs/getting-started")
 	require.NoError(t, err)
 
-	title := harness.Page.Locator("#doc-title")
-	require.NoError(t, title.WaitFor())
-	text, err := title.TextContent()
+	page := routes.NewDocumentPageObject(harness.Page)
+	require.NoError(t, page.DocTitle().WaitFor())
+	text, err := page.DocTitle().TextContent()
 	require.NoError(t, err)
 	require.Equal(t, "Getting Started", text)
 }

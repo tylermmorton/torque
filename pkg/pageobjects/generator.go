@@ -7,161 +7,191 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"text/template"
-	"unicode"
 
 	"golang.org/x/net/html"
 
-	"github.com/tylermmorton/torque"
+	"github.com/tylermmorton/torque/pkg/analysis"
 )
 
-type Config struct {
-	OutputDir string
-	Package   string
+// StaticConfig controls how GenerateFromManifest produces page object files.
+type StaticConfig struct {
+	// Tag is the Go build constraint tag emitted at the top of each generated file.
+	// Empty string means no build constraint. Default recommendation: "browser".
+	Tag string
 }
 
-type registration struct {
-	typeName string
-	provider torque.TemplateProvider
-}
-
-type Generator struct {
-	cfg           Config
-	registrations []registration
-}
-
-func NewGenerator(cfg Config) *Generator {
-	return &Generator{cfg: cfg}
-}
-
-// Generate queues T for controller generation. T must implement torque.TemplateProvider.
-func Generate[T torque.TemplateProvider](g *Generator) {
-	var zero T
-	rv := reflect.ValueOf(&zero).Elem()
-	if rv.Kind() == reflect.Ptr {
-		rv.Set(reflect.New(rv.Type().Elem()))
-	}
-	t := reflect.TypeOf(zero)
-	typeName := t.Name()
-	if t.Kind() == reflect.Ptr {
-		typeName = t.Elem().Name()
-	}
-	g.registrations = append(g.registrations, registration{
-		typeName: typeName,
-		provider: zero,
-	})
-}
-
-func (g *Generator) Run() error {
-	if err := os.MkdirAll(g.cfg.OutputDir, 0755); err != nil {
-		return fmt.Errorf("create output dir: %w", err)
+// GenerateFromManifest generates page object files co-located with their component
+// source files. Files are grouped by SourceFile so that multiple components in the
+// same source file share a single generated output file.
+func GenerateFromManifest(manifest *analysis.ProjectManifest, cfg StaticConfig) ([]string, error) {
+	// Group components by SourceFile.
+	groups := make(map[string][]*analysis.Component)
+	for _, comp := range manifest.Components {
+		groups[comp.SourceFile] = append(groups[comp.SourceFile], comp)
 	}
 
-	for _, reg := range g.registrations {
-		if err := g.generateController(reg); err != nil {
-			return fmt.Errorf("generate %s: %w", reg.typeName, err)
+	var written []string
+	for sourceFile, comps := range groups {
+		path, err := generateFileGroup(manifest, sourceFile, comps, cfg)
+		if err != nil {
+			return nil, err
+		}
+		if path != "" {
+			written = append(written, path)
 		}
 	}
-	return nil
+	return written, nil
 }
 
-func (g *Generator) generateController(reg registration) error {
-	analysis, err := torque.AnalyzeTemplate(reg.provider)
-	if err != nil {
-		return fmt.Errorf("analyze template: %w", err)
+// outputPath returns the generated file path for a given source file.
+func outputPath(sourceFile string) string {
+	dir := filepath.Dir(sourceFile)
+	base := filepath.Base(sourceFile)
+	stem := strings.TrimSuffix(base, ".go")
+	return filepath.Join(dir, stem+"_browser.gen.go")
+}
+
+// generateFileGroup generates one output file for all components sharing a source file.
+func generateFileGroup(manifest *analysis.ProjectManifest, sourceFile string, comps []*analysis.Component, cfg StaticConfig) (string, error) {
+	// Filter out components with nil templates.
+	var valid []*analysis.Component
+	for _, comp := range comps {
+		if comp.Template == nil {
+			log.Printf("warning: %s has no template, skipping page object generation", comp.TypeName)
+			continue
+		}
+		valid = append(valid, comp)
+	}
+	if len(valid) == 0 {
+		return "", nil
 	}
 
-	leaves := collectDataTestIDs(analysis.HTMLTree)
-	children := collectChildControllers(analysis.TypeTree)
+	pkgName := valid[0].PackageName
+	pkgPath := valid[0].PackagePath
 
-	data := controllerData{
-		Package:          g.cfg.Package,
-		TypeName:         reg.typeName,
-		LeafElements:     leaves,
-		ChildControllers: children,
+	// Collect all page object data and figure out imports.
+	var poDataList []pageObjectData
+	needsPageobjectsImport := false
+	crossPkgImports := make(map[string]string) // pkgPath → pkgName
+
+	for _, comp := range valid {
+		leaves := collectLeafElements(*comp.Template)
+		children, crossPkg := collectChildRefs(manifest, comp, pkgPath)
+
+		if len(leaves) > 0 {
+			needsPageobjectsImport = true
+		}
+		for path, name := range crossPkg {
+			crossPkgImports[path] = name
+		}
+
+		poDataList = append(poDataList, pageObjectData{
+			TypeName:     comp.TypeName,
+			LeafElements: leaves,
+			Children:     children,
+		})
+	}
+
+	data := fileData{
+		Tag:                    cfg.Tag,
+		Package:                pkgName,
+		NeedsPageobjectsImport: needsPageobjectsImport,
+		CrossPkgImports:        crossPkgImports,
+		PageObjects:            poDataList,
 	}
 
 	var buf bytes.Buffer
-	if err := controllerTmpl.Execute(&buf, data); err != nil {
-		return fmt.Errorf("execute template: %w", err)
+	if err := pageObjectFileTmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("execute template for %s: %w", sourceFile, err)
 	}
 
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		log.Printf("warning: could not format %sController: %v\nSource:\n%s", reg.typeName, err, buf.String())
+		// Fall back to unformatted so we can debug.
 		formatted = buf.Bytes()
 	}
 
-	filename := filepath.Join(g.cfg.OutputDir, toSnakeCase(reg.typeName)+"_controller.gen.go")
-	if err := os.WriteFile(filename, formatted, 0644); err != nil {
-		return fmt.Errorf("write file: %w", err)
+	outPath := outputPath(sourceFile)
+	if err := os.WriteFile(outPath, formatted, 0o644); err != nil {
+		return "", fmt.Errorf("write %s: %w", outPath, err)
 	}
-
-	log.Printf("generated %s", filename)
-	return nil
+	return outPath, nil
 }
 
-type controllerData struct {
-	Package          string
-	TypeName         string
-	LeafElements     []leafElement
-	ChildControllers []childController
+type fileData struct {
+	Tag                    string
+	Package                string
+	NeedsPageobjectsImport bool
+	CrossPkgImports        map[string]string // pkgPath → pkgName alias
+	PageObjects            []pageObjectData
 }
 
-type leafElement struct {
+type pageObjectData struct {
+	TypeName     string
+	LeafElements []leafElem
+	Children     []childRef
+}
+
+type leafElem struct {
 	MethodName  string
 	ElementType string
 	TestID      string
 }
 
-type childController struct {
-	MethodName     string
-	ControllerType string
-	Selector       string
+type childRef struct {
+	FieldName    string
+	ChildType    string // unqualified type name
+	ChildPkgName string // empty if same package
+	TemplateName string
 }
 
-var controllerTmpl = template.Must(template.New("controller").Parse(`//go:build browser
+// collectChildRefs builds the list of child references for a component.
+// It returns the refs and a map of cross-package imports needed (pkgPath → pkgName).
+func collectChildRefs(manifest *analysis.ProjectManifest, comp *analysis.Component, parentPkgPath string) ([]childRef, map[string]string) {
+	crossPkg := make(map[string]string)
+	var result []childRef
+	for _, c := range comp.Children {
+		parts := strings.Split(c.TypeRef, ".")
+		childType := parts[len(parts)-1]
 
-// Code generated by generate-controllers. DO NOT EDIT.
+		// Look up child component in manifest to get its package info.
+		var childPkgName string
+		var childPkgPath string
+		if child, ok := manifest.Components[c.TypeRef]; ok {
+			childPkgName = child.PackageName
+			childPkgPath = child.PackagePath
+		}
 
-package {{.Package}}
+		ref := childRef{
+			FieldName:    c.FieldName,
+			ChildType:    childType,
+			TemplateName: c.TemplateName,
+		}
 
-import (
-	playwright "github.com/mxschmitt/playwright-go"{{if .LeafElements}}
-	"github.com/tylermmorton/torque/pkg/pageobjects"{{end}}
-)
+		if childPkgPath != "" && childPkgPath != parentPkgPath {
+			ref.ChildPkgName = childPkgName
+			crossPkg[childPkgPath] = childPkgName
+		}
 
-type {{.TypeName}}Controller struct {
-	locator playwright.Locator
+		result = append(result, ref)
+	}
+	return result, crossPkg
 }
 
-func New{{.TypeName}}Controller(page playwright.Page) *{{.TypeName}}Controller {
-	return &{{.TypeName}}Controller{locator: page.Locator("html")}
-}
-
-func New{{.TypeName}}ControllerFromLocator(locator playwright.Locator) *{{.TypeName}}Controller {
-	return &{{.TypeName}}Controller{locator: locator}
-}
-{{range .LeafElements}}
-func (c *{{$.TypeName}}Controller) {{.MethodName}}() *pageobjects.{{.ElementType}} {
-	return pageobjects.New{{.ElementType}}(c.locator.Locator("[data-test-id='{{.TestID}}']"))
-}
-{{end}}{{range .ChildControllers}}
-func (c *{{$.TypeName}}Controller) {{.MethodName}}() *{{.ControllerType}}Controller {
-	return New{{.ControllerType}}ControllerFromLocator(c.locator.Locator("[data-test-id='{{.Selector}}']"))
-}
-{{end}}`))
-
-func collectDataTestIDs(node *html.Node) []leafElement {
-	var results []leafElement
+func collectLeafElements(tmplHTML string) []leafElem {
+	doc, err := html.Parse(strings.NewReader(tmplHTML))
+	if err != nil {
+		return nil
+	}
+	var results []leafElem
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if n.Type == html.ElementNode {
 			for _, attr := range n.Attr {
 				if attr.Key == "data-test-id" {
-					results = append(results, leafElement{
+					results = append(results, leafElem{
 						MethodName:  kebabToPascal(attr.Val),
 						ElementType: tagToElementType(n.Data),
 						TestID:      attr.Val,
@@ -174,30 +204,7 @@ func collectDataTestIDs(node *html.Node) []leafElement {
 			walk(c)
 		}
 	}
-	walk(node)
-	return results
-}
-
-func collectChildControllers(node *torque.ReflectedFieldNode) []childController {
-	if node == nil {
-		return nil
-	}
-	var results []childController
-	for _, child := range node.Children {
-		templateName, ok := child.StructField.Tag.Lookup("template")
-		if !ok {
-			continue
-		}
-		fieldType := child.StructField.Type
-		if fieldType.Kind() == reflect.Ptr {
-			fieldType = fieldType.Elem()
-		}
-		results = append(results, childController{
-			MethodName:     child.StructField.Name,
-			ControllerType: fieldType.Name(),
-			Selector:       templateName,
-		})
-	}
+	walk(doc)
 	return results
 }
 
@@ -225,13 +232,49 @@ func kebabToPascal(s string) string {
 	return b.String()
 }
 
-func toSnakeCase(s string) string {
-	var result []rune
-	for i, r := range s {
-		if unicode.IsUpper(r) && i > 0 {
-			result = append(result, '_')
+var pageObjectFileTmpl = template.Must(template.New("page_object_file").Funcs(template.FuncMap{
+	"qualifiedType": func(ref childRef) string {
+		if ref.ChildPkgName != "" {
+			return ref.ChildPkgName + "." + ref.ChildType + "PageObject"
 		}
-		result = append(result, unicode.ToLower(r))
-	}
-	return string(result)
+		return ref.ChildType + "PageObject"
+	},
+	"newFromLocator": func(ref childRef) string {
+		if ref.ChildPkgName != "" {
+			return ref.ChildPkgName + ".New" + ref.ChildType + "PageObjectFromLocator"
+		}
+		return "New" + ref.ChildType + "PageObjectFromLocator"
+	},
+}).Parse(`{{- if .Tag}}//go:build {{.Tag}}
+
+{{end -}}
+// Code generated by torque. DO NOT EDIT.
+
+package {{.Package}}
+
+import (
+	playwright "github.com/mxschmitt/playwright-go"{{if .NeedsPageobjectsImport}}
+	"github.com/tylermmorton/torque/pkg/pageobjects"{{end}}{{range $path, $name := .CrossPkgImports}}
+	{{$name}} "{{$path}}"{{end}}
+)
+{{range .PageObjects}}{{$typeName := .TypeName}}
+type {{$typeName}}PageObject struct {
+	locator playwright.Locator
 }
+
+func New{{$typeName}}PageObject(page playwright.Page) *{{$typeName}}PageObject {
+	return &{{$typeName}}PageObject{locator: page.Locator("html")}
+}
+
+func New{{$typeName}}PageObjectFromLocator(locator playwright.Locator) *{{$typeName}}PageObject {
+	return &{{$typeName}}PageObject{locator: locator}
+}
+{{range .LeafElements}}
+func (p *{{$typeName}}PageObject) {{.MethodName}}() *pageobjects.{{.ElementType}} {
+	return pageobjects.New{{.ElementType}}(p.locator.Locator("[data-test-id='{{.TestID}}']"))
+}
+{{end}}{{range .Children}}
+func (p *{{$typeName}}PageObject) {{.FieldName}}() *{{qualifiedType .}} {
+	return {{newFromLocator .}}(p.locator.Locator("[data-test-id='{{.TemplateName}}']"))
+}
+{{end}}{{end}}`))

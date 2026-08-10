@@ -1,6 +1,6 @@
 //go:build browser
 
-//go:generate go run ../cmd/generate-controllers
+//go:generate torque generate page-objects ./...
 
 package testutils
 

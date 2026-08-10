@@ -24,14 +24,14 @@ type Document struct {
 func (*Document) Template() string {
 	//language=html
 	return `
-<div id="doc-content">
+<div id="doc-content" data-test-id="doc-content">
   {{if .Document.Title}}
-  <h1 id="doc-title">{{.Document.Title}}</h1>
+  <h1 id="doc-title" data-test-id="doc-title">{{.Document.Title}}</h1>
   {{end}}
   {{if .Document.Content}}
-  <div id="doc-body">{{.Document.Content}}</div>
+  <div id="doc-body" data-test-id="doc-body">{{.Document.Content}}</div>
   {{else}}
-  <p id="doc-placeholder">This page is under construction.</p>
+  <p id="doc-placeholder" data-test-id="doc-placeholder">This page is under construction.</p>
   {{end}}
 </div>
 `
